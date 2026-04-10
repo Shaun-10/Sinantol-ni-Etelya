@@ -1,5 +1,5 @@
 import { FiHash, FiMapPin, FiPhone, FiTruck, FiUser } from 'react-icons/fi';
-import RiderAppLayout from '../components/rider/RiderAppLayout';
+import RiderAppLayout from '../components/RiderAppLayout';
 
 export default function RiderProfilePage() {
   return (
@@ -58,3 +58,4 @@ export default function RiderProfilePage() {
     </RiderAppLayout>
   );
 }
+

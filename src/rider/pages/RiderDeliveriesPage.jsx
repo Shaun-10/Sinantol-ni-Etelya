@@ -1,6 +1,6 @@
 import { FiChevronRight, FiNavigation, FiPhone } from 'react-icons/fi';
 import { useNavigate } from 'react-router-dom';
-import RiderAppLayout from '../components/rider/RiderAppLayout';
+import RiderAppLayout from '../components/RiderAppLayout';
 
 const activeDelivery = {
   id: 'DEL-003',
@@ -76,3 +76,4 @@ export default function RiderDeliveriesPage() {
     </RiderAppLayout>
   );
 }
+

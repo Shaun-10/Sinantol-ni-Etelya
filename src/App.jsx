@@ -1,20 +1,20 @@
 import { BrowserRouter, Navigate, Route, Routes } from 'react-router-dom';
-import LoginPage from './components/auth/LoginPage';
-import Layout from './components/Layout';
-import RiderHomePage from './pages/RiderHomePage';
-import RiderDeliveriesPage from './pages/RiderDeliveriesPage';
-import RiderDeliveryDeliveredPage from './pages/RiderDeliveryDeliveredPage';
-import RiderDeliveryDetailsPage from './pages/RiderDeliveryDetailsPage';
-import RiderDeliveryPaymentPage from './pages/RiderDeliveryPaymentPage';
-import RiderHistoryDetailsPage from './pages/RiderHistoryDetailsPage';
-import RiderHistoryPage from './pages/RiderHistoryPage';
-import RiderLoginPage from './pages/RiderLoginPage';
-import RiderProfilePage from './pages/RiderProfilePage';
-import RiderSignupPage from './pages/RiderSignupPage';
-import Dashboard from './pages/Dashboard';
-import OrdersPage from './pages/OrdersPage';
-import RidersPage from './pages/RidersPage';
-import SalesPage from './pages/SalesPage';
+import LoginPage from './admin/components/auth/LoginPage';
+import Layout from './admin/components/Layout';
+import RiderHomePage from './rider/pages/RiderHomePage';
+import RiderDeliveriesPage from './rider/pages/RiderDeliveriesPage';
+import RiderDeliveryDeliveredPage from './rider/pages/RiderDeliveryDeliveredPage';
+import RiderDeliveryDetailsPage from './rider/pages/RiderDeliveryDetailsPage';
+import RiderDeliveryPaymentPage from './rider/pages/RiderDeliveryPaymentPage';
+import RiderHistoryDetailsPage from './rider/pages/RiderHistoryDetailsPage';
+import RiderHistoryPage from './rider/pages/RiderHistoryPage';
+import RiderLoginPage from './rider/pages/RiderLoginPage';
+import RiderProfilePage from './rider/pages/RiderProfilePage';
+import RiderSignupPage from './rider/pages/RiderSignupPage';
+import Dashboard from './admin/pages/Dashboard';
+import OrdersPage from './admin/pages/OrdersPage';
+import RidersPage from './admin/pages/RidersPage';
+import SalesPage from './admin/pages/SalesPage';
 
 export default function App() {
   return (

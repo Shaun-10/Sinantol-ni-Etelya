@@ -1,12 +1,12 @@
 import { FiMapPin, FiNavigation } from 'react-icons/fi';
 import { useNavigate } from 'react-router-dom';
-import RiderAppLayout from '../components/rider/RiderAppLayout';
+import RiderAppLayout from '../components/RiderAppLayout';
 
-export default function RiderDeliveryDetailsPage() {
+export default function RiderDeliveryPaymentPage() {
   const navigate = useNavigate();
 
   return (
-    <RiderAppLayout pageTitle="Rider deliveries - details" showBack backTo="/rider/deliveries">
+    <RiderAppLayout pageTitle="Rider deliveries - info qr" showBack backTo="/rider/deliveries/details">
       <article className="details-card">
         <div className="details-head-row">
           <span className="delivery-id">DEL-003</span>
@@ -32,8 +32,13 @@ export default function RiderDeliveryDetailsPage() {
 
       <article className="details-card">
         <h3>PAYMENT OPTIONS</h3>
-        <button type="button" className="inline-green-btn" onClick={() => navigate('/rider/deliveries/payment')}>
-          Switch to e-Payment (GCash/Maya)
+        <div className="qr-box">QR</div>
+        <p className="qr-name">Ana's GCash</p>
+        <p className="qr-copy">Scan to pay</p>
+        <p className="qr-price">P500</p>
+        <button type="button" className="upload-btn">Upload Payment Proof</button>
+        <button type="button" className="confirm-btn" onClick={() => navigate('/rider/deliveries/delivered')}>
+          Confirm Payment Received
         </button>
       </article>
 
@@ -48,3 +53,4 @@ export default function RiderDeliveryDetailsPage() {
     </RiderAppLayout>
   );
 }
+

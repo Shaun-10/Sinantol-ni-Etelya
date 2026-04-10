@@ -1,6 +1,6 @@
 import { FiBell, FiClock, FiMapPin, FiPackage, FiUser } from 'react-icons/fi';
 import { useNavigate } from 'react-router-dom';
-import RiderBottomNav from '../components/rider/RiderBottomNav';
+import RiderBottomNav from '../components/RiderBottomNav';
 
 const stats = [
   { icon: FiPackage, value: 25, label: 'Total Today' },

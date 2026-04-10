@@ -1,6 +1,6 @@
 import { FiChevronRight } from 'react-icons/fi';
 import { useNavigate } from 'react-router-dom';
-import RiderAppLayout from '../components/rider/RiderAppLayout';
+import RiderAppLayout from '../components/RiderAppLayout';
 
 const historyItems = [
   { id: 'DEL-002', customer: 'Maria Santos', address: '123 Rizal Ave, Brgy. San Jose, Quezon City', amount: 'P450', status: 'Delivered', meta: '01:45 PM • COD' },
@@ -47,3 +47,4 @@ export default function RiderHistoryPage() {
     </RiderAppLayout>
   );
 }
+

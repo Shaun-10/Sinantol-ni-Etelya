@@ -1,6 +1,6 @@
 import { useNavigate } from 'react-router-dom';
 import { Link } from 'react-router-dom';
-import RiderAuthShell from '../components/rider/RiderAuthShell';
+import RiderAuthShell from '../components/RiderAuthShell';
 
 export default function RiderSignupPage() {
   const navigate = useNavigate();

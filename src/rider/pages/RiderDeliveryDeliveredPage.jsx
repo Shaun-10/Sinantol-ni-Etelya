@@ -1,5 +1,5 @@
 import { FiMapPin, FiNavigation } from 'react-icons/fi';
-import RiderAppLayout from '../components/rider/RiderAppLayout';
+import RiderAppLayout from '../components/RiderAppLayout';
 
 export default function RiderDeliveryDeliveredPage() {
   return (
@@ -33,3 +33,4 @@ export default function RiderDeliveryDeliveredPage() {
     </RiderAppLayout>
   );
 }
+
