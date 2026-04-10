@@ -23,7 +23,7 @@ export default function RiderHomePage() {
       <div className="rider-mobile-shell">
         <header className="rider-dashboard-head">
           <div className="dashboard-toolbar">
-            <img src="/images/logo.png" alt="Sinantol ni Etelya Riders" className="mini-logo" />
+            <img src="/images/logo_delivery.png" alt="Sinantol ni Etelya Riders" className="mini-logo" />
             <div className="toolbar-right">
               <button type="button" className="ghost-icon-btn"><FiBell /></button>
               <div className="rider-mini-chip"><FiUser /> Rider</div>

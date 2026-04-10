@@ -13,8 +13,6 @@ const navItems = [
   { label: 'Orders', icon: FiShoppingBag, to: '/orders' },
   { label: 'Riders', icon: FiTruck, to: '/riders' },
   { label: 'Sales', icon: FiBox, to: '/sales' },
-  { label: 'Delivery', icon: FiMapPin },
-  { label: 'Settings', icon: FiSettings },
 ];
 
 export default function Sidebar() {
