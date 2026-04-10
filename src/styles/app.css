@@ -1,0 +1,19 @@
+@import '../components/dashboard/Dashboard.css';
+@import '../components/orders/orders.css';
+@import '../components/riders/riders.css';
+@import '../components/sales/sales.css';
+@import './rider.css';
+
+.dashboard-sidebar .sidebar-item {
+  text-decoration: none;
+}
+
+.layout-subtitle {
+  margin: 0;
+  font-size: 1.75rem;
+  font-weight: 800;
+}
+
+.dashboard-main-content .riders-main-content {
+  padding-right: 0;
+}
