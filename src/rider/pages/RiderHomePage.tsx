@@ -16,17 +16,13 @@ interface Order {
 }
 
 const stats: StatItem[] = [
-  { icon: FiPackage, value: 25, label: 'Total Today' },
-  { icon: FiClock, value: 5, label: 'Pending' },
-  { icon: FiUser, value: 100, label: 'Completed' },
-  { icon: FiMapPin, value: 26, label: 'COD Collected' },
+  { icon: FiPackage, value: 0, label: 'Total Today' },
+  { icon: FiClock, value: 0, label: 'Pending' },
+  { icon: FiUser, value: 0, label: 'Completed' },
+  { icon: FiMapPin, value: 0, label: 'COD Collected' },
 ];
 
-const activeOrders: Order[] = [
-  { id: '#1', customer: 'Ali Mae', address: '21 Malboni St. Fairview, Quezon City', amount: 'COD  P290' },
-  { id: '#2', customer: 'Raiza Mae', address: '21 Malboni St. Fairview, Quezon City', amount: 'COD  P290' },
-  { id: '#3', customer: 'Hanna Mae', address: '21 Malboni St. Fairview, Quezon City', amount: 'COD  P200' },
-];
+const activeOrders: Order[] = [];
 
 export default function RiderHomePage() {
   const navigate = useNavigate();
@@ -55,7 +51,7 @@ export default function RiderHomePage() {
 
           <div className="px-2.5 py-2">
             <p className="m-0 text-rider-text-muted text-base">Good day,</p>
-            <h2 className="m-0 mt-0.5 mb-3.5 text-3xl leading-tight text-rider-text-main font-bold">Rider John</h2>
+            <h2 className="m-0 mt-0.5 mb-3.5 text-3xl leading-tight text-rider-text-main font-bold">Rider</h2>
           </div>
         </header>
 
@@ -84,7 +80,7 @@ export default function RiderHomePage() {
             className="w-full mt-4 border border-rider-btn-border rounded-full px-3.5 py-3.5 bg-rider-btn-yellow text-rider-green-dark text-[1.8rem] font-black shadow-rider-btn cursor-pointer hover:opacity-90"
             onClick={() => navigate('/rider/deliveries')}
           >
-            Start Route - 1 stops
+            Start Route
           </button>
 
           {/* Active Deliveries Section */}

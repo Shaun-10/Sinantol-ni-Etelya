@@ -9,11 +9,11 @@ interface ProfileRow {
 }
 
 const profileRows: ProfileRow[] = [
-  { icon: FiUser, label: 'Full Name', value: 'John D. Cruz' },
-  { icon: FiPhone, label: 'Contact', value: '+634516933456' },
-  { icon: FiMapPin, label: 'Assigned Area', value: 'Quezon City - North fairview' },
-  { icon: FiTruck, label: 'Motor Model', value: 'Honda Click 1356' },
-  { icon: FiHash, label: 'Plate Number', value: 'hjk-123' },
+  { icon: FiUser, label: 'Full Name', value: '-' },
+  { icon: FiPhone, label: 'Contact', value: '-' },
+  { icon: FiMapPin, label: 'Assigned Area', value: '-' },
+  { icon: FiTruck, label: 'Motor Model', value: '-' },
+  { icon: FiHash, label: 'Plate Number', value: '-' },
 ];
 
 export default function RiderProfilePage() {
@@ -27,7 +27,7 @@ export default function RiderProfilePage() {
             <FiUser />
           </div>
           <div>
-            <h2 className="m-0 text-[2rem] text-[#0f6320] font-black">John Cruz</h2>
+            <h2 className="m-0 text-[2rem] text-[#0f6320] font-black">Rider</h2>
             <p className="m-0.5 text-[#335236] font-bold flex items-center gap-1.5">
               <span className="w-1.75 h-1.75 rounded-full bg-[#21a641]" />
               Active Rider

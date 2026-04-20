@@ -12,48 +12,7 @@ interface HistoryItem {
   meta: string;
 }
 
-const historyItems: HistoryItem[] = [
-  {
-    id: 'DEL-002',
-    customer: 'Maria Santos',
-    address: '123 Rizal Ave, Brgy. San Jose, Quezon City',
-    amount: 'P450',
-    status: 'Delivered',
-    meta: '01:45 PM • COD',
-  },
-  {
-    id: 'DEL-001',
-    customer: 'Juan Dela Cruz',
-    address: '456 Bonifacio St., Poblacion, Makati',
-    amount: 'P370',
-    status: 'Failed',
-    meta: '01:45 PM • Online',
-  },
-  {
-    id: 'DEL-003',
-    customer: 'Ana Reyes',
-    address: '789 Mabini Blvd, Brgy. Ermita, Manila',
-    amount: 'P500',
-    status: 'Delivered',
-    meta: '01:57 PM • COD',
-  },
-  {
-    id: 'DEL-000',
-    customer: 'Pedro Garcia',
-    address: '321 Roxas Blvd, Brgy. Malate, Manila',
-    amount: 'P220',
-    status: 'Delivered',
-    meta: '02:15 PM • COD',
-  },
-  {
-    id: 'DEL-104',
-    customer: 'Rosa Mendoza',
-    address: '654 Taft Ave., Brgy. San Andres, Manila',
-    amount: 'P550',
-    status: 'Delivered',
-    meta: '01:42 PM • COD',
-  },
-];
+const historyItems: HistoryItem[] = [];
 
 export default function RiderHistoryPage() {
   const navigate = useNavigate();
@@ -64,11 +23,11 @@ export default function RiderHistoryPage() {
       <article className="border border-[#27a842] rounded-xl bg-[#d9dfd9] px-4 py-3.25 flex items-center justify-between mb-3.5">
         <div>
           <p className="m-0 text-[#1f2e22] text-sm">Total COD Collected</p>
-          <strong className="block mt-0.75 text-[#0d7421] text-[2rem] font-bold">P960</strong>
+          <strong className="block mt-0.75 text-[#0d7421] text-[2rem] font-bold">P0</strong>
         </div>
         <div className="text-right">
           <span className="text-[#1f2e22] text-sm">Deliveries</span>
-          <strong className="block mt-0.75 text-[#0d7421] text-[2rem] font-bold">6</strong>
+          <strong className="block mt-0.75 text-[#0d7421] text-[2rem] font-bold">0</strong>
         </div>
       </article>
 

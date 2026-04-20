@@ -20,21 +20,15 @@ interface ActiveDelivery {
 }
 
 const activeDelivery: ActiveDelivery = {
-  id: 'DEL-003',
-  customer: 'Ana Reyes',
-  address: '789 Mabini Blvd, Brgy. Ermita, Manila',
-  distance: '0.8 km',
-  eta: 'ETA 3 min',
-  amount: 'COD P290',
+  id: '',
+  customer: '-',
+  address: '-',
+  distance: '-',
+  eta: '-',
+  amount: '-',
 };
 
-const completedDeliveries: DeliveryItem[] = [
-  { id: 'DEL-002', customer: 'Maria Santos', status: 'Delivered', time: '01:45 PM' },
-  { id: 'DEL-001', customer: 'Juan Dela Cruz', status: 'Failed', time: '01:45 AM' },
-  { id: 'DEL-000', customer: 'Pedro Garcia', status: 'Delivered', time: '02:15 PM' },
-  { id: 'DEL-104', customer: 'Rosa Mendoza', status: 'Delivered', time: '01:42 PM' },
-  { id: 'DEL-103', customer: 'Carlo Tan', status: 'Failed', time: '12:30 PM' },
-];
+const completedDeliveries: DeliveryItem[] = [];
 
 export default function RiderDeliveriesPage() {
   const navigate = useNavigate();
@@ -66,11 +60,11 @@ export default function RiderDeliveriesPage() {
         </article>
 
         {/* Active Section */}
-        <div className="m-4 mb-2.5 text-[#505b50] text-base font-black">ACTIVE (1)</div>
+        <div className="m-4 mb-2.5 text-[#505b50] text-base font-black">ACTIVE ({activeDelivery.id ? 1 : 0})</div>
         <article className="bg-rider-item-bg rounded-xl p-2.5 flex justify-between gap-2.5">
           <div className="min-w-0">
             <h4 className="m-0 text-[1.35rem] text-[#116120] font-black">{activeDelivery.customer}</h4>
-            <p className="m-0 mt-0.75 text-[0.76rem] text-[#5a625c]">2</p>
+            <p className="m-0 mt-0.75 text-[0.76rem] text-[#5a625c]">-</p>
             <p className="m-0 mt-0.75 text-[0.76rem] text-[#5a625c]">{activeDelivery.address}</p>
             <div className="flex items-center gap-1.75 flex-wrap mt-1.75">
               <span className="inline-flex items-center rounded-full px-2 py-1 text-[0.68rem] font-bold bg-rider-pill-yellow text-rider-pill-yellow-text">
@@ -94,7 +88,7 @@ export default function RiderDeliveriesPage() {
         </article>
 
         {/* Completed Section */}
-        <div className="m-4 mb-2.5 text-[#505b50] text-base font-black">COMPLETED (5)</div>
+        <div className="m-4 mb-2.5 text-[#505b50] text-base font-black">COMPLETED ({completedDeliveries.length})</div>
         <div className="flex flex-col gap-3">
           {completedDeliveries.map((item) => (
             <button
