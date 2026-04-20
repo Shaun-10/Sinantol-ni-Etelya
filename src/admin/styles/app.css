@@ -2,7 +2,6 @@
 @import '../components/orders/orders.css';
 @import '../components/riders/riders.css';
 @import '../components/sales/sales.css';
-@import '../../rider/styles/rider.css';
 
 .dashboard-sidebar .sidebar-item {
   text-decoration: none;
