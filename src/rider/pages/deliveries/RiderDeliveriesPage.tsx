@@ -1,7 +1,8 @@
-import React from 'react';
-import { FiChevronRight, FiNavigation, FiPhone } from 'react-icons/fi';
+import React, { useEffect, useMemo, useState } from 'react';
+import { FiChevronRight, FiPhone } from 'react-icons/fi';
 import { useNavigate } from 'react-router-dom';
-import RiderAppLayout from '../components/RiderAppLayout';
+import RiderAppLayout from '../../components/RiderAppLayout';
+import { getRiderDeliveries, toCurrency, type RiderDelivery } from '../../lib/riderData';
 
 interface DeliveryItem {
   id: string;
@@ -19,19 +20,57 @@ interface ActiveDelivery {
   amount: string;
 }
 
-const activeDelivery: ActiveDelivery = {
-  id: '',
-  customer: '-',
-  address: '-',
-  distance: '-',
-  eta: '-',
-  amount: '-',
-};
-
-const completedDeliveries: DeliveryItem[] = [];
-
 export default function RiderDeliveriesPage() {
   const navigate = useNavigate();
+  const [isLoading, setIsLoading] = useState(true);
+  const [deliveries, setDeliveries] = useState<RiderDelivery[]>([]);
+
+  useEffect(() => {
+    const loadDeliveries = async () => {
+      setIsLoading(true);
+      const data = await getRiderDeliveries();
+      setDeliveries(data);
+      setIsLoading(false);
+    };
+
+    loadDeliveries();
+  }, []);
+
+  const activeDelivery = useMemo<ActiveDelivery>(() => {
+    const current = deliveries.find((item) => item.status === 'In Progress');
+    if (!current) {
+      return {
+        id: '',
+        customer: '-',
+        address: '-',
+        distance: '-',
+        eta: '-',
+        amount: '-',
+      };
+    }
+
+    return {
+      id: current.id,
+      customer: current.customer,
+      address: current.address,
+      distance: current.distance,
+      eta: current.eta,
+      amount: toCurrency(current.amount),
+    };
+  }, [deliveries]);
+
+  const completedDeliveries: DeliveryItem[] = useMemo(
+    () =>
+      deliveries
+        .filter((item) => item.status !== 'In Progress')
+        .map((item) => ({
+          id: item.id,
+          customer: item.customer,
+          status: item.status === 'Delivered' ? 'Delivered' : 'Failed',
+          time: item.createdAt ? new Date(item.createdAt).toLocaleString('en-PH') : '-',
+        })),
+    [deliveries]
+  );
 
   return (
     <RiderAppLayout>
@@ -43,7 +82,7 @@ export default function RiderDeliveriesPage() {
           className="border-2 border-rider-next-stop-border rounded-xl bg-rider-next-stop-bg p-2.5 cursor-pointer hover:opacity-90"
           role="button"
           tabIndex={0}
-          onClick={() => navigate('/rider/deliveries/details')}
+          onClick={() => activeDelivery.id && navigate(`/rider/deliveries/details?id=${encodeURIComponent(activeDelivery.id)}`)}
         >
           <p className="m-0 text-rider-next-stop-label text-xs font-black">NEXT BEST STOP - {activeDelivery.distance}</p>
           <h3 className="m-0 mt-1.25 text-rider-next-stop-green text-[1.9rem] font-bold">{activeDelivery.customer}</h3>
@@ -80,12 +119,14 @@ export default function RiderDeliveriesPage() {
             <button
               type="button"
               className="w-9 h-9 border-none rounded-full bg-rider-icon-circle text-[#223422] grid place-items-center cursor-pointer hover:opacity-90"
-              onClick={() => navigate('/rider/deliveries/details')}
+              onClick={() => activeDelivery.id && navigate(`/rider/deliveries/details?id=${encodeURIComponent(activeDelivery.id)}`)}
             >
               <FiPhone size={18} />
             </button>
           </div>
         </article>
+
+        {isLoading ? <p className="m-4 text-sm text-[#576257]">Loading deliveries...</p> : null}
 
         {/* Completed Section */}
         <div className="m-4 mb-2.5 text-[#505b50] text-base font-black">COMPLETED ({completedDeliveries.length})</div>
@@ -95,7 +136,7 @@ export default function RiderDeliveriesPage() {
               key={item.id}
               type="button"
               className="w-full border-none bg-rider-history-bg rounded-xl px-3 py-2.5 flex items-center justify-between text-left text-[#232e24] cursor-pointer hover:opacity-90"
-              onClick={() => navigate('/rider/history/details')}
+              onClick={() => navigate(`/rider/history/details?id=${encodeURIComponent(item.id)}`)}
             >
               <div className="min-w-0 flex-1">
                 <h4 className="m-0 text-[1.5rem] text-[#0f6420] font-black">{item.customer}</h4>

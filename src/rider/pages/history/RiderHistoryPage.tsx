@@ -1,7 +1,8 @@
-import React from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
 import { FiChevronRight } from 'react-icons/fi';
 import { useNavigate } from 'react-router-dom';
-import RiderAppLayout from '../components/RiderAppLayout';
+import RiderAppLayout from '../../components/RiderAppLayout';
+import { formatMetaDateTime, getRiderDeliveries, toCurrency, type RiderDelivery } from '../../lib/riderData';
 
 interface HistoryItem {
   id: string;
@@ -12,10 +13,38 @@ interface HistoryItem {
   meta: string;
 }
 
-const historyItems: HistoryItem[] = [];
-
 export default function RiderHistoryPage() {
   const navigate = useNavigate();
+  const [isLoading, setIsLoading] = useState(true);
+  const [historyItems, setHistoryItems] = useState<HistoryItem[]>([]);
+
+  useEffect(() => {
+    const loadHistory = async () => {
+      setIsLoading(true);
+      const deliveries = await getRiderDeliveries();
+      const history = deliveries
+        .filter((item) => item.status === 'Delivered' || item.status === 'Failed')
+        .map((item: RiderDelivery) => ({
+          id: item.id,
+          customer: item.customer,
+          address: item.address,
+          amount: toCurrency(item.amount),
+          status: item.status,
+          meta: formatMetaDateTime(item.deliveredAt || item.failedAt || item.createdAt),
+        }));
+
+      setHistoryItems(history);
+      setIsLoading(false);
+    };
+
+    loadHistory();
+  }, []);
+
+  const totalCodCollected = useMemo(() => {
+    return historyItems
+      .filter((item) => item.status === 'Delivered')
+      .reduce((sum, item) => sum + Number(item.amount.replace(/[^\d.-]/g, '')), 0);
+  }, [historyItems]);
 
   return (
     <RiderAppLayout showBack backTo="/rider/home">
@@ -23,13 +52,15 @@ export default function RiderHistoryPage() {
       <article className="border border-[#27a842] rounded-xl bg-[#d9dfd9] px-4 py-3.25 flex items-center justify-between mb-3.5">
         <div>
           <p className="m-0 text-[#1f2e22] text-sm">Total COD Collected</p>
-          <strong className="block mt-0.75 text-[#0d7421] text-[2rem] font-bold">P0</strong>
+          <strong className="block mt-0.75 text-[#0d7421] text-[2rem] font-bold">{toCurrency(totalCodCollected)}</strong>
         </div>
         <div className="text-right">
           <span className="text-[#1f2e22] text-sm">Deliveries</span>
-          <strong className="block mt-0.75 text-[#0d7421] text-[2rem] font-bold">0</strong>
+          <strong className="block mt-0.75 text-[#0d7421] text-[2rem] font-bold">{historyItems.length}</strong>
         </div>
       </article>
+
+      {isLoading ? <p className="m-0 mb-3 text-sm text-[#586259]">Loading history...</p> : null}
 
       {/* History Items */}
       <div className="flex flex-col gap-3">
@@ -38,7 +69,7 @@ export default function RiderHistoryPage() {
             key={item.id}
             type="button"
             className="w-full border-none bg-rider-history-bg rounded-xl px-3 py-3 flex items-center justify-between text-left text-[#232e24] cursor-pointer hover:opacity-90"
-            onClick={() => navigate('/rider/history/details')}
+            onClick={() => navigate(`/rider/history/details?id=${encodeURIComponent(item.id)}`)}
           >
             <div className="min-w-0 flex-1">
               <div className="flex items-center justify-between gap-2 mb-0.75">
