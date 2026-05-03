@@ -29,7 +29,7 @@ export default function RiderHistoryPage() {
           customer: item.customer,
           address: item.address,
           amount: toCurrency(item.amount),
-          status: item.status,
+          status: item.status as HistoryItem['status'],
           meta: formatMetaDateTime(item.deliveredAt || item.failedAt || item.createdAt),
         }));
 

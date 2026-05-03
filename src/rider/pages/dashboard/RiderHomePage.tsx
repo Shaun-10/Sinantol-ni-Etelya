@@ -23,10 +23,10 @@ export default function RiderHomePage() {
   const [dataIssue, setDataIssue] = useState<string | null>(null);
   const [activeOrders, setActiveOrders] = useState<Order[]>([]);
   const [stats, setStats] = useState<StatItem[]>([
-    { icon: FiPackage, value: 0, label: 'Total Today' },
-    { icon: FiClock, value: 0, label: 'Pending' },
-    { icon: FiUser, value: 0, label: 'Completed' },
-    { icon: FiMapPin, value: toCurrency(0), label: 'COD Collected' },
+    { icon: FiPackage, value: 0, label: 'Total Deliveries Today' },
+    { icon: FiClock, value: 0, label: 'Today Pending Deliveries' },
+    { icon: FiUser, value: 0, label: 'Today Completed Deliveries' },
+    { icon: FiMapPin, value: toCurrency(0), label: 'COD Collected Today' },
   ]);
 
   const greetingName = useMemo(() => {
@@ -47,13 +47,13 @@ export default function RiderHomePage() {
       const totalCod = completed.reduce((sum, item) => sum + item.amount, 0);
 
       setStats([
-        { icon: FiPackage, value: deliveries.length, label: 'Total Today' },
-        { icon: FiClock, value: inProgress.length, label: 'Pending' },
-        { icon: FiUser, value: completed.length, label: 'Completed' },
-        { icon: FiMapPin, value: toCurrency(totalCod), label: 'COD Collected' },
+        { icon: FiPackage, value: deliveries.length, label: 'Total Deliveries Today' },
+        { icon: FiClock, value: inProgress.length, label: 'Today Pending Deliveries' },
+        { icon: FiUser, value: completed.length, label: 'Today Completed Deliveries' },
+        { icon: FiMapPin, value: toCurrency(totalCod), label: 'COD Collected Today' },
       ]);
 
-      const topOrders: Order[] = inProgress.slice(0, 3).map((item: RiderDelivery) => ({
+      const topOrders: Order[] = inProgress.slice(0, 9).map((item: RiderDelivery) => ({
         id: item.id,
         customer: item.customer,
         address: item.address,
@@ -110,7 +110,7 @@ export default function RiderHomePage() {
                   key={item.label}
                   className="bg-rider-card-bg rounded-[14px] min-h-[108px] flex flex-col items-center justify-center gap-1.25"
                 >
-                  <Icon size={30} className="text-[#2d2d2d]" aria-hidden="true" />
+                  <span className="text-[#2d2d2d]"><Icon size={30} aria-hidden="true" /></span>
                   <strong className="text-[2rem] text-rider-green-bold leading-tight">{isLoading ? '-' : item.value}</strong>
                   <span className="text-[0.76rem] font-bold text-[#222]">{item.label}</span>
                 </article>

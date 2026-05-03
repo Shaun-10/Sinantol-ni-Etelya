@@ -2,6 +2,9 @@ import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { LatLngBounds, LatLngTuple } from 'leaflet';
 import { CircleMarker, MapContainer, Marker, Polyline, Popup, TileLayer, useMap } from 'react-leaflet';
 import RiderAppLayout from '../../components/RiderAppLayout';
+import { useNavigate } from 'react-router-dom';
+import { haversineDistance } from '../../lib/routeOptimizer';
+import { FiMapPin } from 'react-icons/fi';
 import { calculateRoute, formatDistance, formatDuration, type RouteResponse } from '../../lib/routingService';
 import { getRiderDeliveries, type RiderDelivery } from '../../lib/riderData';
 import { getRiderSupabaseClient } from '../../lib/supabaseClient';
@@ -72,6 +75,7 @@ function MapBoundsFitter({ bounds }: { bounds: LatLngBounds | null }) {
 }
 
 export default function RiderAreaRoutesPage() {
+  const navigate = useNavigate();
   const [riderLocation, setRiderLocation] = useState<LatLngTuple>(manilaCenter);
   const [isLoadingRoutes, setIsLoadingRoutes] = useState(true);
   const [isLoadingDeliveries, setIsLoadingDeliveries] = useState(true);
@@ -259,30 +263,58 @@ export default function RiderAreaRoutesPage() {
           </CircleMarker>
 
           {areaRoutes.map((entry) => (
-            <React.Fragment key={entry.deliveryId}>
-              <Marker position={entry.coords}>
-                <Popup>
-                  <strong>{entry.customer}</strong>
-                  <br />
-                  <strong>{entry.areaName}</strong>
-                  <br />
-                  {entry.address}
-                </Popup>
-              </Marker>
-
-              {entry.route?.geometry?.length ? (
-                <Polyline
-                  positions={entry.route.geometry}
-                  color={entry.color}
-                  weight={4}
-                  opacity={0.82}
-                />
-              ) : null}
-            </React.Fragment>
+            <Marker key={`marker-${entry.deliveryId}`} position={entry.coords}>
+              <Popup>
+                <strong>{entry.customer}</strong>
+                <br />
+                <strong>{entry.areaName}</strong>
+                <br />
+                {entry.address}
+              </Popup>
+            </Marker>
           ))}
+
+          {areaRoutes
+            .filter((entry) => entry.route?.geometry?.length)
+            .map((entry) => (
+              <Polyline
+                key={`poly-${entry.deliveryId}`}
+                positions={entry.route!.geometry}
+                color={entry.color}
+                weight={4}
+                opacity={0.82}
+              />
+            ))}
         </MapContainer>
       </article>
 
+      {/* Start Nearest button placed outside the map (below) */}
+      <div className="mb-3">
+        <button
+          type="button"
+          className="add-rider-btn"
+          onClick={() => {
+            if (!areaRoutes || areaRoutes.length === 0) return;
+            let nearest = areaRoutes[0];
+            let nearestDist = haversineDistance(riderLocation, nearest.coords);
+            for (let i = 1; i < areaRoutes.length; i++) {
+              const a = areaRoutes[i];
+              const d = haversineDistance(riderLocation, a.coords);
+              if (d < nearestDist) {
+                nearest = a;
+                nearestDist = d;
+              }
+            }
+
+            navigate(`/rider/map?id=${encodeURIComponent(nearest.deliveryId)}`);
+          }}
+          aria-label="Start nearest delivery"
+          title="Start nearest delivery"
+        >
+          <FiMapPin />
+          <span style={{ marginLeft: 8, fontWeight: 800 }}>Start Nearest</span>
+        </button>
+      </div>
       <section className="flex flex-col gap-2">
         {!isLoadingDeliveries && !deliveries.length ? (
           <article className="bg-rider-details-card rounded-xl p-3 border border-[#d4e4d5]">

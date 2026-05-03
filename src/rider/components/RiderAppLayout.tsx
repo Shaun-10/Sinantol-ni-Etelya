@@ -21,13 +21,13 @@ export default function RiderAppLayout({
   const navigate = useNavigate();
 
   return (
-    <div className="min-h-screen bg-rider-bg text-rider-text">
-      <div className="max-w-[430px] w-full min-h-screen mx-auto bg-rider-bg border-l border-r border-[#d2d2d2] flex flex-col">
-        <header className="p-3 pb-2 border-b border-[#d4d4d4]">
+    <div className="rider-app-shell">
+      <div className="rider-frame">
+        <header className="rider-top-shell">
           {showBack ? (
             <button
               type="button"
-              className="border-none bg-transparent text-[#475047] inline-flex items-center gap-1 text-sm font-bold mb-2.5 cursor-pointer"
+              className="mb-2.5 inline-flex items-center gap-1 border-none bg-transparent text-sm font-bold text-[#475047] cursor-pointer"
               onClick={() => navigate(backTo)}
             >
               <FiChevronLeft aria-hidden="true" />
@@ -35,12 +35,12 @@ export default function RiderAppLayout({
             </button>
           ) : null}
 
-          {pageTitle ? <h1 className="m-0 text-rider-text-gray text-[1.6rem] font-medium">{pageTitle}</h1> : null}
+          {pageTitle ? <h1 className="m-0 text-[1.6rem] font-medium text-rider-text-gray">{pageTitle}</h1> : null}
 
           {headerRight ? <div className="mt-1">{headerRight}</div> : null}
         </header>
 
-        <main className="flex-1 p-3 pb-5 overflow-y-auto">{children}</main>
+        <main className="flex-1 overflow-y-auto p-3 pb-5">{children}</main>
 
         <RiderBottomNav />
       </div>

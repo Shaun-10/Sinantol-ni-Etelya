@@ -3,7 +3,10 @@ import { LatLngTuple, Icon, LatLngBounds } from 'leaflet';
 import { MapContainer, Marker, Popup, TileLayer, useMap, Polyline } from 'react-leaflet';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import RiderAppLayout from '../../components/RiderAppLayout';
-import { getRiderDeliveryById, type RiderDelivery } from '../../lib/riderData';
+import { getRiderDeliveryById, getRiderDeliveries, type RiderDelivery } from '../../lib/riderData';
+import RouteOptimizer from '../../components/RouteOptimizer';
+import type { Stop } from '../../lib/routeOptimizer';
+import { haversineDistance } from '../../lib/routeOptimizer';
 import { calculateRoute, formatDistance, formatDuration, type RouteResponse } from '../../lib/routingService';
 import markerIcon2x from 'leaflet/dist/images/marker-icon-2x.png';
 import markerIcon from 'leaflet/dist/images/marker-icon.png';
@@ -99,6 +102,46 @@ export default function RiderMapPage() {
   // Waypoints state: [origin (rider), destination (customer)]
   const [waypoints, setWaypoints] = useState<LatLngTuple[]>([]);
   const [destinationCoords, setDestinationCoords] = useState<LatLngTuple | null>(null);
+  // multiple deliveries / stops
+  const [deliveriesList, setDeliveriesList] = useState<RiderDelivery[]>([]);
+  const [stops, setStops] = useState<Stop[]>([]);
+  const [stopsToRender, setStopsToRender] = useState<Stop[]>([]);
+
+  // Recompute the nearest stop whenever rider location or stop list updates
+  useEffect(() => {
+    if (!riderLocation) {
+      // no GPS yet — don't set a nearest stop
+      return;
+    }
+
+    if (!stops || stops.length === 0) {
+      setStopsToRender([]);
+      return;
+    }
+
+    let nearest = stops[0];
+    let nearestDist = haversineDistance(riderLocation, [nearest.lat, nearest.lng]);
+
+    for (let i = 1; i < stops.length; i++) {
+      const s = stops[i];
+      const d = haversineDistance(riderLocation, [s.lat, s.lng]);
+      if (d < nearestDist) {
+        nearest = s;
+        nearestDist = d;
+      }
+    }
+
+    setStopsToRender([nearest]);
+  }, [riderLocation, stops]);
+
+  // Clear single-delivery route state when using multi-stop mode
+  useEffect(() => {
+    if (!deliveryId) {
+      setRoute(null);
+      setDirections([]);
+    }
+  }, [deliveryId, stopsToRender]);
+  const [isLoadingStops, setIsLoadingStops] = useState(false);
 
   // Start GPS tracking on mount
   useEffect(() => {
@@ -173,6 +216,86 @@ export default function RiderMapPage() {
     };
 
     loadDelivery();
+  }, [deliveryId]);
+
+  // Load active deliveries (when not viewing a single delivery) and geocode stops
+  useEffect(() => {
+    if (deliveryId) return; // single-delivery mode
+
+    const loadStops = async () => {
+      setIsLoadingStops(true);
+      try {
+        const data = await getRiderDeliveries();
+        const active = (data || []).filter((d) => d.status === 'In Progress');
+        setDeliveriesList(active);
+
+        // geocode addresses for stops (fallback to navigation text if coords embedded)
+        const geocodeOne = async (address: string) => {
+          if (!address) return null;
+          try {
+            const endpoint = `https://nominatim.openstreetmap.org/search?format=json&limit=1&q=${encodeURIComponent(address)}`;
+            const resp = await fetch(endpoint, { headers: { Accept: 'application/json' } });
+            if (!resp.ok) return null;
+            const payload = await resp.json();
+            if (!Array.isArray(payload) || payload.length === 0) return null;
+            const lat = Number(payload[0].lat);
+            const lon = Number(payload[0].lon);
+            if (!Number.isFinite(lat) || !Number.isFinite(lon)) return null;
+            return [lat, lon] as LatLngTuple;
+          } catch (err) {
+            return null;
+          }
+        };
+
+        const resolvedStops: Stop[] = [];
+        for (const d of active) {
+          // try to detect coords in navigationText or navigation_text
+          const nav = String((d as any).navigationText ?? (d as any).navigation_text ?? '').trim();
+          let coords: LatLngTuple | null = null;
+          const coordMatch = nav.match(/(-?\d+\.\d+)[,\s]+(-?\d+\.\d+)/);
+          if (coordMatch) {
+            const lat = Number(coordMatch[1]);
+            const lon = Number(coordMatch[2]);
+            if (Number.isFinite(lat) && Number.isFinite(lon)) {
+              coords = [lat, lon];
+            }
+          }
+
+          if (!coords) {
+            coords = await geocodeOne(String(d.address ?? d.delivery_address ?? ''));
+          }
+
+          if (coords) {
+            resolvedStops.push({ id: d.id, lat: coords[0], lng: coords[1], label: d.customer });
+          }
+        }
+
+        setStops(resolvedStops);
+        // compute nearest stop to riderLocation (if available) and render only that
+        if (resolvedStops.length > 0 && riderLocation) {
+          let nearest = resolvedStops[0];
+          let nearestDist = haversineDistance(riderLocation, [nearest.lat, nearest.lng]);
+          for (let i = 1; i < resolvedStops.length; i++) {
+            const s = resolvedStops[i];
+            const d = haversineDistance(riderLocation, [s.lat, s.lng]);
+            if (d < nearestDist) {
+              nearest = s;
+              nearestDist = d;
+            }
+          }
+          setStopsToRender([nearest]);
+        } else {
+          setStopsToRender([]);
+        }
+      } catch (err) {
+        console.error('Error loading stops:', err);
+        setStops([]);
+      } finally {
+        setIsLoadingStops(false);
+      }
+    };
+
+    void loadStops();
   }, [deliveryId]);
 
   // Geocode destination address
@@ -379,67 +502,89 @@ export default function RiderMapPage() {
           )}
         </article>
 
-      {/* Map Container */}
+      {/* Map Container: single-delivery mode uses existing Map; otherwise use RouteOptimizer for active deliveries */}
       <article className="rounded-xl overflow-hidden border border-[#c7cec7] mb-3">
-        <MapContainer center={mapCenter} zoom={13} style={{ width: '100%', height: '420px' }}>
-          {mapRef.current && <MapBoundsFitter bounds={mapRef.current} />}
-          
-          <TileLayer
-            attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
-            url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
-          />
-
-          {/* Route Polyline */}
-          {route?.geometry && route.geometry.length > 0 && (
-            <Polyline
-              positions={route.geometry}
-              color="#0c631f"
-              weight={4}
-              opacity={0.8}
-              dashArray="5, 5"
+        {deliveryId ? (
+          <MapContainer center={mapCenter} zoom={13} style={{ width: '100%', height: '420px' }}>
+            {mapRef.current && <MapBoundsFitter bounds={mapRef.current} />}
+            
+            <TileLayer
+              attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
+              url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
             />
-          )}
 
-          {/* Origin Marker (Rider's Actual GPS Location) */}
-          {waypoints.length > 0 && (
-            <Marker position={waypoints[0]} icon={originMarker}>
-              <Popup>
-                <strong>Your Location</strong>
-                <br />
-                {riderLocation 
-                  ? `${riderLocation[0].toFixed(4)}, ${riderLocation[1].toFixed(4)}` 
-                  : 'Current Position'}
-                <div className="text-xs text-[#5b645c] mt-1">
-                  {gpsAccuracy !== null && (
-                    <>
-                      Accuracy: ±{gpsAccuracy.toFixed(0)}m
-                      {' '}
-                      <span className={`font-bold ${
-                        gpsSignalQuality === 'excellent' ? 'text-green-600' :
-                        gpsSignalQuality === 'good' ? 'text-green-500' :
-                        gpsSignalQuality === 'fair' ? 'text-amber-500' :
-                        'text-orange-600'
-                      }`}>
-                        ({gpsSignalQuality.charAt(0).toUpperCase() + gpsSignalQuality.slice(1)})
-                      </span>
-                    </>
-                  )}
-                </div>
-              </Popup>
-            </Marker>
-          )}
+            {/* Route Polyline */}
+            {route?.geometry && route.geometry.length > 0 && (
+              <Polyline
+                positions={route.geometry}
+                color="#0c631f"
+                weight={4}
+                opacity={0.8}
+                dashArray="5, 5"
+              />
+            )}
 
-          {/* Destination Marker (Customer) */}
-          {waypoints.length > 1 && (
-            <Marker position={waypoints[waypoints.length - 1]} icon={destinationMarker}>
-              <Popup>
-                <strong>{delivery?.customer || 'Delivery'}</strong>
-                <br />
-                {delivery?.address || 'No address available.'}
-              </Popup>
-            </Marker>
-          )}
-        </MapContainer>
+            {/* Origin Marker (Rider's Actual GPS Location) */}
+            {waypoints.length > 0 && (
+              <Marker position={waypoints[0]} icon={originMarker}>
+                <Popup>
+                  <strong>Your Location</strong>
+                  <br />
+                  {riderLocation 
+                    ? `${riderLocation[0].toFixed(4)}, ${riderLocation[1].toFixed(4)}` 
+                    : 'Current Position'}
+                  <div className="text-xs text-[#5b645c] mt-1">
+                    {gpsAccuracy !== null && (
+                      <>
+                        Accuracy: ±{gpsAccuracy.toFixed(0)}m
+                        {' '}
+                        <span className={`font-bold ${
+                          gpsSignalQuality === 'excellent' ? 'text-green-600' :
+                          gpsSignalQuality === 'good' ? 'text-green-500' :
+                          gpsSignalQuality === 'fair' ? 'text-amber-500' :
+                          'text-orange-600'
+                        }`}>
+                          ({gpsSignalQuality.charAt(0).toUpperCase() + gpsSignalQuality.slice(1)})
+                        </span>
+                      </>
+                    )}
+                  </div>
+                </Popup>
+              </Marker>
+            )}
+
+            {/* Destination Marker (Customer) */}
+            {waypoints.length > 1 && (
+              <Marker position={waypoints[waypoints.length - 1]} icon={destinationMarker}>
+                <Popup>
+                  <strong>{delivery?.customer || 'Delivery'}</strong>
+                  <br />
+                  {delivery?.address || 'No address available.'}
+                </Popup>
+              </Marker>
+            )}
+          </MapContainer>
+        ) : (
+          // multi-stop optimized route using RouteOptimizer
+          <div style={{ width: '100%', height: 420 }}>
+            <RouteOptimizer
+              key={`nearest-${stopsToRender[0]?.id ?? 'none'}`}
+              riderLocation={riderLocation}
+              stops={stopsToRender}
+              fitBounds={true}
+              onRoute={(orderedStops, r) => {
+                // expose route data to current page state (distance/duration)
+                setRoute(r);
+                // optionally set directions/waypoints if needed
+                if (r && r.geometry && r.geometry.length > 0) {
+                  setDirections([]);
+                  const pts = r.geometry as LatLngTuple[];
+                  setMapCenter(pts[0]);
+                }
+              }}
+            />
+          </div>
+        )}
       </article>
 
       {/* Actions */}
@@ -463,6 +608,19 @@ export default function RiderMapPage() {
             Open in Google Maps
           </button>
         </div>
+
+        {deliveryId && (
+          <button
+            type="button"
+            className="w-full border-none rounded-[11px] bg-[#1f9d3a] text-white px-4 py-3.25 text-[1.05rem] font-bold cursor-pointer hover:opacity-90"
+            onClick={() => {
+              // navigate to the delivery details page
+              navigate(`/rider/deliveries/details?id=${encodeURIComponent(deliveryId)}`);
+            }}
+          >
+            I'll arrive
+          </button>
+        )}
 
         <button
           type="button"

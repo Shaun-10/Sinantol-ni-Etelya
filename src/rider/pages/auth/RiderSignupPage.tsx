@@ -74,7 +74,7 @@ export default function RiderSignupPage() {
             placeholder="Email"
             autoComplete="email"
             value={email}
-            onChange={(event) => setEmail(event.target.value.replace(/\s+/g, ''))}
+            onChange={(event: React.ChangeEvent<HTMLInputElement>) => setEmail(event.target.value.replace(/\s+/g, ''))}
             className="w-full border border-rider-field-border rounded bg-rider-field-bg px-2.5 py-3 text-sm text-rider-field-text focus:outline-none focus:border-[#31a641]"
             required
           />
@@ -86,7 +86,7 @@ export default function RiderSignupPage() {
             placeholder="Username"
             autoComplete="username"
             value={username}
-            onChange={(event) => setUsername(event.target.value)}
+            onChange={(event: React.ChangeEvent<HTMLInputElement>) => setUsername(event.target.value)}
             className="w-full border border-rider-field-border rounded bg-rider-field-bg px-2.5 py-3 text-sm text-rider-field-text focus:outline-none focus:border-[#31a641]"
             required
           />
@@ -98,7 +98,7 @@ export default function RiderSignupPage() {
             placeholder="Password"
             autoComplete="new-password"
             value={password}
-            onChange={(event) => setPassword(event.target.value)}
+            onChange={(event: React.ChangeEvent<HTMLInputElement>) => setPassword(event.target.value)}
             className="w-full border border-rider-field-border rounded bg-rider-field-bg px-2.5 py-3 text-sm text-rider-field-text focus:outline-none focus:border-[#31a641]"
             required
             minLength={6}

@@ -80,7 +80,7 @@ export default function RiderProfilePage() {
               key={row.label}
               className={`px-3 py-3 flex gap-2.5 ${idx < profileRows.length - 1 ? 'border-b border-[#8f8f8f]' : ''}`}
             >
-              <Icon size={22} className="mt-0.5 text-[#1b2f1f] flex-shrink-0" />
+              <span className="mt-0.5 text-[#1b2f1f] flex-shrink-0"><Icon size={22} /></span>
               <div>
                 <span className="block text-[#4f5953] text-[0.85rem]">{row.label}</span>
                 <strong className="block text-[#1d2b1f] text-[1.2rem] mt-0.5">{row.value}</strong>

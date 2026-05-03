@@ -1,7 +1,6 @@
-import React from 'react';
 import { BrowserRouter, Navigate, Route, Routes } from 'react-router-dom';
-import LoginPage from './admin/components/auth/LoginPage';
-import Layout from './admin/components/Layout';
+import LoginPage from './admin/components/auth/AdminLoginPage';
+import Layout from './admin/components/AdminLayout';
 import RiderHomePage from './rider/pages/dashboard/RiderHomePage';
 import RiderDeliveriesPage from './rider/pages/deliveries/RiderDeliveriesPage';
 import RiderDeliveryDeliveredPage from './rider/pages/deliveries/RiderDeliveryDeliveredPage';
@@ -15,7 +14,7 @@ import RiderSignupPage from './rider/pages/auth/RiderSignupPage';
 import RiderProtectedRoute from './rider/components/RiderProtectedRoute';
 import RiderMapPage from './rider/pages/navigation/RiderMapPage';
 import RiderAreaRoutesPage from './rider/pages/navigation/RiderAreaRoutesPage';
-import Dashboard from './admin/pages/Dashboard';
+import Dashboard from './admin/pages/DashboardPage';
 import OrdersPage from './admin/pages/OrdersPage';
 import RidersPage from './admin/pages/RidersPage';
 import SalesPage from './admin/pages/SalesPage';

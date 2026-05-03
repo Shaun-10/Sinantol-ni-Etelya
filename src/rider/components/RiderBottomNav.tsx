@@ -26,7 +26,7 @@ export default function RiderBottomNav() {
   };
 
   return (
-    <nav className="mt-auto border-t border-[#bfc8bf] bg-rider-nav-bg p-[8px_10px_9px] grid grid-cols-4 gap-0.5" aria-label="Rider main navigation">
+    <nav className="rider-bottom-nav" aria-label="Rider main navigation">
       {navItems.map((item) => {
         const Icon = item.icon;
         const active = isActive(item.path);
@@ -35,11 +35,9 @@ export default function RiderBottomNav() {
           <button
             key={item.path}
             type="button"
-            className={`border-none bg-transparent text-[#1f2b22] flex flex-col items-center gap-0.75 text-[0.66rem] font-bold cursor-pointer ${
-              active ? 'text-rider-nav-active' : ''
-            }`}
-            onClick={() => navigate(item.path)}
+            className={active ? 'is-active' : ''}
             aria-current={active ? 'page' : undefined}
+            onClick={() => navigate(item.path)}
           >
             <Icon size={22} aria-hidden="true" />
             <span>{item.label}</span>
