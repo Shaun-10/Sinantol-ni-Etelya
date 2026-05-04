@@ -82,6 +82,7 @@ export default function RiderAreaRoutesPage() {
   const [gpsError, setGpsError] = useState<string | null>(null);
   const [liveDataError, setLiveDataError] = useState<string | null>(null);
   const [areaRoutes, setAreaRoutes] = useState<AreaRoute[]>([]);
+  const [sequenceRoute, setSequenceRoute] = useState<RouteResponse | null>(null);
   const [deliveries, setDeliveries] = useState<RiderDelivery[]>([]);
   const [lastUpdated, setLastUpdated] = useState<Date | null>(null);
   const geocodeCacheRef = useRef<Map<string, LatLngTuple | null>>(new Map());
@@ -214,16 +215,44 @@ export default function RiderAreaRoutesPage() {
     };
   }, [deliveries, riderLocation]);
 
+  useEffect(() => {
+    let isMounted = true;
+
+    const buildSequenceRoute = async () => {
+      if (!riderLocation || areaRoutes.length === 0) {
+        setSequenceRoute(null);
+        return;
+      }
+
+      const waypoints: LatLngTuple[] = [riderLocation, ...areaRoutes.map((entry) => entry.coords)];
+      const calculatedRoute = await calculateRoute(waypoints);
+
+      if (isMounted) {
+        setSequenceRoute(calculatedRoute);
+      }
+    };
+
+    void buildSequenceRoute();
+
+    return () => {
+      isMounted = false;
+    };
+  }, [areaRoutes, riderLocation]);
+
   const mapBounds = useMemo(() => {
     const allPoints: LatLngTuple[] = [riderLocation];
 
-    areaRoutes.forEach((entry) => {
-      if (entry.route?.geometry?.length) {
-        allPoints.push(...entry.route.geometry);
-      } else {
-        allPoints.push(entry.coords);
-      }
-    });
+    if (sequenceRoute?.geometry?.length) {
+      allPoints.push(...sequenceRoute.geometry);
+    } else {
+      areaRoutes.forEach((entry) => {
+        if (entry.route?.geometry?.length) {
+          allPoints.push(...entry.route.geometry);
+        } else {
+          allPoints.push(entry.coords);
+        }
+      });
+    }
 
     if (!allPoints.length) {
       return null;
@@ -262,10 +291,10 @@ export default function RiderAreaRoutesPage() {
             </Popup>
           </CircleMarker>
 
-          {areaRoutes.map((entry) => (
+          {areaRoutes.map((entry, index) => (
             <Marker key={`marker-${entry.deliveryId}`} position={entry.coords}>
               <Popup>
-                <strong>{entry.customer}</strong>
+                <strong>{index + 1}. {entry.customer}</strong>
                 <br />
                 <strong>{entry.areaName}</strong>
                 <br />
@@ -274,7 +303,14 @@ export default function RiderAreaRoutesPage() {
             </Marker>
           ))}
 
-          {areaRoutes
+          {sequenceRoute?.geometry?.length ? (
+            <Polyline
+              positions={sequenceRoute.geometry}
+              color="#0c631f"
+              weight={5}
+              opacity={0.88}
+            />
+          ) : areaRoutes
             .filter((entry) => entry.route?.geometry?.length)
             .map((entry) => (
               <Polyline

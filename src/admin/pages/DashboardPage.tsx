@@ -367,13 +367,29 @@ setIsLoading(false);
   return (
     <section className="dashboard-overview-content">
       {errorMessage && (
-        <div className="rounded-lg border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">
+        <div style={{
+          padding: "12px 16px",
+          borderRadius: "8px",
+          border: "1px solid #f5a623",
+          backgroundColor: "#fff8f0",
+          color: "#d97706",
+          fontSize: "0.9rem",
+          marginBottom: "12px"
+        }}>
           {errorMessage}
         </div>
       )}
 
       {isLoading && !errorMessage && (
-        <div className="rounded-lg border border-gray-200 bg-white px-4 py-3 text-sm text-gray-600">
+        <div style={{
+          padding: "12px 16px",
+          borderRadius: "8px",
+          border: "1px solid #c7cfc2",
+          backgroundColor: "#fbfcf6",
+          color: "#5f6b5f",
+          fontSize: "0.9rem",
+          marginBottom: "12px"
+        }}>
           Loading dashboard data...
         </div>
       )}

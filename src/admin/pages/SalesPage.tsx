@@ -15,21 +15,6 @@ import {
   XAxis,
   YAxis,
 } from "recharts";
-import {
-  Dialog,
-  DialogContent,
-  DialogHeader,
-  DialogTitle,
-  DialogFooter,
-} from "@/components/ui/dialog";
-import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
-} from "@/components/ui/table";
 
 interface OrderByArea {
   id: number;
@@ -232,32 +217,32 @@ function OrdersByAreaSection({
       </div>
 
       <div className="sales-table-wrap">
-        <Table className="sales-table">
-          <TableHeader>
-            <TableRow>
-              <TableHead>ID</TableHead>
-              <TableHead>Client Name</TableHead>
-              <TableHead>Contact No.</TableHead>
-              <TableHead>Area</TableHead>
-              <TableHead>Classic</TableHead>
-              <TableHead>Spicy</TableHead>
-              <TableHead>Amount</TableHead>
-            </TableRow>
-          </TableHeader>
-          <TableBody>
+        <table className="sales-table">
+          <thead>
+            <tr>
+              <th>ID</th>
+              <th>Client Name</th>
+              <th>Contact No.</th>
+              <th>Area</th>
+              <th>Classic</th>
+              <th>Spicy</th>
+              <th>Amount</th>
+            </tr>
+          </thead>
+          <tbody>
             {paginatedOrders.map((order) => (
-              <TableRow key={order.id}>
-                <TableCell>{order.id}</TableCell>
-                <TableCell>{order.clientName}</TableCell>
-                <TableCell>{order.contactNo}</TableCell>
-                <TableCell>{order.area}</TableCell>
-                <TableCell>{order.classic}</TableCell>
-                <TableCell>{order.spicy}</TableCell>
-                <TableCell>{pesoFormatter.format(order.amount)}</TableCell>
-              </TableRow>
+              <tr key={order.id}>
+                <td>{order.id}</td>
+                <td>{order.clientName}</td>
+                <td>{order.contactNo}</td>
+                <td>{order.area}</td>
+                <td>{order.classic}</td>
+                <td>{order.spicy}</td>
+                <td>{pesoFormatter.format(order.amount)}</td>
+              </tr>
             ))}
-          </TableBody>
-        </Table>
+          </tbody>
+        </table>
       </div>
 
       {totalPages > 1 && (
@@ -265,7 +250,7 @@ function OrdersByAreaSection({
           <span>
             Page {currentPage} of {totalPages}
           </span>
-          <div className="flex gap-2">
+          <div style={{ display: "flex", gap: "8px" }}>
             {currentPage > 1 && (
               <button
                 type="button"
@@ -294,6 +279,7 @@ function OrdersByAreaSection({
 interface MonthlySalesSectionProps {
   data: MonthlySalesData[];
 }
+
 
 function MonthlySalesSection({ data }: MonthlySalesSectionProps): JSX.Element {
   return (
@@ -425,10 +411,13 @@ function FlavorBreakdownCard({
   );
 }
 
-function PriceListCard(): JSX.Element {
-  const [priceList, setPriceList] = useState<PriceGroup[]>(initialPriceList);
-  const [draftPriceList, setDraftPriceList] =
-    useState<PriceGroup[]>(initialPriceList);
+interface PriceListCardProps {
+  priceList: PriceGroup[];
+  onUpdate: (priceList: PriceGroup[]) => void;
+}
+
+function PriceListCard({ priceList, onUpdate }: PriceListCardProps): JSX.Element {
+  const [draftPriceList, setDraftPriceList] = useState<PriceGroup[]>(priceList);
   const [isDialogOpen, setIsDialogOpen] = useState(false);
 
   const handleStartEdit = (): void => {
@@ -441,7 +430,7 @@ function PriceListCard(): JSX.Element {
   };
 
   const handleSaveEdit = (): void => {
-    setPriceList(draftPriceList);
+    onUpdate(draftPriceList);
     setIsDialogOpen(false);
   };
 
@@ -499,257 +488,286 @@ function PriceListCard(): JSX.Element {
         </header>
 
         <div className="sales-price-table-wrap">
-          <Table className="sales-price-table">
-            <TableHeader>
-              <TableRow>
-                <TableHead>Flavor</TableHead>
-                <TableHead>Sizes</TableHead>
-                <TableHead>Price</TableHead>
-              </TableRow>
-            </TableHeader>
-            <TableBody>
+          <table className="sales-price-table">
+            <thead>
+              <tr>
+                <th>Flavor</th>
+                <th>Sizes</th>
+                <th>Price</th>
+              </tr>
+            </thead>
+            <tbody>
               {priceList.map((group) =>
                 group.prices.map((item, priceIndex) => (
-                  <TableRow key={`${group.flavor}-${item.size}`}>
+                  <tr key={`${group.flavor}-${item.size}`}>
                     {priceIndex === 0 ? (
-                      <TableCell rowSpan={group.prices.length}>
+                      <td rowSpan={group.prices.length}>
                         {group.flavor}
-                      </TableCell>
+                      </td>
                     ) : null}
-                    <TableCell>{item.size}</TableCell>
-                    <TableCell>{pesoFormatter.format(item.amount)}</TableCell>
-                  </TableRow>
+                    <td>{item.size}</td>
+                    <td>{pesoFormatter.format(item.amount)}</td>
+                  </tr>
                 )),
               )}
-            </TableBody>
-          </Table>
+            </tbody>
+          </table>
         </div>
       </article>
 
-      <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
-        <DialogContent>
-          <DialogHeader>
-            <DialogTitle>Edit Price List</DialogTitle>
-          </DialogHeader>
+      {isDialogOpen && (
+        <div
+          style={{
+            position: "fixed",
+            inset: 0,
+            backgroundColor: "rgba(0, 0, 0, 0.5)",
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "center",
+            zIndex: 50,
+          }}
+          onClick={() => setIsDialogOpen(false)}
+        >
+          <div
+            style={{
+              backgroundColor: "#ffffff",
+              borderRadius: "12px",
+              padding: "24px",
+              maxWidth: "600px",
+              width: "90%",
+              maxHeight: "80vh",
+              overflowY: "auto",
+              boxShadow: "0 20px 40px rgba(0, 0, 0, 0.2)",
+            }}
+            onClick={(e) => e.stopPropagation()}
+          >
+            <h2 style={{ margin: "0 0 20px", fontSize: "1.2rem", fontWeight: 700 }}>
+              Edit Price List
+            </h2>
 
-          <div className="overflow-y-auto max-h-96">
-            <Table>
-              <TableHeader>
-                <TableRow>
-                  <TableHead>Flavor</TableHead>
-                  <TableHead>Sizes</TableHead>
-                  <TableHead>Price</TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {displayedPriceList.map((group, flavorIndex) =>
-                  group.prices.map((item, priceIndex) => (
-                    <TableRow key={`${group.flavor}-${item.size}`}>
-                      {priceIndex === 0 ? (
-                        <TableCell rowSpan={group.prices.length}>
-                          {group.flavor}
-                        </TableCell>
-                      ) : null}
-                      <TableCell>{item.size}</TableCell>
-                      <TableCell>
-                        <input
-                          type="number"
-                          min="0"
-                          placeholder="0"
-                          className="sales-price-input"
-                          value={item.amount}
-                          onChange={(event: ChangeEvent<HTMLInputElement>) =>
-                            handlePriceChange(
-                              flavorIndex,
-                              priceIndex,
-                              event.target.value,
-                            )
-                          }
-                        />
-                      </TableCell>
-                    </TableRow>
-                  )),
-                )}
-              </TableBody>
-            </Table>
+            <div style={{ overflowY: "auto", marginBottom: "20px", maxHeight: "400px" }}>
+              <table className="sales-price-table">
+                <thead>
+                  <tr>
+                    <th>Flavor</th>
+                    <th>Sizes</th>
+                    <th>Price</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {displayedPriceList.map((group, flavorIndex) =>
+                    group.prices.map((item, priceIndex) => (
+                      <tr key={`${group.flavor}-${item.size}`}>
+                        {priceIndex === 0 ? (
+                          <td rowSpan={group.prices.length}>
+                            {group.flavor}
+                          </td>
+                        ) : null}
+                        <td>{item.size}</td>
+                        <td>
+                          <input
+                            type="number"
+                            min="0"
+                            placeholder="0"
+                            className="sales-price-input"
+                            value={item.amount}
+                            onChange={(event: ChangeEvent<HTMLInputElement>) =>
+                              handlePriceChange(
+                                flavorIndex,
+                                priceIndex,
+                                event.target.value,
+                              )
+                            }
+                          />
+                        </td>
+                      </tr>
+                    )),
+                  )}
+                </tbody>
+              </table>
+            </div>
+
+            <div
+              style={{
+                display: "flex",
+                justifyContent: "flex-end",
+                gap: "8px",
+              }}
+            >
+              <button
+                type="button"
+                className="sales-price-cancel-btn"
+                onClick={handleCancelEdit}
+              >
+                Cancel
+              </button>
+              <button
+                type="button"
+                className="sales-price-edit-btn"
+                onClick={handleSaveEdit}
+              >
+                Save
+              </button>
+            </div>
           </div>
-
-          <DialogFooter>
-            <button
-              type="button"
-              className="sales-price-cancel-btn"
-              onClick={handleCancelEdit}
-            >
-              Cancel
-            </button>
-            <button
-              type="button"
-              className="sales-price-edit-btn"
-              onClick={handleSaveEdit}
-            >
-              Save
-            </button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
+        </div>
+      )}
     </>
   );
 }
 
 export default function SalesPage(): JSX.Element {
-  
-const [orders, setOrders] = useState<any[]>([]);
-const [riders, setRiders] = useState<any[]>([]);
+  const [orders, setOrders] = useState<any[]>([]);
+  const [riders, setRiders] = useState<any[]>([]);
   const [flavorTotals, setFlavorTotals] = useState({ classic: 0, spicy: 0 });
   const [isLoading, setIsLoading] = useState(true);
+  const [priceList, setPriceList] = useState<PriceGroup[]>(initialPriceList);
 
   useEffect(() => {
-  const fetchSalesData = async () => {
-    setIsLoading(true);
+    const fetchSalesData = async () => {
+      setIsLoading(true);
 
-    const { data: ordersData, error: ordersError } = await supabase
-      .from("orders")
-      .select("id, order_date, address, status, total, customer_name, contact, rider_id");
+      const { data: ordersData, error: ordersError } = await supabase
+        .from("orders")
+        .select("id, order_date, address, status, total, customer_name, contact, rider_id");
 
-    if (ordersError) {
-      console.error("Sales fetch error:", ordersError);
+      if (ordersError) {
+        console.error("Sales fetch error:", ordersError);
+        setIsLoading(false);
+        return;
+      }
+
+      const { data: ridersData, error: ridersError } = await supabase
+        .from("riders")
+        .select("id, location");
+
+      if (ridersError) {
+        console.error("Riders fetch error:", ridersError);
+      }
+
+      const { data: itemsData, error: itemsError } = await supabase
+        .from("order_items")
+        .select("quantity, product_variants!inner(flavor)")
+        .eq("product_variants.flavor", "classic");
+
+      if (itemsError) {
+        console.error("Items fetch error:", itemsError);
+      }
+
+      const classicTotal = itemsData ? itemsData.reduce((sum, item) => sum + item.quantity, 0) : 0;
+
+      const { data: spicyData, error: spicyError } = await supabase
+        .from("order_items")
+        .select("quantity, product_variants!inner(flavor)")
+        .eq("product_variants.flavor", "spicy");
+
+      if (spicyError) {
+        console.error("Spicy fetch error:", spicyError);
+      }
+
+      const spicyTotal = spicyData ? spicyData.reduce((sum, item) => sum + item.quantity, 0) : 0;
+
+      setOrders(ordersData ?? []);
+      setRiders(ridersData ?? []);
+      setFlavorTotals({ classic: classicTotal, spicy: spicyTotal });
       setIsLoading(false);
-      return;
-    }
-
-    const { data: ridersData, error: ridersError } = await supabase
-      .from("riders")
-      .select("id, location");
-
-    if (ridersError) {
-      console.error("Riders fetch error:", ridersError);
-    }
-
-    const { data: itemsData, error: itemsError } = await supabase
-      .from("order_items")
-      .select("quantity, product_variants!inner(flavor)")
-      .eq("product_variants.flavor", "classic");
-
-    if (itemsError) {
-      console.error("Items fetch error:", itemsError);
-    }
-
-    const classicTotal = itemsData ? itemsData.reduce((sum, item) => sum + item.quantity, 0) : 0;
-
-    const { data: spicyData, error: spicyError } = await supabase
-      .from("order_items")
-      .select("quantity, product_variants!inner(flavor)")
-      .eq("product_variants.flavor", "spicy");
-
-    if (spicyError) {
-      console.error("Spicy fetch error:", spicyError);
-    }
-
-    const spicyTotal = spicyData ? spicyData.reduce((sum, item) => sum + item.quantity, 0) : 0;
-
-    setOrders(ordersData ?? []);
-    setRiders(ridersData ?? []);
-    setFlavorTotals({ classic: classicTotal, spicy: spicyTotal });
-    setIsLoading(false);
-  };
-
-  fetchSalesData();
-}, []);
-
-const totalSales = orders.reduce(
-  (sum, order) => sum + Number(order.total || 0),
-  0
-);
-
-const salesSummaryCards: SalesSummaryCard[] = [
-  {
-    id: "total-sales",
-    title: "Total Sales",
-    subtitle: "All Time",
-    amount: pesoFormatter.format(totalSales),
-    icon: FiShoppingCart,
-  },
-  {
-    id: "total-orders",
-    title: "Total Orders",
-    subtitle: "All Time",
-    amount: String(orders.length),
-    icon: FiCalendar,
-  },
-];
-
-const ordersByAreaData: OrderByArea[] = useMemo(() => {
-  const riderMap = new Map(riders.map((rider) => [rider.id, rider]));
-  
-  return orders.map((order, index) => {
-    const rider = riderMap.get(order.rider_id);
-    return {
-      id: index + 1,
-      clientName: order.customer_name || "N/A",
-      contactNo: order.contact || "N/A",
-      area: rider?.location || "Unknown",
-      classic: 0,
-      spicy: 0,
-      amount: Number(order.total || 0),
     };
-  });
-}, [orders, riders]);
 
-const monthlySalesData: MonthlySalesData[] = useMemo(() => {
+    fetchSalesData();
+  }, []);
 
-  const map = new Map<string, MonthlySalesData>();
+  const totalSales = orders.reduce(
+    (sum, order) => sum + Number(order.total || 0),
+    0
+  );
 
-  orders.forEach(order => {
-    if (!order.order_date) return;
-
-    const date = new Date(order.order_date);
-    const key = `${date.getFullYear()}-${date.getMonth()}`;
-
-    if (!map.has(key)) {
-      map.set(key, {
-        month: date.toLocaleString("en-US", { month: "short" }),
-        sales: 0,
-        orders: 0,
-      });
-    }
-
-    const item = map.get(key)!;
-    item.sales += Number(order.total || 0);
-    item.orders += 1;
-  });
-
-  return Array.from(map.values());
-}, [orders]);
-
-const flavorData: FlavorData[] = useMemo(() => {
-  const { classic, spicy } = flavorTotals;
-  const total = classic + spicy;
-
-  if (total === 0) {
-    return [
-      { name: "Classic", value: 0, color: "#1f8f38" },
-      { name: "Spicy", value: 0, color: "#d08aa7" },
-    ];
-  }
-
-  return [
+  const salesSummaryCards: SalesSummaryCard[] = [
     {
-      name: "Classic",
-      value: Math.round((classic / total) * 100),
-      color: "#1f8f38",
+      id: "total-sales",
+      title: "Total Sales",
+      subtitle: "All Time",
+      amount: pesoFormatter.format(totalSales),
+      icon: FiShoppingCart,
     },
     {
-      name: "Spicy",
-      value: Math.round((spicy / total) * 100),
-      color: "#d08aa7",
+      id: "total-orders",
+      title: "Total Orders",
+      subtitle: "All Time",
+      amount: String(orders.length),
+      icon: FiCalendar,
     },
   ];
-}, [flavorTotals]);
 
+  const ordersByAreaData: OrderByArea[] = useMemo(() => {
+    const riderMap = new Map(riders.map((rider) => [rider.id, rider]));
+    
+    return orders.map((order, index) => {
+      const rider = riderMap.get(order.rider_id);
+      return {
+        id: index + 1,
+        clientName: order.customer_name || "N/A",
+        contactNo: order.contact || "N/A",
+        area: rider?.location || "Unknown",
+        classic: 0,
+        spicy: 0,
+        amount: Number(order.total || 0),
+      };
+    });
+  }, [orders, riders]);
 
-if (isLoading) {
+  const monthlySalesData: MonthlySalesData[] = useMemo(() => {
+    const map = new Map<string, MonthlySalesData>();
+
+    orders.forEach(order => {
+      if (!order.order_date) return;
+
+      const date = new Date(order.order_date);
+      const key = `${date.getFullYear()}-${date.getMonth()}`;
+
+      if (!map.has(key)) {
+        map.set(key, {
+          month: date.toLocaleString("en-US", { month: "short" }),
+          sales: 0,
+          orders: 0,
+        });
+      }
+
+      const item = map.get(key)!;
+      item.sales += Number(order.total || 0);
+      item.orders += 1;
+    });
+
+    return Array.from(map.values());
+  }, [orders]);
+
+  const flavorData: FlavorData[] = useMemo(() => {
+    const { classic, spicy } = flavorTotals;
+    const total = classic + spicy;
+
+    if (total === 0) {
+      return [
+        { name: "Classic", value: 0, color: "#1f8f38" },
+        { name: "Spicy", value: 0, color: "#d08aa7" },
+      ];
+    }
+
+    return [
+      {
+        name: "Classic",
+        value: Math.round((classic / total) * 100),
+        color: "#1f8f38",
+      },
+      {
+        name: "Spicy",
+        value: Math.round((spicy / total) * 100),
+        color: "#d08aa7",
+      },
+    ];
+  }, [flavorTotals]);
+
+  if (isLoading) {
     return (
-      <div className="sales-main-content text-gray-600">
+      <div className="sales-main-content">
         Loading sales data...
       </div>
     );
@@ -767,13 +785,13 @@ if (isLoading) {
       <div className="sales-layout-grid">
         <div className="sales-left-column">
           <SalesSummarySection salesSummaryCards={salesSummaryCards} />
-<OrdersByAreaSection orders={ordersByAreaData} />
-<MonthlySalesSection data={monthlySalesData} />
+          <OrdersByAreaSection orders={ordersByAreaData} />
+          <MonthlySalesSection data={monthlySalesData} />
         </div>
 
         <div className="sales-right-column">
           <FlavorBreakdownCard flavorData={flavorData} />
-          <PriceListCard />
+          <PriceListCard priceList={priceList} onUpdate={setPriceList} />
         </div>
       </div>
     </section>

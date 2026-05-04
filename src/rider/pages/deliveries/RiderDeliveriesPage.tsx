@@ -36,28 +36,27 @@ export default function RiderDeliveriesPage() {
     loadDeliveries();
   }, []);
 
-  const activeDelivery = useMemo<ActiveDelivery>(() => {
-    const current = deliveries.find((item) => item.status === 'In Progress');
-    if (!current) {
-      return {
-        id: '',
-        customer: '-',
-        address: '-',
-        distance: '-',
-        eta: '-',
-        amount: '-',
-      };
-    }
-
-    return {
-      id: current.id,
-      customer: current.customer,
-      address: current.address,
-      distance: current.distance,
-      eta: current.eta,
-      amount: toCurrency(current.amount),
-    };
+  const activeDeliveries = useMemo<ActiveDelivery[]>(() => {
+    return deliveries
+      .filter((item) => item.status === 'In Progress')
+      .map((item) => ({
+        id: item.id,
+        customer: item.customer,
+        address: item.address,
+        distance: item.distance,
+        eta: item.eta,
+        amount: toCurrency(item.amount),
+      }));
   }, [deliveries]);
+
+  const activeDelivery = activeDeliveries[0] || {
+    id: '',
+    customer: '-',
+    address: '-',
+    distance: '-',
+    eta: '-',
+    amount: '-',
+  };
 
   const completedDeliveries: DeliveryItem[] = useMemo(
     () =>
@@ -99,32 +98,42 @@ export default function RiderDeliveriesPage() {
         </article>
 
         {/* Active Section */}
-        <div className="m-4 mb-2.5 text-[#505b50] text-base font-black">ACTIVE ({activeDelivery.id ? 1 : 0})</div>
-        <article className="bg-rider-item-bg rounded-xl p-2.5 flex justify-between gap-2.5">
-          <div className="min-w-0">
-            <h4 className="m-0 text-[1.35rem] text-[#116120] font-black">{activeDelivery.customer}</h4>
-            <p className="m-0 mt-0.75 text-[0.76rem] text-[#5a625c]">-</p>
-            <p className="m-0 mt-0.75 text-[0.76rem] text-[#5a625c]">{activeDelivery.address}</p>
-            <div className="flex items-center gap-1.75 flex-wrap mt-1.75">
-              <span className="inline-flex items-center rounded-full px-2 py-1 text-[0.68rem] font-bold bg-rider-pill-yellow text-rider-pill-yellow-text">
-                In Progress
-              </span>
-              <span className="inline-flex items-center rounded-full px-2 py-1 text-[0.68rem] font-bold bg-rider-pill-green text-rider-pill-green-text">
-                {activeDelivery.amount}
-              </span>
-            </div>
-          </div>
-          <div className="flex flex-col items-end justify-between flex-shrink-0">
-            <span className="text-[#596259] text-sm">{activeDelivery.distance}</span>
-            <button
-              type="button"
-              className="w-9 h-9 border-none rounded-full bg-rider-icon-circle text-[#223422] grid place-items-center cursor-pointer hover:opacity-90"
-              onClick={() => activeDelivery.id && navigate(`/rider/deliveries/details?id=${encodeURIComponent(activeDelivery.id)}`)}
+        <div className="m-4 mb-2.5 text-[#505b50] text-base font-black">ACTIVE ({activeDeliveries.length})</div>
+        <div className="flex flex-col gap-3">
+          {activeDeliveries.map((delivery) => (
+            <article
+              key={delivery.id}
+              className="bg-rider-item-bg rounded-xl p-2.5 flex justify-between gap-2.5 cursor-pointer hover:opacity-90"
+              onClick={() => delivery.id && navigate(`/rider/deliveries/details?id=${encodeURIComponent(delivery.id)}`)}
             >
-              <FiPhone size={18} />
-            </button>
-          </div>
-        </article>
+              <div className="min-w-0">
+                <h4 className="m-0 text-[1.35rem] text-[#116120] font-black">{delivery.customer}</h4>
+                <p className="m-0 mt-0.75 text-[0.76rem] text-[#5a625c]">{delivery.address}</p>
+                <div className="flex items-center gap-1.75 flex-wrap mt-1.75">
+                  <span className="inline-flex items-center rounded-full px-2 py-1 text-[0.68rem] font-bold bg-rider-pill-yellow text-rider-pill-yellow-text">
+                    In Progress
+                  </span>
+                  <span className="inline-flex items-center rounded-full px-2 py-1 text-[0.68rem] font-bold bg-rider-pill-green text-rider-pill-green-text">
+                    {delivery.amount}
+                  </span>
+                </div>
+              </div>
+              <div className="flex flex-col items-end justify-between flex-shrink-0">
+                <span className="text-[#596259] text-sm">{delivery.distance}</span>
+                <button
+                  type="button"
+                  className="w-9 h-9 border-none rounded-full bg-rider-icon-circle text-[#223422] grid place-items-center cursor-pointer hover:opacity-90"
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    delivery.id && navigate(`/rider/deliveries/details?id=${encodeURIComponent(delivery.id)}`);
+                  }}
+                >
+                  <FiPhone size={18} />
+                </button>
+              </div>
+            </article>
+          ))}
+        </div>
 
         {isLoading ? <p className="m-4 text-sm text-[#576257]">Loading deliveries...</p> : null}
 
