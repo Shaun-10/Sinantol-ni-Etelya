@@ -984,7 +984,106 @@ textarea {
   box-shadow: 0 8px 16px rgba(31, 143, 56, 0.18);
 }
 
+/* Unified status badge styles for all admin pages */
+.status-badge {
+  display: inline-block;
+  border-radius: 999px;
+  padding: 6px 12px;
+  font-size: 0.75rem;
+  font-weight: 700;
+}
+
+.status-badge.status-waiting {
+  background: #fff3cd;
+  color: #856404;
+  border: 1px solid #ffc107;
+}
+
+.status-badge.status-delivered {
+  background: #d4edda;
+  color: #155724;
+  border: 1px solid #28a745;
+}
+
+.status-badge.status-cancelled {
+  background: #f8d7da;
+  color: #721c24;
+  border: 1px solid #f5c6cb;
+}
+
 @media (max-width: 1100px) {
+
+.sales-left-column {
+  display: flex;
+  flex-direction: column;
+  gap: 24px;
+  min-width: 0;
+}
+
+.sales-right-column {
+  display: flex;
+  flex-direction: column;
+  gap: 24px;
+  min-width: 0;
+}
+
+
+/* Sales page main layout */
+.sales-main-content {
+  display: flex;
+  flex-direction: column;
+  gap: 24px;
+  flex: 1;
+}
+
+.sales-page-title {
+  margin: 0;
+  color: #263123;
+  font-size: 1.5rem;
+  font-weight: 800;
+}
+
+.sales-layout-grid {
+  display: grid;
+  grid-template-columns: minmax(0, 1.8fr) minmax(280px, 0.9fr);
+  gap: 24px;
+}
+
+
+  /* Orders page header and container styles */
+  .orders-main-content {
+    display: flex;
+    flex-direction: column;
+    gap: 16px;
+  }
+
+  .orders-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 16px;
+  }
+
+  .orders-header-top {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+  }
+
+  .orders-header-icon {
+    font-size: 1.8rem;
+    color: #263123;
+    display: flex;
+    align-items: center;
+  }
+
+  .orders-header-top h2 {
+    margin: 0;
+    color: #263123;
+    font-size: 1.5rem;
+    font-weight: 800;
+  }
+
   .admin-content-grid {
     grid-template-columns: 1fr;
   }

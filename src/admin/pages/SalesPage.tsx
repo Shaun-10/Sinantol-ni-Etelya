@@ -774,17 +774,17 @@ order.order_items?.forEach((item: any) => {
   }
 
   return (
-    <section className="flex-1 space-y-6">
-      <h2 className="text-3xl font-bold">Sales</h2>
+    <section className="sales-main-content">
+      <h2 className="sales-page-title">Sales</h2>
 
-      <div className="grid grid-cols-3 gap-6">
-        <div className="col-span-2 space-y-6">
+      <div className="sales-layout-grid">
+        <div className="sales-left-column">
           <SalesSummarySection salesSummaryCards={salesSummaryCards} />
           <OrdersByAreaSection orders={ordersByAreaData} />
           <MonthlySalesSection data={monthlySalesData} />
         </div>
 
-        <div className="col-span-1 space-y-6">
+  <div className="sales-right-column">
           <FlavorBreakdownCard flavorData={flavorData} />
           <PriceListCard />
         </div>
