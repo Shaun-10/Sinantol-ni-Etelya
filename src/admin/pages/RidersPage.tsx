@@ -242,23 +242,27 @@ function DeliveriesDialog({ rider, onClose }: DeliveriesDialogProps): JSX.Elemen
 
         // Execute queries with error handling
         const ordersResult = await ordersQuery;
-        let deliveriesResult = { data: [], error: null };
-        
+        let deliveriesData: Array<Record<string, unknown>> = [];
+        let deliveriesError: { code?: string; message?: string } | null = null;
+
         // Try deliveries query but don't fail if table doesn't exist
         try {
-          deliveriesResult = await deliveriesQuery;
+          const deliveriesResponse = await deliveriesQuery;
+          deliveriesData = (deliveriesResponse.data ?? []) as Array<Record<string, unknown>>;
+          deliveriesError = deliveriesResponse.error ?? null;
         } catch (err) {
+          deliveriesError = err as { code?: string; message?: string };
           console.warn("Could not fetch deliveries (table may not exist or be restricted):", err);
         }
 
         console.log('Orders result:', ordersResult);
-        console.log('Deliveries result:', deliveriesResult);
+        console.log('Deliveries result:', { data: deliveriesData, error: deliveriesError });
 
         if (ordersResult.error) throw ordersResult.error;
         // Don't throw deliveries error - the table might not exist or be restricted by RLS
         // We can still show orders even if deliveries table is unavailable
-        if (deliveriesResult.error) {
-          console.warn("Deliveries table error (will show orders only):", deliveriesResult.error);
+        if (deliveriesError) {
+          console.warn("Deliveries table error (will show orders only):", deliveriesError);
         }
 
         const orderRows: Delivery[] = (ordersResult.data ?? []).map((row: any) => ({
@@ -269,7 +273,7 @@ function DeliveriesDialog({ rider, onClose }: DeliveriesDialogProps): JSX.Elemen
           source: "orders",
         }));
 
-        const deliveryRows: Delivery[] = (deliveriesResult.data ?? []).map((row: any) => ({
+        const deliveryRows: Delivery[] = deliveriesData.map((row: any) => ({
           id: String(row.id ?? ""),
           status: normalizeDeliveryStatus(row.status),
           customer: normalizeDbString(row.customer_name) || "No customer name",

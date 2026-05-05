@@ -202,7 +202,9 @@ function buildPerformanceData(orders: OrderRow[], now: Date): PerformanceData[] 
   }));
 }
 
-function SummaryCard({ icon: Icon, value, label }: SummaryItem): JSX.Element {
+function SummaryCard({ item }: { item: SummaryItem; key?: string }): JSX.Element {
+  const { icon: Icon, value, label } = item;
+
   return (
     <article className="summary-card">
       <div className="summary-icon-wrap">
@@ -371,7 +373,7 @@ export default function DashboardPage(): JSX.Element {
         <h3>Today's Summary</h3>
         <div className="summary-grid">
           {summary.map((item) => (
-            <SummaryCard key={item.label} {...item} />
+            <SummaryCard key={item.label} item={item} />
           ))}
         </div>
       </section>
@@ -380,7 +382,7 @@ export default function DashboardPage(): JSX.Element {
         <h3>Sales Summary</h3>
         <div className="dashboard-sales-grid">
           {sales.map((item) => (
-            <SummaryCard key={item.label} {...item} />
+            <SummaryCard key={item.label} item={item} />
           ))}
         </div>
       </section>
