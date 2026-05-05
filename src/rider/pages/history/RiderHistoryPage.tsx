@@ -3,6 +3,7 @@ import { FiChevronRight } from 'react-icons/fi';
 import { useNavigate } from 'react-router-dom';
 import RiderAppLayout from '../../components/RiderAppLayout';
 import { formatMetaDateTime, getRiderDeliveries, toCurrency, type RiderDelivery } from '../../lib/riderData';
+import { useRefreshableData } from '../../hooks/useRefreshOnFocus';
 
 interface HistoryItem {
   id: string;
@@ -18,11 +19,11 @@ export default function RiderHistoryPage() {
   const [isLoading, setIsLoading] = useState(true);
   const [historyItems, setHistoryItems] = useState<HistoryItem[]>([]);
 
-  useEffect(() => {
-    const loadHistory = async () => {
-      setIsLoading(true);
+  // Automatically refresh history when page regains focus
+  useRefreshableData(
+    async () => {
       const deliveries = await getRiderDeliveries();
-      const history = deliveries
+      return deliveries
         .filter((item) => item.status === 'Delivered' || item.status === 'Failed')
         .map((item: RiderDelivery) => ({
           id: item.id,
@@ -32,12 +33,16 @@ export default function RiderHistoryPage() {
           status: item.status as HistoryItem['status'],
           meta: formatMetaDateTime(item.deliveredAt || item.failedAt || item.createdAt),
         }));
-
+    },
+    (history) => {
       setHistoryItems(history);
       setIsLoading(false);
-    };
+    },
+    []
+  );
 
-    loadHistory();
+  useEffect(() => {
+    setIsLoading(true);
   }, []);
 
   const totalCodCollected = useMemo(() => {

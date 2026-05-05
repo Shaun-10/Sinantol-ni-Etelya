@@ -7,10 +7,10 @@ export interface Rider {
   lastName: string;
   middleInitial: string;
   address: string;
-  location: string; // ✅ ADD
+  location: string; 
   contact: string;
   birthdate: string;
-  plateNo: string;
+  plate_number: string;
   email: string;
   emergencyName: string;
   emergencyContact: string;
@@ -25,7 +25,7 @@ export interface RiderFormData {
   location: string; // ✅ ADD
   contact: string;
   birthdate: string;
-  plateNo: string;
+  plate_number: string;
   email: string;
   password: string;
   emergencyName: string;
@@ -44,7 +44,7 @@ export const defaultRiderFormValues: RiderFormData = {
   location: "", // ✅ ADD
   contact: "",
   birthdate: "",
-  plateNo: "",
+  plate_number: "",
   email: "",
   password: "",
   emergencyName: "",
@@ -61,6 +61,13 @@ export function toDisplayDate(value: string): string {
 
   const [, year, month, day] = match;
   return `${Number(month)}/${Number(day)}/${year}`;
+}
+
+export function normalizeDbString(value: unknown): string {
+  if (typeof value !== "string") return "";
+
+  const normalized = value.trim();
+  return normalized.toUpperCase() === "N/A" ? "" : normalized;
 }
 
 export function toDateInputValue(value: string): string {
@@ -82,14 +89,14 @@ export function buildRiderFormData(rider: Rider): RiderFormData {
     lastName: rider.lastName || "",
     firstName: rider.firstName || "",
     middleInitial: rider.middleInitial || "",
-    address: rider.address || "",
-    location: rider.location || "", // ✅ ADD
-    contact: rider.contact || "",
+    address: normalizeDbString(rider.address),
+    location: normalizeDbString(rider.location),
+    contact: normalizeDbString(rider.contact),
     birthdate: toDateInputValue(rider.birthdate),
-    plateNo: rider.plateNo || "",
-    email: rider.email || "",
+    plate_number: normalizeDbString(rider.plate_number),
+    email: normalizeDbString(rider.email),
     password: "",
-    emergencyName: rider.emergencyName || "",
-    emergencyContact: rider.emergencyContact || "",
+    emergencyName: normalizeDbString(rider.emergencyName),
+    emergencyContact: normalizeDbString(rider.emergencyContact),
   };
 }

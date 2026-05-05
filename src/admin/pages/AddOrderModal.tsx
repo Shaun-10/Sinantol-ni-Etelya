@@ -1,4 +1,4 @@
-import { FormEvent, ReactElement, ChangeEvent, useEffect, useState } from "react";
+import { FormEvent, useEffect, useState } from "react";
 import { supabase } from "@lib/supabase";
 import type { AdminOrder } from "./orderTypes";
 
@@ -28,15 +28,17 @@ const PRICES: Record<SizeKey, number> = {
   bottled: 170,
 };
 
-interface QuantityRowProps {
+function QuantityRow({
+  label,
+  price,
+  value,
+  onChange,
+}: {
   label: string;
   price: number;
   value: number;
   onChange: (value: number) => void;
-  [k: string]: any;
-}
-
-function QuantityRow({ label, price, value, onChange }: QuantityRowProps): ReactElement {
+}): JSX.Element {
   return (
     <div className="mt-2 flex items-center justify-between rounded-md bg-white px-2 py-1 shadow-sm">
       <span className="text-xs text-gray-700">
@@ -57,7 +59,7 @@ function QuantityRow({ label, price, value, onChange }: QuantityRowProps): React
           type="number"
           min={0}
           value={value}
-          onChange={(event: ChangeEvent<HTMLInputElement>) => onChange(Math.max(0, Number(event.target.value) || 0))}
+          onChange={(event) => onChange(Math.max(0, Number(event.target.value) || 0))}
           className="h-6 w-12 rounded border border-gray-300 text-center text-xs focus:outline-none focus:ring-1 focus:ring-green-500"
           aria-label={`${label} quantity`}
         />
@@ -89,10 +91,18 @@ function getVariantKey(flavor: string, size: string): string {
   return `${flavor.trim().toLowerCase()}::${size.trim().toLowerCase()}`;
 }
 
+function getErrorMessage(error: unknown, fallback: string): string {
+  if (error && typeof error === "object" && "message" in error) {
+    return String(error.message);
+  }
+
+  return fallback;
+}
+
 export default function AddOrderModal({
   onClose,
   onAdd,
-}: AddOrderModalProps): ReactElement {
+}: AddOrderModalProps): JSX.Element {
   const [firstName, setFirstName] = useState("");
   const [lastName, setLastName] = useState("");
   const [middleInitial, setMiddleInitial] = useState("");
@@ -210,7 +220,6 @@ export default function AddOrderModal({
         }
       }
 
-      const createdAt = new Date().toISOString();
       const { data: order, error: orderError } = await supabase
         .from("orders")
         .insert({
@@ -219,14 +228,14 @@ export default function AddOrderModal({
           contact: contact.trim(),
           rider_id: selectedRiderId,
           total,
-          order_date: createdAt,
+          status: "waiting",
         })
         .select()
         .single();
 
       if (orderError || !order) {
         console.error("Order insert failed:", orderError);
-        alert("Failed to create order.");
+        alert(`Failed to create order: ${getErrorMessage(orderError, "Unknown error")}`);
         return;
       }
 
@@ -239,7 +248,7 @@ export default function AddOrderModal({
 
       if (itemError) {
         console.error("Order item insert failed:", itemError);
-        alert("Failed to save order items.");
+        alert(`Failed to save order items: ${getErrorMessage(itemError, "Unknown error")}`);
         return;
       }
 
@@ -247,7 +256,7 @@ export default function AddOrderModal({
         id: order.id,
         customer: customerName,
         total,
-        date: new Date(order.order_date).toLocaleDateString(),
+        date: new Date(order.created_at).toLocaleDateString(),
         dateRange: "Today",
         status: "waiting",
       });
@@ -280,7 +289,7 @@ export default function AddOrderModal({
                     type="text"
                     placeholder="Enter first name"
                     value={firstName}
-                    onChange={(event: ChangeEvent<HTMLInputElement>) => setFirstName(event.target.value)}
+                    onChange={(event) => setFirstName(event.target.value)}
                     className="rider-input"
                     required
                   />
@@ -292,7 +301,7 @@ export default function AddOrderModal({
                     type="text"
                     placeholder="Enter last name"
                     value={lastName}
-                    onChange={(event: ChangeEvent<HTMLInputElement>) => setLastName(event.target.value)}
+                    onChange={(event) => setLastName(event.target.value)}
                     className="rider-input"
                     required
                   />
@@ -304,7 +313,7 @@ export default function AddOrderModal({
                     type="text"
                     placeholder="M.I"
                     value={middleInitial}
-                    onChange={(event: ChangeEvent<HTMLInputElement>) => setMiddleInitial(event.target.value.slice(0, 1))}
+                    onChange={(event) => setMiddleInitial(event.target.value.slice(0, 1))}
                     className="rider-input w-32"
                     maxLength={1}
                   />
@@ -316,7 +325,7 @@ export default function AddOrderModal({
                     type="text"
                     placeholder="Enter address"
                     value={address}
-                    onChange={(event: ChangeEvent<HTMLInputElement>) => setAddress(event.target.value)}
+                    onChange={(event) => setAddress(event.target.value)}
                     className="rider-input"
                     required
                   />
@@ -328,7 +337,7 @@ export default function AddOrderModal({
                     type="text"
                     placeholder="Enter phone number"
                     value={contact}
-                    onChange={(event: ChangeEvent<HTMLInputElement>) => setContact(event.target.value)}
+                    onChange={(event) => setContact(event.target.value)}
                     className="rider-input"
                     required
                   />
@@ -344,7 +353,7 @@ export default function AddOrderModal({
                       id="assignedRider"
                       name="assignedRider"
                       value={selectedRiderId}
-                      onChange={(event: ChangeEvent<HTMLSelectElement>) => setSelectedRiderId(event.target.value)}
+                      onChange={(event) => setSelectedRiderId(event.target.value)}
                       disabled={loadingRiders}
                       className="rider-input cursor-pointer appearance-none pr-10"
                       required

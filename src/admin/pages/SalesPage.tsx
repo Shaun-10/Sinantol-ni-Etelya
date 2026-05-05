@@ -15,6 +15,21 @@ import {
   XAxis,
   YAxis,
 } from "recharts";
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogFooter,
+} from "@/components/ui/dialog";
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from "@/components/ui/table";
 
 interface OrderByArea {
   id: number;
@@ -82,6 +97,23 @@ const pesoFormatter = new Intl.NumberFormat("en-PH", {
   maximumFractionDigits: 0,
 });
 
+function extractArea(address?: string | null): string {
+  if (!address) {
+    return "Unknown";
+  }
+
+  const segments = address
+    .split(",")
+    .map((segment) => segment.trim())
+    .filter(Boolean);
+
+  if (segments.length > 1) {
+    return segments[segments.length - 1];
+  }
+
+  return address.trim();
+}
+
 const RADIAN = Math.PI / 180;
 
 const renderPercentageLabel = (props: any): JSX.Element => {
@@ -114,7 +146,7 @@ function SalesSummarySection({
 }: SalesSummarySectionProps): JSX.Element {
   return (
     <section
-      className="sales-summary-grid"
+      className="grid grid-cols-2 gap-6"
       aria-label="Sales summary cards"
     >
       {salesSummaryCards.map((card) => {
@@ -123,20 +155,20 @@ function SalesSummarySection({
         return (
           <article
             key={card.id}
-            className="sales-summary-card"
+            className="bg-white rounded-lg border border-gray-200 shadow-sm p-4"
           >
-            <div className="sales-summary-card-top">
-              <span className="sales-summary-icon" aria-hidden="true">
+            <div className="flex items-center gap-3 mb-4">
+              <span className="text-3xl text-gray-600" aria-hidden="true">
                 <CardIcon />
               </span>
 
               <div>
-                <p className="sales-summary-title">{card.title}</p>
-                <p className="sales-summary-subtitle">{card.subtitle}</p>
+                <p className="font-semibold text-gray-700">{card.title}</p>
+                <p className="text-sm text-gray-500">{card.subtitle}</p>
               </div>
             </div>
 
-            <p className="sales-summary-amount">{card.amount}</p>
+            <p className="text-2xl font-bold text-gray-900">{card.amount}</p>
           </article>
         );
       })}
@@ -189,23 +221,24 @@ function OrdersByAreaSection({
 
   return (
     <section
-      className="sales-panel"
+      className="bg-white rounded-lg border border-gray-200 shadow-sm overflow-hidden"
       aria-label="Orders by area"
     >
-      <div className="sales-panel-header">
-        <h3>Orders by Area</h3>
+      <div className="p-4 border-b border-gray-200">
+        <h3 className="text-lg font-semibold text-gray-900">Orders by Area</h3>
 
         <label
-          className="sales-area-filter"
+          className="mt-4 flex items-center gap-3"
           htmlFor="sales-area-select"
         >
-          <span>Filter by:</span>
+          <span className="text-sm font-medium text-gray-700">Filter by:</span>
           <select
             id="sales-area-select"
             value={selectedArea}
             onChange={(event: ChangeEvent<HTMLSelectElement>) =>
               setSelectedArea(event.target.value)
             }
+            className="px-3 py-2 border border-gray-300 rounded-lg text-sm"
           >
             {uniqueAreas.map((area) => (
               <option key={area} value={area}>
@@ -216,46 +249,46 @@ function OrdersByAreaSection({
         </label>
       </div>
 
-      <div className="sales-table-wrap">
-        <table className="sales-table">
-          <thead>
-            <tr>
-              <th>ID</th>
-              <th>Client Name</th>
-              <th>Contact No.</th>
-              <th>Area</th>
-              <th>Classic</th>
-              <th>Spicy</th>
-              <th>Amount</th>
-            </tr>
-          </thead>
-          <tbody>
+      <div className="overflow-x-auto">
+        <Table>
+          <TableHeader>
+            <TableRow>
+              <TableHead>ID</TableHead>
+              <TableHead>Client Name</TableHead>
+              <TableHead>Contact No.</TableHead>
+              <TableHead>Area</TableHead>
+              <TableHead>Classic</TableHead>
+              <TableHead>Spicy</TableHead>
+              <TableHead>Amount</TableHead>
+            </TableRow>
+          </TableHeader>
+          <TableBody>
             {paginatedOrders.map((order) => (
-              <tr key={order.id}>
-                <td>{order.id}</td>
-                <td>{order.clientName}</td>
-                <td>{order.contactNo}</td>
-                <td>{order.area}</td>
-                <td>{order.classic}</td>
-                <td>{order.spicy}</td>
-                <td>{pesoFormatter.format(order.amount)}</td>
-              </tr>
+              <TableRow key={order.id}>
+                <TableCell>{order.id}</TableCell>
+                <TableCell>{order.clientName}</TableCell>
+                <TableCell>{order.contactNo}</TableCell>
+                <TableCell>{order.area}</TableCell>
+                <TableCell>{order.classic}</TableCell>
+                <TableCell>{order.spicy}</TableCell>
+                <TableCell>{pesoFormatter.format(order.amount)}</TableCell>
+              </TableRow>
             ))}
-          </tbody>
-        </table>
+          </TableBody>
+        </Table>
       </div>
 
       {totalPages > 1 && (
-        <div className="sales-list-footer">
-          <span>
+        <div className="p-4 border-t border-gray-200 flex justify-between items-center">
+          <span className="text-sm text-gray-600">
             Page {currentPage} of {totalPages}
           </span>
-          <div style={{ display: "flex", gap: "8px" }}>
+          <div className="flex gap-2">
             {currentPage > 1 && (
               <button
                 type="button"
                 onClick={handlePreviousPage}
-                className="sales-page-btn secondary"
+                className="px-3 py-1 bg-gray-200 text-gray-700 rounded text-sm hover:bg-gray-300 transition"
               >
                 Previous
               </button>
@@ -264,7 +297,7 @@ function OrdersByAreaSection({
               <button
                 type="button"
                 onClick={handleNextPage}
-                className="sales-page-btn"
+                className="px-3 py-1 bg-blue-500 text-white rounded text-sm hover:bg-blue-600 transition"
               >
                 Next Page
               </button>
@@ -280,18 +313,17 @@ interface MonthlySalesSectionProps {
   data: MonthlySalesData[];
 }
 
-
 function MonthlySalesSection({ data }: MonthlySalesSectionProps): JSX.Element {
   return (
     <section
-      className="sales-panel"
+      className="bg-white rounded-lg border border-gray-200 shadow-sm overflow-hidden"
       aria-label="Monthly sales chart"
     >
-      <div className="sales-panel-header">
-        <h3>Monthly Sales</h3>
+      <div className="p-4 border-b border-gray-200">
+        <h3 className="text-lg font-semibold text-gray-900">Monthly Sales</h3>
       </div>
 
-      <div className="sales-chart-wrap">
+      <div className="p-4 h-80">
         <ResponsiveContainer width="100%" height="100%">
           <ComposedChart
             data={data}
@@ -364,10 +396,14 @@ function FlavorBreakdownCard({
 
   return (
     <article
-      className="sales-pie-card"
+      className="bg-white rounded-lg border border-gray-200 shadow-sm overflow-hidden"
       aria-label="Sales flavor breakdown"
     >
-      <div className="sales-pie-wrap">
+      <div className="p-4 border-b border-gray-200">
+        <h3 className="text-lg font-semibold text-gray-900">Sales by Flavor</h3>
+      </div>
+      
+      <div className="p-4 h-80">
         <ResponsiveContainer width="100%" height="100%">
           <PieChart>
             <Pie
@@ -377,7 +413,7 @@ function FlavorBreakdownCard({
               cx="50%"
               cy="50%"
               innerRadius={0}
-              outerRadius={152}
+              outerRadius={120}
               stroke="#ffffff"
               strokeWidth={3}
               label={renderPercentageLabel}
@@ -391,19 +427,20 @@ function FlavorBreakdownCard({
         </ResponsiveContainer>
       </div>
 
-      <div className="sales-pie-legend" role="list" aria-label="Flavor legend">
+      <div className="p-4 space-y-2" role="list" aria-label="Flavor legend">
         {flavorData.map((item) => (
           <div
-            className="sales-pie-legend-item"
+            className="flex items-center gap-3 text-sm"
             key={item.name}
             role="listitem"
           >
             <div
-              className="sales-pie-dot"
+              className="w-3 h-3 rounded-full"
               style={{ backgroundColor: item.color }}
               aria-hidden="true"
             />
-            <span>{item.name}</span>
+            <span className="text-gray-700">{item.name}</span>
+            <span className="ml-auto font-semibold text-gray-900">{item.value}</span>
           </div>
         ))}
       </div>
@@ -411,13 +448,10 @@ function FlavorBreakdownCard({
   );
 }
 
-interface PriceListCardProps {
-  priceList: PriceGroup[];
-  onUpdate: (priceList: PriceGroup[]) => void;
-}
-
-function PriceListCard({ priceList, onUpdate }: PriceListCardProps): JSX.Element {
-  const [draftPriceList, setDraftPriceList] = useState<PriceGroup[]>(priceList);
+function PriceListCard(): JSX.Element {
+  const [priceList, setPriceList] = useState<PriceGroup[]>(initialPriceList);
+  const [draftPriceList, setDraftPriceList] =
+    useState<PriceGroup[]>(initialPriceList);
   const [isDialogOpen, setIsDialogOpen] = useState(false);
 
   const handleStartEdit = (): void => {
@@ -430,7 +464,7 @@ function PriceListCard({ priceList, onUpdate }: PriceListCardProps): JSX.Element
   };
 
   const handleSaveEdit = (): void => {
-    onUpdate(draftPriceList);
+    setPriceList(draftPriceList);
     setIsDialogOpen(false);
   };
 
@@ -473,214 +507,185 @@ function PriceListCard({ priceList, onUpdate }: PriceListCardProps): JSX.Element
   return (
     <>
       <article
-        className="sales-price-card"
+        className="bg-white rounded-lg border border-gray-200 shadow-sm overflow-hidden"
         aria-label="Product price list"
       >
-        <header className="sales-price-header">
-          <h3>Price List</h3>
+        <header className="p-4 border-b border-gray-200 flex justify-between items-center">
+          <h3 className="text-lg font-semibold text-gray-900">Price List</h3>
           <button
             type="button"
-            className="sales-price-edit-btn"
+            className="px-3 py-1 bg-blue-500 text-white rounded text-sm hover:bg-blue-600 transition font-semibold"
             onClick={handleStartEdit}
           >
             Edit
           </button>
         </header>
 
-        <div className="sales-price-table-wrap">
-          <table className="sales-price-table">
-            <thead>
-              <tr>
-                <th>Flavor</th>
-                <th>Sizes</th>
-                <th>Price</th>
-              </tr>
-            </thead>
-            <tbody>
+        <div className="overflow-x-auto">
+          <Table>
+            <TableHeader>
+              <TableRow>
+                <TableHead>Flavor</TableHead>
+                <TableHead>Sizes</TableHead>
+                <TableHead>Price</TableHead>
+              </TableRow>
+            </TableHeader>
+            <TableBody>
               {priceList.map((group) =>
                 group.prices.map((item, priceIndex) => (
-                  <tr key={`${group.flavor}-${item.size}`}>
+                  <TableRow key={`${group.flavor}-${item.size}`}>
                     {priceIndex === 0 ? (
-                      <td rowSpan={group.prices.length}>
+                      <TableCell rowSpan={group.prices.length}>
                         {group.flavor}
-                      </td>
+                      </TableCell>
                     ) : null}
-                    <td>{item.size}</td>
-                    <td>{pesoFormatter.format(item.amount)}</td>
-                  </tr>
+                    <TableCell>{item.size}</TableCell>
+                    <TableCell>{pesoFormatter.format(item.amount)}</TableCell>
+                  </TableRow>
                 )),
               )}
-            </tbody>
-          </table>
+            </TableBody>
+          </Table>
         </div>
       </article>
 
-      {isDialogOpen && (
-        <div
-          style={{
-            position: "fixed",
-            inset: 0,
-            backgroundColor: "rgba(0, 0, 0, 0.5)",
-            display: "flex",
-            alignItems: "center",
-            justifyContent: "center",
-            zIndex: 50,
-          }}
-          onClick={() => setIsDialogOpen(false)}
-        >
-          <div
-            style={{
-              backgroundColor: "#ffffff",
-              borderRadius: "12px",
-              padding: "24px",
-              maxWidth: "600px",
-              width: "90%",
-              maxHeight: "80vh",
-              overflowY: "auto",
-              boxShadow: "0 20px 40px rgba(0, 0, 0, 0.2)",
-            }}
-            onClick={(e) => e.stopPropagation()}
-          >
-            <h2 style={{ margin: "0 0 20px", fontSize: "1.2rem", fontWeight: 700 }}>
-              Edit Price List
-            </h2>
+      <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Edit Price List</DialogTitle>
+          </DialogHeader>
 
-            <div style={{ overflowY: "auto", marginBottom: "20px", maxHeight: "400px" }}>
-              <table className="sales-price-table">
-                <thead>
-                  <tr>
-                    <th>Flavor</th>
-                    <th>Sizes</th>
-                    <th>Price</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {displayedPriceList.map((group, flavorIndex) =>
-                    group.prices.map((item, priceIndex) => (
-                      <tr key={`${group.flavor}-${item.size}`}>
-                        {priceIndex === 0 ? (
-                          <td rowSpan={group.prices.length}>
-                            {group.flavor}
-                          </td>
-                        ) : null}
-                        <td>{item.size}</td>
-                        <td>
-                          <input
-                            type="number"
-                            min="0"
-                            placeholder="0"
-                            className="sales-price-input"
-                            value={item.amount}
-                            onChange={(event: ChangeEvent<HTMLInputElement>) =>
-                              handlePriceChange(
-                                flavorIndex,
-                                priceIndex,
-                                event.target.value,
-                              )
-                            }
-                          />
-                        </td>
-                      </tr>
-                    )),
-                  )}
-                </tbody>
-              </table>
-            </div>
-
-            <div
-              style={{
-                display: "flex",
-                justifyContent: "flex-end",
-                gap: "8px",
-              }}
-            >
-              <button
-                type="button"
-                className="sales-price-cancel-btn"
-                onClick={handleCancelEdit}
-              >
-                Cancel
-              </button>
-              <button
-                type="button"
-                className="sales-price-edit-btn"
-                onClick={handleSaveEdit}
-              >
-                Save
-              </button>
-            </div>
+          <div className="overflow-y-auto max-h-96">
+            <Table>
+              <TableHeader>
+                <TableRow>
+                  <TableHead>Flavor</TableHead>
+                  <TableHead>Sizes</TableHead>
+                  <TableHead>Price</TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {displayedPriceList.map((group, flavorIndex) =>
+                  group.prices.map((item, priceIndex) => (
+                    <TableRow key={`${group.flavor}-${item.size}`}>
+                      {priceIndex === 0 ? (
+                        <TableCell rowSpan={group.prices.length}>
+                          {group.flavor}
+                        </TableCell>
+                      ) : null}
+                      <TableCell>{item.size}</TableCell>
+                      <TableCell>
+                        <input
+                          type="number"
+                          min="0"
+                          placeholder="0"
+                          className="px-2 py-1 border border-gray-300 rounded text-sm w-20 text-center"
+                          value={item.amount}
+                          onChange={(event: ChangeEvent<HTMLInputElement>) =>
+                            handlePriceChange(
+                              flavorIndex,
+                              priceIndex,
+                              event.target.value,
+                            )
+                          }
+                        />
+                      </TableCell>
+                    </TableRow>
+                  )),
+                )}
+              </TableBody>
+            </Table>
           </div>
-        </div>
-      )}
+
+          <DialogFooter>
+            <button
+              type="button"
+              className="px-3 py-2 bg-gray-300 text-gray-900 rounded text-sm hover:bg-gray-400 transition"
+              onClick={handleCancelEdit}
+            >
+              Cancel
+            </button>
+            <button
+              type="button"
+              className="px-3 py-2 bg-blue-500 text-white rounded text-sm hover:bg-blue-600 transition"
+              onClick={handleSaveEdit}
+            >
+              Save
+            </button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </>
   );
 }
 
 export default function SalesPage(): JSX.Element {
   const [orders, setOrders] = useState<any[]>([]);
-  const [riders, setRiders] = useState<any[]>([]);
   const [flavorTotals, setFlavorTotals] = useState({ classic: 0, spicy: 0 });
   const [isLoading, setIsLoading] = useState(true);
-  const [priceList, setPriceList] = useState<PriceGroup[]>(initialPriceList);
 
+  // ✅ Fetch orders + items
   useEffect(() => {
     const fetchSalesData = async () => {
       setIsLoading(true);
 
-      const { data: ordersData, error: ordersError } = await supabase
+      const { data, error } = await supabase
         .from("orders")
-        .select("id, order_date, address, status, total, customer_name, contact, rider_id");
+        .select(`
+          id,
+          created_at,
+          address,
+          status,
+          total,
+          customer_name,
+          contact,
+          order_items (
+            quantity,
+            product_variants:product_variants!order_items_product_variant_id_fkey (
+              flavor
+            )
+          )
+        `);
 
-      if (ordersError) {
-        console.error("Sales fetch error:", ordersError);
+      if (error) {
+        console.error("Sales fetch error:", error);
         setIsLoading(false);
         return;
       }
 
-      const { data: ridersData, error: ridersError } = await supabase
-        .from("riders")
-        .select("id, location");
-
-      if (ridersError) {
-        console.error("Riders fetch error:", ridersError);
-      }
-
-      const { data: itemsData, error: itemsError } = await supabase
-        .from("order_items")
-        .select("quantity, product_variants!inner(flavor)")
-        .eq("product_variants.flavor", "classic");
-
-      if (itemsError) {
-        console.error("Items fetch error:", itemsError);
-      }
-
-      const classicTotal = itemsData ? itemsData.reduce((sum, item) => sum + item.quantity, 0) : 0;
-
-      const { data: spicyData, error: spicyError } = await supabase
-        .from("order_items")
-        .select("quantity, product_variants!inner(flavor)")
-        .eq("product_variants.flavor", "spicy");
-
-      if (spicyError) {
-        console.error("Spicy fetch error:", spicyError);
-      }
-
-      const spicyTotal = spicyData ? spicyData.reduce((sum, item) => sum + item.quantity, 0) : 0;
-
-      setOrders(ordersData ?? []);
-      setRiders(ridersData ?? []);
-      setFlavorTotals({ classic: classicTotal, spicy: spicyTotal });
+      setOrders(data ?? []);
+      console.log("ORDERS DEBUG:", JSON.stringify(data, null, 2));
       setIsLoading(false);
     };
 
     fetchSalesData();
   }, []);
 
-  const totalSales = orders.reduce(
-    (sum, order) => sum + Number(order.total || 0),
-    0
+  // ✅ Compute Classic & Spicy totals (GLOBAL)
+  useEffect(() => {
+  let classic = 0;
+  let spicy = 0;
+
+  orders.forEach(order => {
+    order.order_items?.forEach((item: any) => {
+      const qty = Number(item.quantity ?? 0);
+      const flavor = item.product_variants?.flavor;
+
+      if (flavor === "classic") classic += qty;
+      if (flavor === "spicy") spicy += qty;
+    });
+  });
+
+  setFlavorTotals({ classic, spicy });
+}, [orders]);
+
+  // ✅ Total sales
+  const totalSales = useMemo(
+    () => orders.reduce((sum, o) => sum + Number(o.total || 0), 0),
+    [orders]
   );
 
+  // ✅ Summary cards
   const salesSummaryCards: SalesSummaryCard[] = [
     {
       id: "total-sales",
@@ -698,30 +703,46 @@ export default function SalesPage(): JSX.Element {
     },
   ];
 
+  // ✅ Orders by area (PER ORDER classic/spicy)
   const ordersByAreaData: OrderByArea[] = useMemo(() => {
-    const riderMap = new Map(riders.map((rider) => [rider.id, rider]));
-    
     return orders.map((order, index) => {
-      const rider = riderMap.get(order.rider_id);
+      let classic = 0;
+let spicy = 0;
+
+order.order_items?.forEach((item: any) => {
+  const qty = Number(item.quantity ?? 0);
+  const flavor = item.product_variants?.flavor;
+
+  if (flavor === "classic") {
+    classic += qty;
+  }
+
+  if (flavor === "spicy") {
+    spicy += qty;
+  }
+});
+
+
       return {
         id: index + 1,
         clientName: order.customer_name || "N/A",
         contactNo: order.contact || "N/A",
-        area: rider?.location || "Unknown",
-        classic: 0,
-        spicy: 0,
+        area: extractArea(order.address),
+        classic,
+        spicy,
         amount: Number(order.total || 0),
       };
     });
-  }, [orders, riders]);
+  }, [orders]);
 
+  // ✅ Monthly sales
   const monthlySalesData: MonthlySalesData[] = useMemo(() => {
     const map = new Map<string, MonthlySalesData>();
 
     orders.forEach(order => {
-      if (!order.order_date) return;
+      if (!order.created_at) return;
 
-      const date = new Date(order.order_date);
+      const date = new Date(order.created_at);
       const key = `${date.getFullYear()}-${date.getMonth()}`;
 
       if (!map.has(key)) {
@@ -732,66 +753,40 @@ export default function SalesPage(): JSX.Element {
         });
       }
 
-      const item = map.get(key)!;
-      item.sales += Number(order.total || 0);
-      item.orders += 1;
+      const entry = map.get(key)!;
+      entry.sales += Number(order.total || 0);
+      entry.orders += 1;
     });
 
     return Array.from(map.values());
   }, [orders]);
 
+  // ✅ Pie chart data (RAW values, not %)
   const flavorData: FlavorData[] = useMemo(() => {
-    const { classic, spicy } = flavorTotals;
-    const total = classic + spicy;
-
-    if (total === 0) {
-      return [
-        { name: "Classic", value: 0, color: "#1f8f38" },
-        { name: "Spicy", value: 0, color: "#d08aa7" },
-      ];
-    }
-
     return [
-      {
-        name: "Classic",
-        value: Math.round((classic / total) * 100),
-        color: "#1f8f38",
-      },
-      {
-        name: "Spicy",
-        value: Math.round((spicy / total) * 100),
-        color: "#d08aa7",
-      },
+      { name: "Classic", value: flavorTotals.classic, color: "#1f8f38" },
+      { name: "Spicy", value: flavorTotals.spicy, color: "#d08aa7" },
     ];
   }, [flavorTotals]);
 
   if (isLoading) {
-    return (
-      <div className="sales-main-content">
-        Loading sales data...
-      </div>
-    );
+    return <div className="p-6 text-gray-600">Loading sales data...</div>;
   }
 
   return (
-    <section className="sales-main-content">
-      <header className="sales-header">
-        <h2>
-          <FiShoppingCart aria-hidden="true" />
-          SALES
-        </h2>
-      </header>
+    <section className="flex-1 space-y-6">
+      <h2 className="text-3xl font-bold">Sales</h2>
 
-      <div className="sales-layout-grid">
-        <div className="sales-left-column">
+      <div className="grid grid-cols-3 gap-6">
+        <div className="col-span-2 space-y-6">
           <SalesSummarySection salesSummaryCards={salesSummaryCards} />
           <OrdersByAreaSection orders={ordersByAreaData} />
           <MonthlySalesSection data={monthlySalesData} />
         </div>
 
-        <div className="sales-right-column">
+        <div className="col-span-1 space-y-6">
           <FlavorBreakdownCard flavorData={flavorData} />
-          <PriceListCard priceList={priceList} onUpdate={setPriceList} />
+          <PriceListCard />
         </div>
       </div>
     </section>

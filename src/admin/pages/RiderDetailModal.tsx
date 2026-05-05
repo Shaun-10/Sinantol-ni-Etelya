@@ -1,5 +1,6 @@
 import { ChangeEvent, useEffect, useState } from "react";
 import { FiCalendar, FiEdit2, FiTrash2 } from "react-icons/fi";
+import { supabase } from "@lib/supabase";
 import {
   Rider,
   RiderFormData,
@@ -7,6 +8,15 @@ import {
   buildRiderFormData,
   toDisplayDate,
 } from "./riderModalShared";
+
+function normalizeUpdateValue(value: string): string | null {
+  const normalized = value.trim();
+  return normalized === "" ? null : normalized;
+}
+
+const adminApiUrl =
+  import.meta.env.VITE_ADMIN_API_URL?.replace(/\/$/, "") ??
+  "http://localhost:3000";
 
 interface RiderDetailModalProps {
   rider: Rider;
@@ -30,6 +40,8 @@ export default function RiderDetailModal({
   const [errors, setErrors] = useState<RiderFormErrors>({});
   const [formError, setFormError] = useState<string>("");
   const [newPassword, setNewPassword] = useState<string>("");
+  const [isSaving, setIsSaving] = useState(false);
+  const [isDeleting, setIsDeleting] = useState(false);
 
   useEffect(() => {
     setForm(buildRiderFormData(rider));
@@ -103,68 +115,103 @@ export default function RiderDetailModal({
 
     setErrors({});
     setFormError("");
+    setIsSaving(true);
 
-// ✅ PART 3: UPDATE PASSWORD IN SUPABASE (ADMIN)
-if (newPassword.trim()) {
-  if (!rider.userid) {
-    setFormError("Unable to update password: rider user ID is missing.");
-    return;
-  }
+    try {
+      // ✅ PART 3: UPDATE PASSWORD IN SUPABASE (ADMIN)
+      if (newPassword.trim()) {
+        if (!rider.userid) {
+          setFormError("Unable to update password: rider user ID is missing.");
+          setIsSaving(false);
+          return;
+        }
 
-  try {
-    const response = await fetch('http://localhost:3000/admin/update-rider-password', {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify({
-        userId: rider.userid,
-        newPassword: newPassword.trim(),
-      }),
-    });
+        try {
+          const response = await fetch(`${adminApiUrl}/admin/update-rider-password`, {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({
+              userId: rider.userid,
+              newPassword: newPassword.trim(),
+            }),
+          });
 
-    const data = await response.json();
+          const data = await response.json();
 
-    if (!response.ok) {
-      const message = data?.error || `Failed to update password (${response.status})`;
-      throw new Error(message);
+          if (!response.ok) {
+            const message = data?.error || `Failed to update password (${response.status})`;
+            throw new Error(message);
+          }
+        } catch (error: unknown) {
+          console.error(error);
+          const errorMessage =
+            error instanceof Error
+              ? error.message
+              : "Failed to update password.";
+          setFormError(errorMessage);
+          setIsSaving(false);
+          return;
+        }
+      }
+
+      // ✅ UPDATE RIDER DATA IN SUPABASE
+      const { error: updateError } = await supabase
+        .from("riders")
+        .update({
+          first_name: form.firstName.trim(),
+          last_name: form.lastName.trim(),
+          middle_initial: form.middleInitial.trim() || null,
+          address: normalizeUpdateValue(form.address),
+          location: normalizeUpdateValue(form.location),
+          contact: normalizeUpdateValue(form.contact),
+          birthdate: form.birthdate || null,
+          plate_number: normalizeUpdateValue(form.plate_number),
+          email: normalizeUpdateValue(form.email),
+          emergency_name: normalizeUpdateValue(form.emergencyName),
+          emergency_contact: normalizeUpdateValue(form.emergencyContact),
+        })
+        .eq("id", rider.id);
+
+      if (updateError) {
+        console.error("Error updating rider in Supabase:", updateError);
+        setFormError("Failed to save rider changes to database.");
+        setIsSaving(false);
+        return;
+      }
+
+      const updatedRider: Rider = {
+        ...rider,
+        ...form,
+        name: `${form.firstName.trim()} ${form.lastName.trim()}`.trim(),
+        firstName: form.firstName.trim(),
+        lastName: form.lastName.trim(),
+        middleInitial: form.middleInitial.trim(),
+        address: form.address.trim(),
+        location: form.location.trim(),
+        contact: form.contact.trim(),
+        birthdate: toDisplayDate(form.birthdate),
+        plate_number: form.plate_number.trim(),
+        emergencyName: form.emergencyName.trim(),
+        emergencyContact: form.emergencyContact.trim(),
+      };
+
+      onSaveRider(updatedRider);
+      window.alert("Rider details saved successfully.");
+      setNewPassword("");
+      setIsEditing(false);
+    } catch (error: unknown) {
+      console.error("Unexpected error:", error);
+      const errorMessage =
+        error instanceof Error ? error.message : "An unexpected error occurred.";
+      setFormError(errorMessage);
+    } finally {
+      setIsSaving(false);
     }
-
-    alert("Password updated successfully.");
-  } catch (error: unknown) {
-    console.error(error);
-    const errorMessage =
-      error instanceof Error
-        ? error.message
-        : "Failed to update password.";
-    setFormError(errorMessage);
-    return;
-  }
-}
-
-    const updatedRider: Rider = {
-      ...rider,
-      ...form,
-      name: `${form.firstName.trim()} ${form.lastName.trim()}`.trim(),
-      firstName: form.firstName.trim(),
-      lastName: form.lastName.trim(),
-      middleInitial: form.middleInitial.trim(),
-      address: form.address.trim() || "N/A",
-      location: form.location.trim() || "N/A",
-      contact: form.contact.trim() || "N/A",
-      birthdate: toDisplayDate(form.birthdate),
-      plateNo: form.plateNo.trim() || "N/A",
-      emergencyName: form.emergencyName.trim() || "N/A",
-      emergencyContact: form.emergencyContact.trim() || "N/A",
-    };
-
-    onSaveRider(updatedRider);
-    window.alert("Rider details saved successfully.");
-    setNewPassword("");
-    setIsEditing(false);
   };
 
-  const handleDelete = (): void => {
+  const handleDelete = async (): Promise<void> => {
     const riderName =
       `${rider.firstName || ""} ${rider.lastName || ""}`.trim() ||
       rider.name ||
@@ -174,7 +221,29 @@ if (newPassword.trim()) {
     );
 
     if (isConfirmed) {
-      onDeleteRider(rider);
+      setIsDeleting(true);
+      try {
+        // ✅ DELETE FROM SUPABASE
+        const { error } = await supabase
+          .from("riders")
+          .delete()
+          .eq("id", rider.id);
+
+        if (error) {
+          console.error("Error deleting rider from Supabase:", error);
+          alert("Failed to delete rider from database.");
+          setIsDeleting(false);
+          return;
+        }
+
+        onDeleteRider(rider);
+        window.alert("Rider deleted successfully.");
+        setIsDeleting(false);
+      } catch (err) {
+        console.error("Unexpected error:", err);
+        alert("Unexpected error while deleting rider.");
+        setIsDeleting(false);
+      }
     }
   };
 
@@ -403,13 +472,13 @@ if (newPassword.trim()) {
               {isEditing ? (
                 <input
                   className="px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-green-500"
-                  name="plateNo"
+                  name="plate_number"
                   placeholder="Enter plate number"
-                  value={form.plateNo}
+                  value={form.plate_number}
                   onChange={handleChange}
                 />
               ) : (
-                <p className="text-gray-700">{rider.plateNo}</p>
+                <p className="text-gray-700">{rider.plate_number}</p>
               )}
             </div>
 
@@ -439,7 +508,7 @@ if (newPassword.trim()) {
       type="password"
       placeholder="Leave blank to keep current password"
       value={newPassword}
-      onChange={(e: React.ChangeEvent<HTMLInputElement>) => setNewPassword(e.target.value)}
+      onChange={(e) => setNewPassword(e.target.value)}
       className={`px-3 py-2 border rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-green-500 ${
         errors.password
           ? "border-red-500 bg-red-50"
@@ -510,25 +579,28 @@ if (newPassword.trim()) {
             <>
               <button
                 type="button"
-                className="px-4 py-2 bg-gray-400 text-white rounded-lg hover:bg-gray-500 font-semibold text-sm"
+                className="px-4 py-2 bg-gray-400 text-white rounded-lg hover:bg-gray-500 font-semibold text-sm disabled:opacity-50 disabled:cursor-not-allowed"
                 onClick={resetToViewMode}
+                disabled={isSaving}
               >
                 Cancel
               </button>
               <button
                 type="button"
-                className="px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 font-semibold text-sm"
+                className="px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 font-semibold text-sm disabled:opacity-50 disabled:cursor-not-allowed"
                 onClick={handleSave}
+                disabled={isSaving}
               >
-                Save
+                {isSaving ? "Saving..." : "Save"}
               </button>
             </>
           ) : (
             <>
               <button
                 type="button"
-                className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 font-semibold text-sm flex items-center gap-2"
+                className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 font-semibold text-sm flex items-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed"
                 onClick={onOpenDeliveries}
+                disabled={isDeleting}
               >
                 <FiCalendar className="w-4 h-4" /> Deliveries
               </button>
@@ -536,17 +608,19 @@ if (newPassword.trim()) {
               <div className="flex gap-2">
                 <button
                   type="button"
-                  className="px-4 py-2 bg-gray-400 text-white rounded-lg hover:bg-gray-500 font-semibold text-sm flex items-center gap-2"
+                  className="px-4 py-2 bg-gray-400 text-white rounded-lg hover:bg-gray-500 font-semibold text-sm flex items-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed"
                   onClick={() => setIsEditing(true)}
+                  disabled={isDeleting}
                 >
                   <FiEdit2 className="w-4 h-4" /> Edit
                 </button>
                 <button
                   type="button"
-                  className="px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 font-semibold text-sm flex items-center gap-2"
+                  className="px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 font-semibold text-sm flex items-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed"
                   onClick={handleDelete}
+                  disabled={isDeleting}
                 >
-                  <FiTrash2 className="w-4 h-4" /> Delete
+                  <FiTrash2 className="w-4 h-4" /> {isDeleting ? "Deleting..." : "Delete"}
                 </button>
               </div>
             </>

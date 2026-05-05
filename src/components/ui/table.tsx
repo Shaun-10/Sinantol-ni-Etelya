@@ -25,7 +25,11 @@ export const TableHeader: React.FC<React.HTMLAttributes<HTMLTableSectionElement>
   ...props
 }) => <thead {...props}>{children}</thead>;
 
-export const TableRow: React.FC<React.HTMLAttributes<HTMLTableRowElement>> = ({
+type TableRowProps = React.HTMLAttributes<HTMLTableRowElement> & {
+  key?: React.Key;
+};
+
+export const TableRow: React.FC<TableRowProps> = ({
   children,
   ...props
 }) => <tr {...props}>{children}</tr>;

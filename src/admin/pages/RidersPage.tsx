@@ -3,11 +3,14 @@ import { FiCheck, FiPlus, FiTruck } from "react-icons/fi";
 import { supabase } from "@lib/supabase";
 import AddRiderModal from "./AddRiderModal";
 import RiderDetailModal from "./RiderDetailModal";
-import { Rider, RiderFormData, toDateInputValue } from "./riderModalShared";
+import { Rider, RiderFormData, normalizeDbString } from "./riderModalShared";
 
 interface Delivery {
   id: string;
   status: string;
+  customer: string;
+  createdAt: string;
+  source: "orders" | "deliveries";
 }
 
 interface RidersListSectionProps {
@@ -16,14 +19,69 @@ interface RidersListSectionProps {
 }
 
 interface DeliveriesDialogProps {
+  rider: Rider;
   onClose: () => void;
-  presentDeliveries: Delivery[];
-  pastDeliveries: Delivery[];
 }
 
-// delivery lists will be populated from the `orders` table when the dialog opens
-// presentDeliveries = active (not delivered) deliveries
-// pastDeliveries = delivered deliveries
+function getErrorMessage(error: unknown, fallback: string): string {
+  if (error && typeof error === "object" && "message" in error) {
+    return String(error.message);
+  }
+
+  return fallback;
+}
+
+function normalizeDeliveryStatus(status: unknown): string {
+  const normalized = String(status ?? "").replace(/_/g, " ").trim();
+
+  if (!normalized) return "Waiting";
+
+  return normalized
+    .split(" ")
+    .map((part) => part.charAt(0).toUpperCase() + part.slice(1).toLowerCase())
+    .join(" ");
+}
+
+function isPastDelivery(status: string): boolean {
+  const normalized = status.toLowerCase();
+
+  return (
+    normalized.includes("deliver") ||
+    normalized.includes("fail") ||
+    normalized.includes("cancel")
+  );
+}
+
+function formatDeliveryDate(value: string): string {
+  if (!value) return "";
+
+  const parsed = new Date(value);
+  if (Number.isNaN(parsed.getTime())) return "";
+
+  return parsed.toLocaleDateString("en-PH", {
+    month: "short",
+    day: "numeric",
+    year: "numeric",
+  });
+}
+
+function buildRiderFilter(rider: Rider, includeRiderId: boolean): string {
+  const filters = [];
+
+  if (includeRiderId && rider.id) {
+    filters.push(`rider_id.eq.${rider.id}`);
+  }
+
+  if (rider.userid) {
+    filters.push(`rider_auth_id.eq.${rider.userid}`);
+  }
+
+  if (rider.email) {
+    filters.push(`rider_email.eq.${rider.email}`);
+  }
+
+  return filters.join(",");
+}
 
 function RidersListSection({
   riders,
@@ -69,7 +127,7 @@ function RidersListSection({
                 <td>{rider.name}</td>
                 <td>{rider.contact}</td>
                 <td>{rider.location}</td>
-                <td>{rider.plateNo}</td>
+                <td>{rider.plate_number}</td>
                 <td>
   <span
     className={`px-3 py-1 rounded-full text-xs font-semibold ${
@@ -136,7 +194,195 @@ function RidersListSection({
   );
 }
 
-function DeliveriesDialog({ onClose, presentDeliveries, pastDeliveries }: DeliveriesDialogProps): JSX.Element {
+function DeliveriesDialog({ rider, onClose }: DeliveriesDialogProps): JSX.Element {
+  const [deliveries, setDeliveries] = useState<Delivery[]>([]);
+  const [isLoadingDeliveries, setIsLoadingDeliveries] = useState(true);
+  const [deliveriesError, setDeliveriesError] = useState("");
+
+  const orderFilter = buildRiderFilter(rider, true);
+  const deliveriesFilter = buildRiderFilter(rider, false);
+
+  // Live data subscriptions - simplified, client-side filter
+  useEffect(() => {
+    if (!orderFilter && !deliveriesFilter) return;
+
+    let orderChannel: any = null;
+    if (orderFilter) {
+      orderChannel = supabase
+        .channel('rider_orders')
+        .onPostgresChanges({
+          event: { type: 'INSERT', schema: 'public', table: 'orders' },
+          filter: orderFilter, // No status filter here
+          callback: (payload: any) => {
+            const newRow = payload.new;
+            if (newRow.status === 'Delivered') {
+              const newDelivery: Delivery = {
+                id: String(newRow.id ?? ""),
+                status: normalizeDeliveryStatus(newRow.status),
+                customer: normalizeDbString(newRow.customer_name) || "No customer name",
+                createdAt: String(newRow.created_at ?? ""),
+                source: "orders",
+              };
+              setDeliveries(prev => {
+                const exists = prev.some(d => d.id === newDelivery.id);
+                if (exists) return prev;
+                return [newDelivery, ...prev].sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
+              });
+            }
+          }
+        })
+        .onPostgresChanges({
+          event: { type: 'UPDATE', schema: 'public', table: 'orders' },
+          filter: orderFilter,
+          callback: (payload: any) => {
+            const updatedRow = payload.new;
+            const updatedDelivery: Delivery = {
+              id: String(updatedRow.id ?? ""),
+              status: normalizeDeliveryStatus(updatedRow.status),
+              customer: normalizeDbString(updatedRow.customer_name) || "No customer name",
+              createdAt: String(updatedRow.created_at ?? ""),
+              source: "orders",
+            };
+            setDeliveries(prev => {
+              const idx = prev.findIndex(d => d.id === updatedDelivery.id);
+              if (idx === -1) return prev;
+              const newList = prev.slice();
+              newList[idx] = updatedDelivery;
+              return newList.sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
+            });
+          }
+        }).subscribe();
+    }
+
+    let deliveriesChannel: any = null;
+    if (deliveriesFilter) {
+      deliveriesChannel = supabase
+        .channel('rider_deliveries')
+        .onPostgresChanges({
+          event: { type: 'INSERT', schema: 'public', table: 'deliveries' },
+          filter: deliveriesFilter,
+          callback: (payload: any) => {
+            const newRow = payload.new;
+            const newDelivery: Delivery = {
+              id: String(newRow.id ?? ""),
+              status: normalizeDeliveryStatus(newRow.status),
+              customer: normalizeDbString(newRow.customer_name) || "No customer name",
+              createdAt: String(newRow.created_at ?? ""),
+              source: "deliveries",
+            };
+            setDeliveries(prev => {
+              const exists = prev.some(d => d.id === newDelivery.id);
+              if (exists) return prev;
+              return [newDelivery, ...prev].sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
+            });
+          }
+        })
+        .onPostgresChanges({
+          event: { type: 'UPDATE', schema: 'public', table: 'deliveries' },
+          filter: deliveriesFilter,
+          callback: (payload: any) => {
+            const updatedRow = payload.new;
+            const updatedDelivery: Delivery = {
+              id: String(updatedRow.id ?? ""),
+              status: normalizeDeliveryStatus(updatedRow.status),
+              customer: normalizeDbString(updatedRow.customer_name) || "No customer name",
+              createdAt: String(updatedRow.created_at ?? ""),
+              source: "deliveries",
+            };
+            setDeliveries(prev => {
+              const idx = prev.findIndex(d => d.id === updatedDelivery.id);
+              if (idx === -1) return prev;
+              const newList = prev.slice();
+              newList[idx] = updatedDelivery;
+              return newList.sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
+            });
+          }
+        }).subscribe();
+    }
+
+    return () => {
+      if (orderChannel) supabase.removeChannel(orderChannel);
+      if (deliveriesChannel) supabase.removeChannel(deliveriesChannel);
+    };
+  }, [rider.id]);
+
+  // Initial fetch on rider change
+  useEffect(() => {
+    const fetchDeliveries = async (): Promise<void> => {
+      setIsLoadingDeliveries(true);
+      setDeliveriesError("");
+      setDeliveries([]); // Clear previous
+
+      try {
+        console.log('Fetching deliveries for rider:', rider.id, 'orderFilter:', orderFilter, 'deliveriesFilter:', deliveriesFilter); // Debug
+
+        const [ordersResult, deliveriesResult] = await Promise.all([
+          orderFilter
+            ? supabase
+                .from("orders")
+                .select("id, customer_name, status, created_at")
+                .eq("status", "Delivered")
+                .or(orderFilter)
+                .order("created_at", { ascending: false })
+            : Promise.resolve({ data: [], error: null }),
+          deliveriesFilter
+            ? supabase
+                .from("deliveries")
+                .select("id, customer_name, status, created_at")
+                .or(deliveriesFilter)
+                .order("created_at", { ascending: false })
+            : Promise.resolve({ data: [], error: null }),
+        ]);
+
+        console.log('Orders result:', ordersResult);
+        console.log('Deliveries result:', deliveriesResult);
+
+        if (ordersResult.error) throw ordersResult.error;
+        if (deliveriesResult.error) throw deliveriesResult.error;
+
+        const orderRows: Delivery[] = (ordersResult.data ?? []).map((row: any) => ({
+          id: String(row.id ?? ""),
+          status: normalizeDeliveryStatus(row.status),
+          customer: normalizeDbString(row.customer_name) || "No customer name",
+          createdAt: String(row.created_at ?? ""),
+          source: "orders",
+        }));
+
+        const deliveryRows: Delivery[] = (deliveriesResult.data ?? []).map((row: any) => ({
+          id: String(row.id ?? ""),
+          status: normalizeDeliveryStatus(row.status),
+          customer: normalizeDbString(row.customer_name) || "No customer name",
+          createdAt: String(row.created_at ?? ""),
+          source: "deliveries",
+        }));
+
+        const allDeliveries = [...deliveryRows, ...orderRows].sort((a, b) => {
+          const aDate = new Date(a.createdAt).getTime();
+          const bDate = new Date(b.createdAt).getTime();
+          return (Number.isNaN(bDate) ? 0 : bDate) - (Number.isNaN(aDate) ? 0 : aDate);
+        });
+
+        console.log('Setting deliveries:', allDeliveries);
+
+        setDeliveries(allDeliveries);
+      } catch (error) {
+        console.error("Error fetching rider deliveries:", error);
+        setDeliveriesError(getErrorMessage(error, "Failed to load rider deliveries."));
+      } finally {
+        setIsLoadingDeliveries(false);
+      }
+    };
+
+    void fetchDeliveries();
+  }, [rider.id, orderFilter, deliveriesFilter]);
+
+  const presentDeliveries = deliveries.filter(
+    (delivery) => !isPastDelivery(delivery.status),
+  );
+  const pastDeliveries = deliveries.filter((delivery) =>
+    isPastDelivery(delivery.status),
+  );
+
   return (
     <div
       className="fixed inset-0 bg-black/50 flex items-center justify-center z-50"
@@ -150,7 +396,7 @@ function DeliveriesDialog({ onClose, presentDeliveries, pastDeliveries }: Delive
             id="rider-deliveries-title"
             className="text-xl font-bold text-gray-900"
           >
-            Rider Deliveries
+            {rider.name || "Rider"} Deliveries
           </h3>
           <button
             type="button"
@@ -163,13 +409,26 @@ function DeliveriesDialog({ onClose, presentDeliveries, pastDeliveries }: Delive
         </header>
 
         <div className="p-6 overflow-y-auto flex-1 space-y-6">
+          {isLoadingDeliveries && (
+            <p className="text-sm text-gray-500">Loading deliveries...</p>
+          )}
+
+          {deliveriesError && (
+            <div className="p-4 bg-red-50 border border-red-200 rounded text-red-700 text-sm font-semibold">
+              {deliveriesError}
+            </div>
+          )}
+
           <section className="space-y-3">
             <h4 className="text-lg font-semibold text-gray-900">
               Present Deliveries
             </h4>
+            {!isLoadingDeliveries && presentDeliveries.length === 0 && (
+              <p className="text-sm text-gray-500">No present deliveries.</p>
+            )}
             {presentDeliveries.map((delivery) => (
               <div
-                key={delivery.id}
+                key={`${delivery.source}-${delivery.id}`}
                 className="flex items-center justify-between p-4 border border-gray-200 rounded-lg bg-gray-50 hover:bg-gray-100"
               >
                 <div className="flex items-center gap-3">
@@ -179,7 +438,13 @@ function DeliveriesDialog({ onClose, presentDeliveries, pastDeliveries }: Delive
                   >
                     <FiCheck className="w-4 h-4" />
                   </span>
-                  <p className="text-gray-700">Delivery #{delivery.id}</p>
+                  <div>
+                    <p className="text-gray-700">Delivery #{delivery.id.slice(0, 8)}</p>
+                    <p className="text-xs text-gray-500">
+                      {delivery.customer}
+                      {delivery.createdAt ? ` - ${formatDeliveryDate(delivery.createdAt)}` : ""}
+                    </p>
+                  </div>
                 </div>
                 <p className="text-gray-700 font-semibold">{delivery.status}</p>
               </div>
@@ -190,9 +455,12 @@ function DeliveriesDialog({ onClose, presentDeliveries, pastDeliveries }: Delive
             <h4 className="text-lg font-semibold text-gray-900">
               Past Deliveries
             </h4>
+            {!isLoadingDeliveries && pastDeliveries.length === 0 && (
+              <p className="text-sm text-gray-500">No past deliveries.</p>
+            )}
             {pastDeliveries.map((delivery) => (
               <div
-                key={delivery.id}
+                key={`${delivery.source}-${delivery.id}`}
                 className="flex items-center justify-between p-4 border border-gray-200 rounded-lg bg-gray-50 hover:bg-gray-100"
               >
                 <div className="flex items-center gap-3">
@@ -202,7 +470,13 @@ function DeliveriesDialog({ onClose, presentDeliveries, pastDeliveries }: Delive
                   >
                     <FiCheck className="w-4 h-4" />
                   </span>
-                  <p className="text-gray-700">Delivery #{delivery.id}</p>
+                  <div>
+                    <p className="text-gray-700">Delivery #{delivery.id.slice(0, 8)}</p>
+                    <p className="text-xs text-gray-500">
+                      {delivery.customer}
+                      {delivery.createdAt ? ` - ${formatDeliveryDate(delivery.createdAt)}` : ""}
+                    </p>
+                  </div>
                 </div>
                 <p className="text-gray-700 font-semibold">{delivery.status}</p>
               </div>
@@ -229,79 +503,72 @@ export default function RidersPage(): JSX.Element {
   const [, setLoading] = useState(true);
   const [isAddModalOpen, setIsAddModalOpen] = useState(false);
   const [selectedRider, setSelectedRider] = useState<Rider | null>(null);
+  const [deliveriesRider, setDeliveriesRider] = useState<Rider | null>(null);
   const [isDeliveriesModalOpen, setIsDeliveriesModalOpen] = useState(false);
-  const [presentDeliveries, setPresentDeliveries] = useState<Delivery[]>([]);
-  const [pastDeliveries, setPastDeliveries] = useState<Delivery[]>([]);
 
   
 useEffect(() => {
   const fetchRiders = async (): Promise<void> => {
     setLoading(true);
 
-    try {
-      // 1️⃣ Fetch riders
-      const { data: ridersData, error: ridersError } = await supabase
-        .from("riders")
-        .select("*")
-        .order("id", { ascending: true });
-        
-console.log("RIDERS DATA:", ridersData);
-console.log("RIDERS ERROR:", ridersError);
+    const { data, error } = await supabase
+      .from("riders")
+      .select(`
+        id,
+        user_id,
+        first_name,
+        middle_initial,
+        last_name,
+        contact,
+        address,
+        location,
+        plate_number,
+        email,
+        emergency_name,
+        emergency_contact,
+        birthdate,
+        orders (
+          id,
+          status
+        )
+      `)
+      .order("created_at", { ascending: true });
 
-
-      if (ridersError) {
-        console.error("Error fetching riders:", ridersError);
-        return;
-      }
-
-      // 2️⃣ Fetch ACTIVE orders
-      const { data: activeOrders, error: ordersError } = await supabase
-  .from("orders")
-  .select("rider_id")
-  .eq("status", "waiting")
-  .not("rider_id", "is", null)
-
-
-      if (ordersError) {
-        console.error("Error fetching orders:", ordersError);
-        return;
-      }
-
-      // 3️⃣ Create lookup
-      const activeRiderIds = new Set(
-        (activeOrders || []).map(order => order.rider_id)
-      );
-
-      // 4️⃣ Transform riders
-      const transformedRiders: Rider[] = (ridersData || []).map(
-        (rider, index) => ({
-          orderId: index + 1,
-          id: rider.id,
-          userid: rider.user_id,
-          name: `${rider.first_name} ${rider.last_name}`.trim(),
-          firstName: rider.first_name,
-          lastName: rider.last_name,
-          middleInitial: rider.middle_initial,
-          address: rider.address,
-          location: rider.area ?? rider.location ?? "N/A",
-          contact: rider.contact,
-          birthdate: rider.birthdate,
-          plateNo: rider.plate_number,
-          email: rider.email,
-          emergencyName: rider.emergency_name,
-          emergencyContact: rider.emergency_contact,
-
-          // ✅ ONLINE / OFFLINE STATUS
-          isOnline: activeRiderIds.has(rider.id),
-        })
-      );
-
-      setRiders(transformedRiders);
-    } catch (err) {
-      console.error("Unexpected error:", err);
-    } finally {
+    if (error) {
+      console.error("Error fetching riders:", error);
       setLoading(false);
+      return;
     }
+
+    const transformed: Rider[] = (data ?? []).map((rider: any, index: number) => {
+      const activeOrders =
+        rider.orders?.filter((o: any) => o.status === "waiting") ?? [];
+
+      return {
+        orderId: index + 1,
+        id: rider.id,
+        userid: rider.user_id,
+
+        name: `${normalizeDbString(rider.first_name)} ${normalizeDbString(rider.last_name)}`.trim(),
+        firstName: normalizeDbString(rider.first_name),
+        lastName: normalizeDbString(rider.last_name),
+        middleInitial: normalizeDbString(rider.middle_initial),
+        address: normalizeDbString(rider.address),
+
+        contact: normalizeDbString(rider.contact),
+        location: normalizeDbString(rider.location),
+        plate_number: normalizeDbString(rider.plate_number),
+        email: normalizeDbString(rider.email),
+
+        birthdate: rider.birthdate ?? "",
+        emergencyName: normalizeDbString(rider.emergency_name),
+        emergencyContact: normalizeDbString(rider.emergency_contact),
+        isOnline: activeOrders.length > 0,
+      };
+    });
+
+    setRiders(transformed);
+    setLoading(false);
   };
 
   fetchRiders();
@@ -313,58 +580,12 @@ console.log("RIDERS ERROR:", ridersError);
   };
 
   const handleOpenDeliveries = (): void => {
+    if (!selectedRider) return;
+
+    setDeliveriesRider(selectedRider);
     setSelectedRider(null);
     setIsDeliveriesModalOpen(true);
   };
-
-  // fetch deliveries from orders table when the deliveries modal opens
-  useEffect(() => {
-    if (!isDeliveriesModalOpen) return;
-
-    const fetchDeliveries = async (): Promise<void> => {
-      try {
-        const { data, error } = await supabase
-          .from("orders")
-          .select("id,status")
-          .order("order_date", { ascending: false });
-
-        if (error) {
-          console.error("Error fetching deliveries/orders:", error);
-          setPresentDeliveries([]);
-          setPastDeliveries([]);
-          return;
-        }
-
-        const rows = Array.isArray(data) ? data : [];
-
-        const present: Delivery[] = [];
-        const past: Delivery[] = [];
-
-        rows.forEach((row: any) => {
-          const id = String(row.id ?? "");
-          const statusRaw = String(row.status ?? "").toLowerCase();
-          const displayStatus = statusRaw === "delivered" ? "Delivered" : "In Progress";
-
-          const item: Delivery = { id, status: displayStatus };
-
-          if (statusRaw === "delivered") {
-            past.push(item);
-          } else {
-            present.push(item);
-          }
-        });
-
-        setPresentDeliveries(present);
-        setPastDeliveries(past);
-      } catch (err) {
-        console.error("Unexpected error fetching deliveries:", err);
-        setPresentDeliveries([]);
-        setPastDeliveries([]);
-      }
-    };
-
-    void fetchDeliveries();
-  }, [isDeliveriesModalOpen]);
 
   const handleDeleteRider = async (riderToDelete: Rider): Promise<void> => {
     try {
@@ -386,6 +607,7 @@ console.log("RIDERS ERROR:", ridersError);
       if (selectedRider?.id === riderToDelete.id) {
         setSelectedRider(null);
         setIsDeliveriesModalOpen(false);
+        setDeliveriesRider(null);
       }
     } catch (err) {
       console.error("Supabase error:", err);
@@ -395,6 +617,10 @@ console.log("RIDERS ERROR:", ridersError);
 
   const handleAddRider = async (formValues: RiderFormData): Promise<void> => {
     try {
+      const {
+        data: { session: adminSession },
+      } = await supabase.auth.getSession();
+
       const { data: authData, error: authError } = await supabase.auth.signUp({
         email: formValues.email.trim(),
         password: formValues.password,
@@ -412,6 +638,13 @@ console.log("RIDERS ERROR:", ridersError);
 
       const userId = authData.user.id;
 
+      if (adminSession) {
+        await supabase.auth.setSession({
+          access_token: adminSession.access_token,
+          refresh_token: adminSession.refresh_token,
+        });
+      }
+
       const { error: profileError } = await supabase.from("profiles").upsert({
         id: userId,
         email: formValues.email.trim(),
@@ -420,7 +653,7 @@ console.log("RIDERS ERROR:", ridersError);
 
       if (profileError) {
         console.error("Profile error:", profileError);
-        alert("Failed to create rider profile.");
+        alert(`Failed to create rider profile: ${profileError.message}`);
         return;
       }
 
@@ -430,50 +663,54 @@ console.log("RIDERS ERROR:", ridersError);
           user_id: userId,
           first_name: formValues.firstName.trim(),
           last_name: formValues.lastName.trim(),
-          middle_initial: formValues.middleInitial.trim(),
-          address: formValues.address.trim() || "N/A",
-          area: formValues.location.trim() || "N/A",
-          contact: formValues.contact.trim() || "N/A",
+          contact: formValues.contact.trim() || null,
+          address: formValues.address.trim() || null,
+          location: formValues.location.trim() || null,
+          plate_number: formValues.plate_number.trim() || null,
+          email: formValues.email.trim() || null,
           birthdate: formValues.birthdate || null,
-          plate_number: formValues.plateNo.trim() || "N/A",
-          email: formValues.email.trim(),
-          emergency_name: formValues.emergencyName.trim() || "N/A",
-          emergency_contact: formValues.emergencyContact.trim() || "N/A",
+          emergency_name: formValues.emergencyName.trim() || null,
+          emergency_contact: formValues.emergencyContact.trim() || null,
         })
         .select()
         .single();
 
       if (riderError || !data) {
         console.error("Rider insert failed:", riderError);
-        alert("Failed to save rider to database.");
+        alert(`Failed to save rider to database: ${getErrorMessage(riderError, "Unknown error")}`);
         return;
       }
 
       setRiders((prev) => [
-        ...prev,
-        {
-          orderId: prev.length + 1,
-          id: data.id,
-          userid: userId,
-          name: `${data.first_name} ${data.last_name}`.trim(),
-          firstName: data.first_name,
-          lastName: data.last_name,
-          middleInitial: data.middle_initial,
-          address: data.address,
-          location: data.area ?? data.location ?? "N/A",
-          contact: data.contact,
-          birthdate: data.birthdate,
-          plateNo: data.plate_number,
-          email: data.email,
-          emergencyName: data.emergency_name,
-          emergencyContact: data.emergency_contact,
-          isOnline: false,
-        },
-      ]);
+  ...prev,
+  {
+    orderId: prev.length + 1,
+    id: data.id,
+    userid: userId,
 
+    name: `${normalizeDbString(data.first_name)} ${normalizeDbString(data.last_name)}`.trim(),
+    firstName: normalizeDbString(data.first_name),
+    lastName: normalizeDbString(data.last_name),
+    middleInitial: normalizeDbString(formValues.middleInitial),
+    address: normalizeDbString(data.address) || normalizeDbString(formValues.address),
+
+    contact: normalizeDbString(data.contact),
+    location: normalizeDbString(data.location) || normalizeDbString(formValues.location),
+    plate_number: normalizeDbString(data.plate_number) || normalizeDbString(formValues.plate_number),
+    email: normalizeDbString(data.email) || normalizeDbString(formValues.email),
+
+    birthdate: normalizeDbString(data.birthdate) || normalizeDbString(formValues.birthdate),
+    emergencyName:
+      normalizeDbString(data.emergency_name) || normalizeDbString(formValues.emergencyName),
+    emergencyContact:
+      normalizeDbString(data.emergency_contact) || normalizeDbString(formValues.emergencyContact),
+
+    isOnline: false,
+  },
+]);
       setIsAddModalOpen(false);
 
-      alert(`Rider account created successfully.\n\nEmail: ${data.email}`);
+      alert(`Rider account created successfully.\n\nEmail: ${formValues.email}`);
     } catch (err) {
       console.error("Unexpected error:", err);
       alert("Unexpected error while adding rider.");
@@ -487,17 +724,7 @@ console.log("RIDERS ERROR:", ridersError);
         .update({
           first_name: updatedRider.firstName.trim(),
           last_name: updatedRider.lastName.trim(),
-          middle_initial: updatedRider.middleInitial.trim(),
-          address: updatedRider.address.trim() || "N/A",
-          area: updatedRider.location.trim() || "N/A",
-          contact: updatedRider.contact.trim() || "N/A",
-          birthdate: updatedRider.birthdate
-            ? toDateInputValue(updatedRider.birthdate)
-            : null,
-          plate_number: updatedRider.plateNo.trim() || "N/A",
-          email: updatedRider.email.trim(),
-          emergency_name: updatedRider.emergencyName.trim() || "N/A",
-          emergency_contact: updatedRider.emergencyContact.trim() || "N/A",
+          contact: updatedRider.contact.trim() || null,
         })
         .eq("id", updatedRider.id);
 
@@ -521,7 +748,7 @@ console.log("RIDERS ERROR:", ridersError);
     }
   };
 
-  const activeRiders = riders.length;
+  const activeRiders = riders.filter((rider) => rider.isOnline).length;
 
   return (
     <div className="riders-main-content">
@@ -545,7 +772,7 @@ console.log("RIDERS ERROR:", ridersError);
               <p className="riders-summary-value">
                 {activeRiders}/{riders.length}
               </p>
-              <p className="riders-summary-label">Total Riders</p>
+              <p className="riders-summary-label">Active Total Riders</p>
             </div>
           </article>
 
@@ -579,11 +806,13 @@ console.log("RIDERS ERROR:", ridersError);
         />
       )}
 
-      {isDeliveriesModalOpen && (
+      {isDeliveriesModalOpen && deliveriesRider && (
         <DeliveriesDialog
-          onClose={() => setIsDeliveriesModalOpen(false)}
-          presentDeliveries={presentDeliveries}
-          pastDeliveries={pastDeliveries}
+          rider={deliveriesRider}
+          onClose={() => {
+            setIsDeliveriesModalOpen(false);
+            setDeliveriesRider(null);
+          }}
         />
       )}
     </div>

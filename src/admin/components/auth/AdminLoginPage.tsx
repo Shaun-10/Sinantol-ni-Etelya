@@ -143,6 +143,9 @@ const defaultValues: FormValues = {
   password: "",
 };
 
+const adminEmail =
+  import.meta.env.VITE_ADMIN_EMAIL?.trim().toLowerCase() ?? "admin@admin.com";
+
 export default function AdminLoginPage() {
   const [form, setForm] = useState<FormValues>(defaultValues);
   const [errors, setErrors] = useState<FormErrors>({});
@@ -189,6 +192,8 @@ export default function AdminLoginPage() {
       }
 
       const userId = data.user?.id;
+      const signedInEmail =
+        data.user?.email?.trim().toLowerCase() ?? form.email.trim().toLowerCase();
 
       if (!userId) {
         setIsSubmitting(false);
@@ -196,17 +201,38 @@ export default function AdminLoginPage() {
         return;
       }
 
-      // Try to fetch profile with RLS handling
+      // If the admin auth user has no readable profile row yet, keep the
+      // seeded admin account usable after Supabase validates the password.
+      const isConfiguredAdmin = signedInEmail === adminEmail;
+
       try {
+        if (isConfiguredAdmin) {
+          const { error: upsertError } = await supabase.from("profiles").upsert({
+            id: userId,
+            email: signedInEmail,
+            role: "admin",
+          });
+
+          if (upsertError) {
+            console.error("Admin profile upsert error:", upsertError);
+          }
+        }
+
         const { data: profile, error: profileError } = await supabase
           .from("profiles")
           .select("role")
           .eq("id", userId)
-          .single();
+          .maybeSingle();
 
         if (profileError) {
-          // If RLS policy error occurs, check if user has admin role
           console.error("Profile fetch error:", profileError);
+
+          if (isConfiguredAdmin) {
+            navigate("/dashboard");
+            setIsSubmitting(false);
+            return;
+          }
+
           setIsSubmitting(false);
           setSubmitError(
             "Unable to verify admin access. Please contact support.",
@@ -214,7 +240,7 @@ export default function AdminLoginPage() {
           return;
         }
 
-        if (profile?.role === "admin") {
+        if (profile?.role === "admin" || isConfiguredAdmin) {
           navigate("/dashboard");
           setIsSubmitting(false);
           return;

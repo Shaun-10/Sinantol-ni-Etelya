@@ -20,7 +20,7 @@ export default function AdminNavbar() {
   };
 
   const handleLogout = () => {
-    navigate("/admin/login");
+    navigate("/login");
     setShowMenu(false);
   };
 
@@ -42,34 +42,34 @@ export default function AdminNavbar() {
   }, [showMenu]);
 
   return (
-    <header className="admin-topbar">
-      <div className="admin-topbar-brand">
-        <div className="admin-topbar-logo">
+    <header className="flex items-center justify-between gap-4 border-b border-gray-200 bg-white px-6 py-4 shadow-sm">
+      <div className="flex items-center gap-4">
+        <div className="h-15 w-20 rounded-lg bg-gray-100 flex items-center justify-center overflow-hidden">
           <img
             src="/images/logo.png"
             alt="Sinantol ni Etelya logo"
-            className="object-contain"
+            className="h-15 w-20 object-contain"
           />
         </div>
 
-        <div className="admin-topbar-title">
-          <h1>Dashboard</h1>
+        <div className="flex items-center gap-2">
+          <h1 className="text-lg font-bold text-gray-900">Dashboard</h1>
           {pageLabel && (
             <>
-              <FiChevronRight className="text-[#90a090]" aria-hidden="true" />
-              <h2>{pageLabel}</h2>
+              <FiChevronRight className="text-gray-400" aria-hidden="true" />
+              <h2 className="text-2xl font-bold text-gray-900">{pageLabel}</h2>
             </>
           )}
         </div>
       </div>
 
-      <div className="relative flex items-center gap-2" ref={menuRef}>
+      <div className="flex items-center gap-2 relative" ref={menuRef}>
         <button
           onClick={handleAdminClick}
-          className={`flex items-center gap-2 rounded-xl border px-3 py-2 cursor-pointer transition ${
+          className={`flex items-center gap-2 rounded-lg border px-3 py-2 cursor-pointer transition ${
             showMenu
-              ? "border-[#80c28e] bg-[#edf8ef]"
-              : "border-[#d7dfd4] bg-white hover:bg-[#fbfcfa]"
+              ? "border-green-500 bg-green-50"
+              : "border-gray-200 bg-white hover:bg-gray-50"
           }`}
           type="button"
           aria-label="Admin menu"
@@ -77,26 +77,26 @@ export default function AdminNavbar() {
         >
           <div className={`h-6 w-6 rounded-full flex items-center justify-center transition ${
             showMenu
-              ? "bg-[#1f8f38] text-white"
-              : "bg-[#dff2e3] text-[#1f8f38]"
+              ? "bg-green-500 text-white"
+              : "bg-green-100 text-green-700"
           }`}>
             <FiUser className="h-4 w-4" />
           </div>
-          <span className={`text-sm font-semibold transition ${
-            showMenu ? "text-[#11702b]" : "text-[#24311f]"
+          <span className={`text-sm font-medium transition ${
+            showMenu ? "text-green-700" : "text-gray-900"
           }`}>Admin</span>
         </button>
 
         {showMenu && (
-          <div className="absolute right-0 top-full z-50 mt-2 w-60 overflow-hidden rounded-2xl border border-[#d6dfd0] bg-white shadow-[0_16px_34px_rgba(34,48,25,0.16)] animate-in fade-in slide-in-from-top-2 duration-150">
-            <div className="border-b border-[#eef2ea] bg-gradient-to-r from-[#ecf7ee] to-transparent p-4">
+          <div className="absolute right-0 top-full mt-2 w-60 bg-white rounded-lg shadow-lg border border-gray-200 overflow-hidden z-50 animate-in fade-in slide-in-from-top-2 duration-150">
+            <div className="p-4 border-b border-gray-100 bg-gradient-to-r from-green-50 to-transparent">
               <div className="flex items-center gap-3">
-                <div className="flex h-10 w-10 items-center justify-center rounded-full bg-[#1f8f38] text-white">
+                <div className="h-10 w-10 rounded-full bg-green-500 flex items-center justify-center text-white">
                   <FiUser className="h-5 w-5" />
                 </div>
                 <div>
-                  <p className="text-sm font-semibold text-[#24311f]">Admin Account</p>
-                  <p className="text-xs text-[#677368]">Administrator</p>
+                  <p className="text-sm font-semibold text-gray-900">Admin Account</p>
+                  <p className="text-xs text-gray-500">Administrator</p>
                 </div>
               </div>
             </div>
@@ -104,7 +104,7 @@ export default function AdminNavbar() {
             <div className="p-2">
               <button
                 onClick={handleLogout}
-                className="flex w-full items-center gap-3 rounded-xl px-4 py-3 text-left text-sm font-semibold text-[#d83d3d] transition hover:bg-[#fff1f1]"
+                className="w-full px-4 py-3 text-left text-sm text-red-600 hover:bg-red-50 rounded-md transition flex items-center gap-3 font-medium"
                 type="button"
               >
                 <FiLogOut className="h-4 w-4" />

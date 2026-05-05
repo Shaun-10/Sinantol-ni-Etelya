@@ -10,19 +10,27 @@ export default function RiderDeliveryDetailsPage() {
   const deliveryId = searchParams.get('id') ?? '';
   const [delivery, setDelivery] = useState<RiderDelivery | null>(null);
   const [isLoading, setIsLoading] = useState(true);
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
     const loadDelivery = async () => {
       setIsLoading(true);
+      setError(null);
       if (!deliveryId) {
         setDelivery(null);
         setIsLoading(false);
         return;
       }
 
-      const data = await getRiderDeliveryById(deliveryId);
-      setDelivery(data);
-      setIsLoading(false);
+      try {
+        const data = await getRiderDeliveryById(deliveryId);
+        setDelivery(data);
+      } catch (err) {
+        setError(`Failed to load delivery: ${err instanceof Error ? err.message : 'Unknown error'}`);
+      } finally {
+        setIsLoading(false);
+      }
     };
 
     loadDelivery();
@@ -33,8 +41,21 @@ export default function RiderDeliveryDetailsPage() {
       return;
     }
 
-    await markDeliveryDelivered(deliveryId);
-    navigate(`/rider/deliveries/delivered?id=${encodeURIComponent(deliveryId)}`);
+    setIsSubmitting(true);
+    setError(null);
+    
+    try {
+      const success = await markDeliveryDelivered(deliveryId);
+      if (success) {
+        navigate(`/rider/deliveries/delivered?id=${encodeURIComponent(deliveryId)}`);
+      } else {
+        setError('Failed to mark delivery as delivered. Please try again.');
+      }
+    } catch (err) {
+      setError(`Error: ${err instanceof Error ? err.message : 'Unknown error'}`);
+    } finally {
+      setIsSubmitting(false);
+    }
   };
 
   const handleFailed = async () => {
@@ -42,8 +63,21 @@ export default function RiderDeliveryDetailsPage() {
       return;
     }
 
-    await markDeliveryFailed(deliveryId, 'Marked as failed by rider');
-    navigate(`/rider/history/details?id=${encodeURIComponent(deliveryId)}`);
+    setIsSubmitting(true);
+    setError(null);
+    
+    try {
+      const success = await markDeliveryFailed(deliveryId, 'Marked as failed by rider');
+      if (success) {
+        navigate(`/rider/history/details?id=${encodeURIComponent(deliveryId)}`);
+      } else {
+        setError('Failed to mark delivery as failed. Please try again.');
+      }
+    } catch (err) {
+      setError(`Error: ${err instanceof Error ? err.message : 'Unknown error'}`);
+    } finally {
+      setIsSubmitting(false);
+    }
   };
 
   const handleOpenGoogleMaps = () => {
@@ -67,6 +101,12 @@ export default function RiderDeliveryDetailsPage() {
   return (
     <RiderAppLayout showBack backTo="/rider/deliveries">
       {isLoading ? <p className="m-0 mb-3 text-sm text-[#5b645c]">Loading delivery...</p> : null}
+
+      {error && (
+        <div className="mb-3 p-3 bg-[#ffe0e0] text-[#d12525] rounded-lg text-sm font-semibold">
+          {error}
+        </div>
+      )}
 
       {/* Customer Details Card */}
       <article className="bg-rider-details-card rounded-xl p-3 mb-3">
@@ -107,8 +147,9 @@ export default function RiderDeliveryDetailsPage() {
         <h3 className="m-0 mb-1.5 text-[#4b534d] text-sm font-bold">PAYMENT OPTIONS</h3>
         <button
           type="button"
-          className="w-full border-none rounded-lg bg-[#96d68f] text-[#108426] px-3 py-3 font-black cursor-pointer hover:opacity-90"
+          className="w-full border-none rounded-lg bg-[#96d68f] text-[#108426] px-3 py-3 font-black cursor-pointer hover:opacity-90 disabled:opacity-60"
           onClick={() => navigate(`/rider/deliveries/payment?id=${encodeURIComponent(deliveryId)}`)}
+          disabled={isSubmitting}
         >
           Switch to e-Payment (GCash/Maya)
         </button>
@@ -117,18 +158,18 @@ export default function RiderDeliveryDetailsPage() {
       {/* Map Button */}
       <button
         type="button"
-        className="w-full border-none rounded-[11px] bg-[#707070] text-[#e9e9e9] px-4 py-3.25 text-[1.05rem] mb-3 font-bold cursor-pointer hover:opacity-90"
+        className="w-full border-none rounded-[11px] bg-[#707070] text-[#e9e9e9] px-4 py-3.25 text-[1.05rem] mb-3 font-bold cursor-pointer hover:opacity-90 disabled:opacity-60"
         onClick={handleOpenInAppMap}
-        disabled={!delivery?.address}
+        disabled={!delivery?.address || isSubmitting}
       >
         Open In-App Map
       </button>
 
       <button
         type="button"
-        className="w-full border border-[#7d7d7d] rounded-[11px] bg-[#ececec] text-[#3b3b3b] px-4 py-2.5 text-[0.9rem] mb-3 font-bold cursor-pointer hover:opacity-90"
+        className="w-full border border-[#7d7d7d] rounded-[11px] bg-[#ececec] text-[#3b3b3b] px-4 py-2.5 text-[0.9rem] mb-3 font-bold cursor-pointer hover:opacity-90 disabled:opacity-60"
         onClick={handleOpenGoogleMaps}
-        disabled={!delivery?.address}
+        disabled={!delivery?.address || isSubmitting}
       >
         Open in Google Maps
       </button>
@@ -137,13 +178,19 @@ export default function RiderDeliveryDetailsPage() {
       <div className="grid grid-cols-2 gap-2">
         <button
           type="button"
-          className="border-none rounded-[10px] px-3 py-3 font-black bg-[#8fd98d] text-[#0c8f2d] cursor-pointer hover:opacity-90"
+          className="border-none rounded-[10px] px-3 py-3 font-black bg-[#8fd98d] text-[#0c8f2d] cursor-pointer hover:opacity-90 disabled:opacity-60"
           onClick={handleDelivered}
+          disabled={isSubmitting}
         >
-          Delivered
+          {isSubmitting ? 'Saving...' : 'Delivered'}
         </button>
-        <button type="button" className="border-none rounded-[10px] px-3 py-3 font-black bg-[#ef8f8f] text-[#f21f1f] cursor-pointer hover:opacity-90" onClick={handleFailed}>
-          Failed
+        <button
+          type="button"
+          className="border-none rounded-[10px] px-3 py-3 font-black bg-[#ef8f8f] text-[#f21f1f] cursor-pointer hover:opacity-90 disabled:opacity-60"
+          onClick={handleFailed}
+          disabled={isSubmitting}
+        >
+          {isSubmitting ? 'Saving...' : 'Failed'}
         </button>
       </div>
     </RiderAppLayout>

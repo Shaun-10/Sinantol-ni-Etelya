@@ -3,6 +3,7 @@ import { FiChevronRight, FiPhone } from 'react-icons/fi';
 import { useNavigate } from 'react-router-dom';
 import RiderAppLayout from '../../components/RiderAppLayout';
 import { getRiderDeliveries, toCurrency, type RiderDelivery } from '../../lib/riderData';
+import { useRefreshableData } from '../../hooks/useRefreshOnFocus';
 
 interface DeliveryItem {
   id: string;
@@ -25,15 +26,18 @@ export default function RiderDeliveriesPage() {
   const [isLoading, setIsLoading] = useState(true);
   const [deliveries, setDeliveries] = useState<RiderDelivery[]>([]);
 
-  useEffect(() => {
-    const loadDeliveries = async () => {
-      setIsLoading(true);
-      const data = await getRiderDeliveries();
+  // Automatically refresh deliveries when page regains focus
+  useRefreshableData(
+    getRiderDeliveries,
+    (data) => {
       setDeliveries(data);
       setIsLoading(false);
-    };
+    },
+    []
+  );
 
-    loadDeliveries();
+  useEffect(() => {
+    setIsLoading(true);
   }, []);
 
   const activeDeliveries = useMemo<ActiveDelivery[]>(() => {

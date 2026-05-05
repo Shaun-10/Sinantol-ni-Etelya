@@ -54,6 +54,20 @@ function isMissingTableError(error: { code?: string; message?: string } | null |
   return code === '42P01' || code === 'PGRST205' || message.includes('could not find the table');
 }
 
+function isMissingColumnError(error: { code?: string; message?: string } | null | undefined): boolean {
+  if (!error) {
+    return false;
+  }
+
+  const code = String(error.code ?? '');
+  const message = String(error.message ?? '').toLowerCase();
+  return code === 'PGRST204' || (message.includes('could not find') && message.includes('column'));
+}
+
+function minimalStatusPayload(payload: Record<string, unknown>): Record<string, unknown> {
+  return 'status' in payload ? { status: payload.status } : payload;
+}
+
 function formatCurrency(value: number): string {
   return `P${Number.isFinite(value) ? value.toLocaleString('en-PH', { minimumFractionDigits: 0, maximumFractionDigits: 2 }) : '0'}`;
 }
@@ -63,13 +77,15 @@ export function toCurrency(value: number): string {
 }
 
 function statusFromRow(rawStatus: unknown): DeliveryStatus {
-  const status = String(rawStatus ?? '').toLowerCase();
-  if (status.includes('deliver')) {
+  const status = String(rawStatus ?? '').toLowerCase().trim();
+  // Match database values: 'delivered', 'failed', 'in_progress'
+  if (status === 'delivered' || status.includes('deliver')) {
     return 'Delivered';
   }
-  if (status.includes('fail') || status.includes('cancel')) {
+  if (status === 'failed' || status.includes('fail') || status.includes('cancel')) {
     return 'Failed';
   }
+  // Default to 'In Progress' for 'in_progress', 'pending', 'waiting', or unknown
   return 'In Progress';
 }
 
@@ -141,7 +157,10 @@ function mapOrderItemsByOrderId(rows: Array<Record<string, unknown>>): Map<strin
     }
 
     const quantity = toNumber(row.quantity ?? row.qty ?? 1);
-    const itemName = String(row.product_name ?? row.item_name ?? row.name ?? row.title ?? 'Item').trim();
+    const variant = row.product_variants as Record<string, unknown> | null | undefined;
+    const variantName = [variant?.flavor, variant?.size].filter(Boolean).join(' ');
+    const fallbackName = variantName.trim() || 'Item';
+    const itemName = String(row.product_name ?? row.item_name ?? row.name ?? row.title ?? fallbackName).trim() || fallbackName;
     const itemText = quantity > 1 ? `${quantity}x ${itemName}` : itemName;
 
     const current = map.get(orderId) ?? [];
@@ -287,6 +306,7 @@ export async function getRiderProfileData(): Promise<RiderProfileData> {
 export async function getRiderDeliveries(): Promise<RiderDelivery[]> {
   const client = getRiderSupabaseClient();
   if (!client) {
+    console.error('Supabase client is not configured.');
     setRiderDataIssue('Supabase client is not configured.');
     return [];
   }
@@ -294,22 +314,38 @@ export async function getRiderDeliveries(): Promise<RiderDelivery[]> {
   const { data: userData } = await client.auth.getUser();
   const user = userData.user;
   if (!user) {
+    console.error('No logged-in rider session found.');
     setRiderDataIssue('No logged-in rider session found.');
     return [];
   }
 
-  const { data, error } = await client.from('deliveries').select('*');
-  if (!error) {
-    if (!Array.isArray(data)) {
-      setRiderDataIssue('Deliveries query returned invalid data format.');
-      return [];
+  console.log('Fetching deliveries for user:', user.id, user.email);
+
+  const email = String(user.email ?? '').trim().toLowerCase();
+  const deliveries: RiderDelivery[] = [];
+
+  const { data: riderRowData } = await client
+    .from('riders')
+    .select('id,user_id,email')
+    .eq('user_id', user.id)
+    .maybeSingle();
+
+  const riderRow = (riderRowData as Record<string, unknown> | null) ?? null;
+  const riderId = String(riderRow?.id ?? '').trim();
+
+  const { data: deliveriesData, error: deliveriesError } = await client.from('deliveries').select('*');
+  if (deliveriesError) {
+    console.error('Deliveries query error:', deliveriesError);
+    if (!isMissingTableError(deliveriesError)) {
+      setRiderDataIssue(`Deliveries query failed: ${deliveriesError.message}`);
     }
+  } else if (!Array.isArray(deliveriesData)) {
+    console.error('Deliveries query returned invalid data format:', deliveriesData);
+    setRiderDataIssue('Deliveries query returned invalid data format.');
+  } else {
+    console.log('Deliveries fetched:', deliveriesData.length, 'records');
 
-    clearRiderDataIssue();
-
-    const email = String(user.email ?? '').trim().toLowerCase();
-
-    const filtered = data.filter((row) => {
+    const filteredDeliveries = deliveriesData.filter((row) => {
       const typed = row as Record<string, unknown>;
       const riderAuthId = String(typed.rider_auth_id ?? typed.rider_id ?? '').trim();
       const riderEmail = String(typed.rider_email ?? '').trim().toLowerCase();
@@ -321,40 +357,28 @@ export async function getRiderDeliveries(): Promise<RiderDelivery[]> {
       return riderAuthId === user.id || (riderEmail && riderEmail === email);
     });
 
-    const sorted = sortRowsByDateDesc(filtered as Array<Record<string, unknown>>);
-    return sorted.map((row) => mapDeliveryRow(row as Record<string, unknown>));
+    console.log('Filtered deliveries:', filteredDeliveries.length, 'records (after rider match)');
+    deliveries.push(...filteredDeliveries.map((row) => mapDeliveryRow(row as Record<string, unknown>)));
   }
-
-  if (!isMissingTableError(error)) {
-    setRiderDataIssue(`Deliveries query failed: ${error.message}`);
-    return [];
-  }
-
-  const email = String(user.email ?? '').trim().toLowerCase();
-
-  const { data: riderRowData } = await client
-    .from('riders')
-    .select('id,user_id,email')
-    .eq('user_id', user.id)
-    .maybeSingle();
-
-  const riderRow = (riderRowData as Record<string, unknown> | null) ?? null;
-  const riderId = String(riderRow?.id ?? '').trim();
 
   const { data: ordersData, error: ordersError } = await client.from('orders').select('*');
   if (ordersError) {
-    if (isMissingTableError(ordersError)) {
+    console.error('Orders query error:', ordersError);
+    if (isMissingTableError(ordersError) && deliveries.length === 0) {
       setRiderDataIssue('Missing rider order tables. Expected deliveries or orders table.');
-    } else {
+    } else if (!isMissingTableError(ordersError)) {
       setRiderDataIssue(`Orders query failed: ${ordersError.message}`);
     }
-    return [];
+    return sortRowsByDateDesc(deliveries as unknown as Array<Record<string, unknown>>) as unknown as RiderDelivery[];
   }
 
   if (!Array.isArray(ordersData)) {
+    console.error('Orders query returned invalid data format:', ordersData);
     setRiderDataIssue('Orders query returned invalid data format.');
-    return [];
+    return sortRowsByDateDesc(deliveries as unknown as Array<Record<string, unknown>>) as unknown as RiderDelivery[];
   }
+
+  console.log('Orders fetched:', ordersData.length, 'records');
 
   const filteredOrders = ordersData.filter((row) => {
     const typed = row as Record<string, unknown>;
@@ -368,6 +392,8 @@ export async function getRiderDeliveries(): Promise<RiderDelivery[]> {
     return rowRiderId === riderId || rowRiderId === user.id || (rowRiderEmail && rowRiderEmail === email);
   });
 
+  console.log('Filtered orders:', filteredOrders.length, 'records (after rider match)');
+
   const sortedOrders = sortRowsByDateDesc(filteredOrders as Array<Record<string, unknown>>);
 
   const orderIds = sortedOrders
@@ -377,20 +403,33 @@ export async function getRiderDeliveries(): Promise<RiderDelivery[]> {
   let itemsByOrderId = new Map<string, string[]>();
 
   if (orderIds.length > 0) {
-    const { data: itemRows, error: itemError } = await client.from('order_items').select('*').in('order_id', orderIds);
+    const { data: itemRows, error: itemError } = await client
+      .from('order_items')
+      .select('*, product_variants(flavor, size)')
+      .in('order_id', orderIds);
     if (!itemError && Array.isArray(itemRows)) {
       itemsByOrderId = mapOrderItemsByOrderId(itemRows as Array<Record<string, unknown>>);
+      console.log('Loaded order items:', itemsByOrderId.size, 'orders with items');
     }
   }
 
   clearRiderDataIssue();
 
-  return sortedOrders.map((row) => {
+  const orders = sortedOrders.map((row) => {
     const typed = row as Record<string, unknown>;
     const id = String(typed.id ?? '');
     const rowItems = itemsByOrderId.get(id) ?? parseItems(typed.items ?? typed.order_items);
     return mapOrderRow(typed, rowItems);
   });
+
+  const result = [...deliveries, ...orders].sort((a, b) => {
+    const aMs = a.createdAt ? new Date(a.createdAt).getTime() : 0;
+    const bMs = b.createdAt ? new Date(b.createdAt).getTime() : 0;
+    return (Number.isNaN(bMs) ? 0 : bMs) - (Number.isNaN(aMs) ? 0 : aMs);
+  });
+
+  console.log('Final result:', result.length, 'deliveries');
+  return result;
 }
 
 export async function getRiderDeliveryById(deliveryId: string): Promise<RiderDelivery | null> {
@@ -401,6 +440,7 @@ export async function getRiderDeliveryById(deliveryId: string): Promise<RiderDel
 export async function markDeliveryDelivered(deliveryId: string): Promise<boolean> {
   const client = getRiderSupabaseClient();
   if (!client) {
+    console.error('Supabase client not available');
     return false;
   }
 
@@ -410,22 +450,15 @@ export async function markDeliveryDelivered(deliveryId: string): Promise<boolean
     payment_status: 'paid',
   };
 
-  const { error } = await client
-    .from('deliveries')
-    .update(payload)
-    .eq('id', deliveryId);
+  console.log('Marking delivery as delivered:', { deliveryId, payload });
 
-  if (error && isMissingTableError(error)) {
-    const { error: orderError } = await client.from('orders').update(payload).eq('id', deliveryId);
-    return !orderError;
-  }
-
-  return !error;
+  return updateDeliveryRecord(deliveryId, payload);
 }
 
 export async function markDeliveryFailed(deliveryId: string, reason: string): Promise<boolean> {
   const client = getRiderSupabaseClient();
   if (!client) {
+    console.error('Supabase client not available');
     return false;
   }
 
@@ -435,22 +468,15 @@ export async function markDeliveryFailed(deliveryId: string, reason: string): Pr
     failed_reason: reason,
   };
 
-  const { error } = await client
-    .from('deliveries')
-    .update(payload)
-    .eq('id', deliveryId);
+  console.log('Marking delivery as failed:', { deliveryId, payload });
 
-  if (error && isMissingTableError(error)) {
-    const { error: orderError } = await client.from('orders').update(payload).eq('id', deliveryId);
-    return !orderError;
-  }
-
-  return !error;
+  return updateDeliveryRecord(deliveryId, payload);
 }
 
 export async function markDeliveryPaid(deliveryId: string): Promise<boolean> {
   const client = getRiderSupabaseClient();
   if (!client) {
+    console.error('Supabase client not available');
     return false;
   }
 
@@ -461,17 +487,70 @@ export async function markDeliveryPaid(deliveryId: string): Promise<boolean> {
     delivered_at: new Date().toISOString(),
   };
 
-  const { error } = await client
-    .from('deliveries')
-    .update(payload)
-    .eq('id', deliveryId);
+  console.log('Marking delivery as paid:', { deliveryId, payload });
 
-  if (error && isMissingTableError(error)) {
-    const { error: orderError } = await client.from('orders').update(payload).eq('id', deliveryId);
-    return !orderError;
+  return updateDeliveryRecord(deliveryId, payload);
+}
+
+async function updateDeliveryRecord(deliveryId: string, payload: Record<string, unknown>): Promise<boolean> {
+  const client = getRiderSupabaseClient();
+  if (!client) {
+    console.error('Supabase client not available');
+    return false;
   }
 
-  return !error;
+  const { error, data } = await client
+    .from('deliveries')
+    .update(payload)
+    .eq('id', deliveryId)
+    .select();
+
+  if (!error && Array.isArray(data) && data.length > 0) {
+    console.log('Deliveries update successful:', data);
+    return true;
+  }
+
+  if (error && !isMissingTableError(error)) {
+    console.error('Deliveries table error:', error);
+  }
+
+  console.log('Trying orders table instead...');
+
+  let { error: orderError, data: orderData } = await client
+    .from('orders')
+    .update(payload)
+    .eq('id', deliveryId)
+    .select();
+
+  if (orderError && isMissingColumnError(orderError)) {
+    const fallbackPayload = minimalStatusPayload(payload);
+    console.warn('Orders table is missing optional delivery columns. Retrying with status only:', {
+      originalError: orderError,
+      fallbackPayload,
+    });
+
+    const fallbackResult = await client
+      .from('orders')
+      .update(fallbackPayload)
+      .eq('id', deliveryId)
+      .select();
+
+    orderError = fallbackResult.error;
+    orderData = fallbackResult.data;
+  }
+
+  if (orderError) {
+    console.error('Orders table error:', orderError);
+    return false;
+  }
+
+  if (!Array.isArray(orderData) || orderData.length === 0) {
+    console.error('No delivery or order matched the selected id:', deliveryId);
+    return false;
+  }
+
+  console.log('Orders update successful:', orderData);
+  return true;
 }
 
 export function formatMetaDateTime(value?: string): string {

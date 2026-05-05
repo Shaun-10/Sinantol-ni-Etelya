@@ -25,7 +25,6 @@ interface SummaryItem {
   icon: IconType;
   value: string;
   label: string;
-  key?: string;
 }
 
 interface PerformanceData {
@@ -36,7 +35,7 @@ interface PerformanceData {
 }
 
 interface OrderRow {
-  order_date: string | null;
+  created_at: string | null;
   rider_id: string | null;
   status: string | null;
   total: number | string | null;
@@ -75,8 +74,8 @@ function buildTodaySummary(
   const startOfToday = getStartOfDay(now);
 
   const todaysOrders = orders.filter((order) => {
-    if (!order.order_date) return false;
-    return new Date(order.order_date) >= startOfToday;
+    if (!order.created_at) return false;
+    return new Date(order.created_at) >= startOfToday;
   });
 
   const completedToday = todaysOrders.filter(
@@ -84,7 +83,7 @@ function buildTodaySummary(
   ).length;
 
   const assignedDeliveries = todaysOrders.filter(
-    (order) => order.status === "waiting" && Boolean(order.rider_id)
+    (order) => normalizeStatus(order.status) === "waiting" && Boolean(order.rider_id)
   ).length;
 
   return [
@@ -115,9 +114,9 @@ function buildSalesSummary(orders: OrderRow[], now: Date): SummaryItem[] {
   let monthSales = 0;
 
   for (const order of orders) {
-    if (!order.order_date) continue;
+    if (!order.created_at) continue;
 
-    const orderDate = new Date(order.order_date);
+    const orderDate = new Date(order.created_at);
     const amount = toAmount(order.total);
 
     totalCollection += amount;
@@ -183,9 +182,9 @@ function buildPerformanceData(orders: OrderRow[], now: Date): PerformanceData[] 
   const monthMap = new Map(months.map((month) => [month.key, month]));
 
   for (const order of orders) {
-    if (!order.order_date) continue;
+    if (!order.created_at) continue;
 
-    const orderDate = new Date(order.order_date);
+    const orderDate = new Date(order.created_at);
     const key = `${orderDate.getFullYear()}-${orderDate.getMonth()}`;
     const month = monthMap.get(key);
 
@@ -306,59 +305,49 @@ export default function DashboardPage(): JSX.Element {
 
       const { data, error } = await supabase
         .from("orders")
-        .select("order_date, rider_id, status, total")
-        .order("order_date", { ascending: true });
-
-        
-console.log("ORDERS DATA:", data);
-console.log("SUPABASE ERROR:", error);
+        .select("*")
+        .order("created_at", { ascending: true });
 
       if (error) {
         console.error("Error fetching dashboard data:", error);
-        setErrorMessage("Failed to load dashboard data.");
+        setErrorMessage(
+          `Failed to load dashboard data. ${error.message ?? "Please check the database connection."}`
+        );
         setIsLoading(false);
         return;
       }
 
-      const orders = (data ?? []) as OrderRow[];
-const now = new Date(); // you already have this
+      if (!Array.isArray(data)) {
+        console.error("Dashboard data fetch returned unexpected response:", data);
+        setErrorMessage("Failed to load dashboard data. Unexpected response format.");
+        setIsLoading(false);
+        return;
+      }
 
-// ✅ NOW it is safe to use orders
-const startOfToday = new Date();
-startOfToday.setHours(0, 0, 0, 0);
+      const orders = data as OrderRow[];
+      const now = new Date();
+      const startOfToday = getStartOfDay(now);
 
-const activeRiders = new Set(
-  orders
-    .filter(
-      (order) =>
-        order.order_date &&
-        new Date(order.order_date) >= startOfToday &&
-        order.status === "waiting" &&
-        order.rider_id
-    )
-    .map((order) => order.rider_id)
-).size;
+      const activeRiders = new Set(
+        orders
+          .filter(
+            (order) =>
+              order.created_at &&
+              new Date(order.created_at) >= startOfToday &&
+              normalizeStatus(order.status) === "waiting" &&
+              order.rider_id,
+          )
+          .map((order) => order.rider_id),
+      ).size;
 
-console.log("Active riders today:", activeRiders);
 
-console.log("ALL orders:", orders);
 
-orders.forEach(order => {
-  console.log({
-    order_date: order.order_date,
-    isToday:
-      order.order_date &&
-      new Date(order.order_date) >= startOfToday,
-    status: order.status,
-    rider_id: order.rider_id,
-  });
-});
 
 // ✅ use activeRiders AFTER it is calculated
-setSummary(buildTodaySummary(orders, now, activeRiders));
-setSales(buildSalesSummary(orders, now));
-setPerformance(buildPerformanceData(orders, now));
-setIsLoading(false);
+      setSummary(buildTodaySummary(orders, now, activeRiders));
+      setSales(buildSalesSummary(orders, now));
+      setPerformance(buildPerformanceData(orders, now));
+      setIsLoading(false);
     };
 
     void fetchDashboardData();
@@ -367,29 +356,13 @@ setIsLoading(false);
   return (
     <section className="dashboard-overview-content">
       {errorMessage && (
-        <div style={{
-          padding: "12px 16px",
-          borderRadius: "8px",
-          border: "1px solid #f5a623",
-          backgroundColor: "#fff8f0",
-          color: "#d97706",
-          fontSize: "0.9rem",
-          marginBottom: "12px"
-        }}>
+        <div className="rounded-lg border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">
           {errorMessage}
         </div>
       )}
 
       {isLoading && !errorMessage && (
-        <div style={{
-          padding: "12px 16px",
-          borderRadius: "8px",
-          border: "1px solid #c7cfc2",
-          backgroundColor: "#fbfcf6",
-          color: "#5f6b5f",
-          fontSize: "0.9rem",
-          marginBottom: "12px"
-        }}>
+        <div className="rounded-lg border border-gray-200 bg-white px-4 py-3 text-sm text-gray-600">
           Loading dashboard data...
         </div>
       )}
