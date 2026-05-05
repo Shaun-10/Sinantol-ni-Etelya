@@ -1,4 +1,4 @@
-import { FormEvent, useEffect, useState } from "react";
+import { ChangeEvent, FormEvent, useEffect, useState } from "react";
 import { supabase } from "@lib/supabase";
 import type { AdminOrder } from "./orderTypes";
 
@@ -38,6 +38,7 @@ function QuantityRow({
   price: number;
   value: number;
   onChange: (value: number) => void;
+  key?: string;
 }): JSX.Element {
   return (
     <div className="mt-2 flex items-center justify-between rounded-md bg-white px-2 py-1 shadow-sm">
@@ -59,7 +60,9 @@ function QuantityRow({
           type="number"
           min={0}
           value={value}
-          onChange={(event) => onChange(Math.max(0, Number(event.target.value) || 0))}
+          onChange={(event: ChangeEvent<HTMLInputElement>) =>
+            onChange(Math.max(0, Number(event.target.value) || 0))
+          }
           className="h-6 w-12 rounded border border-gray-300 text-center text-xs focus:outline-none focus:ring-1 focus:ring-green-500"
           aria-label={`${label} quantity`}
         />
@@ -289,7 +292,9 @@ export default function AddOrderModal({
                     type="text"
                     placeholder="Enter first name"
                     value={firstName}
-                    onChange={(event) => setFirstName(event.target.value)}
+                      onChange={(event: ChangeEvent<HTMLInputElement>) =>
+                        setFirstName(event.target.value)
+                      }
                     className="rider-input"
                     required
                   />
@@ -301,7 +306,9 @@ export default function AddOrderModal({
                     type="text"
                     placeholder="Enter last name"
                     value={lastName}
-                    onChange={(event) => setLastName(event.target.value)}
+                      onChange={(event: ChangeEvent<HTMLInputElement>) =>
+                        setLastName(event.target.value)
+                      }
                     className="rider-input"
                     required
                   />
@@ -313,7 +320,9 @@ export default function AddOrderModal({
                     type="text"
                     placeholder="M.I"
                     value={middleInitial}
-                    onChange={(event) => setMiddleInitial(event.target.value.slice(0, 1))}
+                      onChange={(event: ChangeEvent<HTMLInputElement>) =>
+                        setMiddleInitial(event.target.value.slice(0, 1))
+                      }
                     className="rider-input w-32"
                     maxLength={1}
                   />
@@ -325,7 +334,9 @@ export default function AddOrderModal({
                     type="text"
                     placeholder="Enter address"
                     value={address}
-                    onChange={(event) => setAddress(event.target.value)}
+                      onChange={(event: ChangeEvent<HTMLInputElement>) =>
+                        setAddress(event.target.value)
+                      }
                     className="rider-input"
                     required
                   />
@@ -337,7 +348,9 @@ export default function AddOrderModal({
                     type="text"
                     placeholder="Enter phone number"
                     value={contact}
-                    onChange={(event) => setContact(event.target.value)}
+                      onChange={(event: ChangeEvent<HTMLInputElement>) =>
+                        setContact(event.target.value)
+                      }
                     className="rider-input"
                     required
                   />
@@ -353,7 +366,9 @@ export default function AddOrderModal({
                       id="assignedRider"
                       name="assignedRider"
                       value={selectedRiderId}
-                      onChange={(event) => setSelectedRiderId(event.target.value)}
+                      onChange={(event: ChangeEvent<HTMLSelectElement>) =>
+                        setSelectedRiderId(event.target.value)
+                      }
                       disabled={loadingRiders}
                       className="rider-input cursor-pointer appearance-none pr-10"
                       required
