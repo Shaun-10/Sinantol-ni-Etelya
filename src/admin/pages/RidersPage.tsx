@@ -202,109 +202,11 @@ function DeliveriesDialog({ rider, onClose }: DeliveriesDialogProps): JSX.Elemen
   const orderFilter = buildRiderFilter(rider, true);
   const deliveriesFilter = buildRiderFilter(rider, false);
 
-  // Live data subscriptions - simplified, client-side filter
-  useEffect(() => {
-    if (!orderFilter && !deliveriesFilter) return;
-
-    let orderChannel: any = null;
-    if (orderFilter) {
-      orderChannel = supabase
-        .channel('rider_orders')
-        .onPostgresChanges({
-          event: { type: 'INSERT', schema: 'public', table: 'orders' },
-          filter: orderFilter, // No status filter here
-          callback: (payload: any) => {
-            const newRow = payload.new;
-            if (newRow.status === 'Delivered') {
-              const newDelivery: Delivery = {
-                id: String(newRow.id ?? ""),
-                status: normalizeDeliveryStatus(newRow.status),
-                customer: normalizeDbString(newRow.customer_name) || "No customer name",
-                createdAt: String(newRow.created_at ?? ""),
-                source: "orders",
-              };
-              setDeliveries(prev => {
-                const exists = prev.some(d => d.id === newDelivery.id);
-                if (exists) return prev;
-                return [newDelivery, ...prev].sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
-              });
-            }
-          }
-        })
-        .onPostgresChanges({
-          event: { type: 'UPDATE', schema: 'public', table: 'orders' },
-          filter: orderFilter,
-          callback: (payload: any) => {
-            const updatedRow = payload.new;
-            const updatedDelivery: Delivery = {
-              id: String(updatedRow.id ?? ""),
-              status: normalizeDeliveryStatus(updatedRow.status),
-              customer: normalizeDbString(updatedRow.customer_name) || "No customer name",
-              createdAt: String(updatedRow.created_at ?? ""),
-              source: "orders",
-            };
-            setDeliveries(prev => {
-              const idx = prev.findIndex(d => d.id === updatedDelivery.id);
-              if (idx === -1) return prev;
-              const newList = prev.slice();
-              newList[idx] = updatedDelivery;
-              return newList.sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
-            });
-          }
-        }).subscribe();
-    }
-
-    let deliveriesChannel: any = null;
-    if (deliveriesFilter) {
-      deliveriesChannel = supabase
-        .channel('rider_deliveries')
-        .onPostgresChanges({
-          event: { type: 'INSERT', schema: 'public', table: 'deliveries' },
-          filter: deliveriesFilter,
-          callback: (payload: any) => {
-            const newRow = payload.new;
-            const newDelivery: Delivery = {
-              id: String(newRow.id ?? ""),
-              status: normalizeDeliveryStatus(newRow.status),
-              customer: normalizeDbString(newRow.customer_name) || "No customer name",
-              createdAt: String(newRow.created_at ?? ""),
-              source: "deliveries",
-            };
-            setDeliveries(prev => {
-              const exists = prev.some(d => d.id === newDelivery.id);
-              if (exists) return prev;
-              return [newDelivery, ...prev].sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
-            });
-          }
-        })
-        .onPostgresChanges({
-          event: { type: 'UPDATE', schema: 'public', table: 'deliveries' },
-          filter: deliveriesFilter,
-          callback: (payload: any) => {
-            const updatedRow = payload.new;
-            const updatedDelivery: Delivery = {
-              id: String(updatedRow.id ?? ""),
-              status: normalizeDeliveryStatus(updatedRow.status),
-              customer: normalizeDbString(updatedRow.customer_name) || "No customer name",
-              createdAt: String(updatedRow.created_at ?? ""),
-              source: "deliveries",
-            };
-            setDeliveries(prev => {
-              const idx = prev.findIndex(d => d.id === updatedDelivery.id);
-              if (idx === -1) return prev;
-              const newList = prev.slice();
-              newList[idx] = updatedDelivery;
-              return newList.sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
-            });
-          }
-        }).subscribe();
-    }
-
-    return () => {
-      if (orderChannel) supabase.removeChannel(orderChannel);
-      if (deliveriesChannel) supabase.removeChannel(deliveriesChannel);
-    };
-  }, [rider.id]);
+  // Live data subscriptions - disabled due to Supabase realtime configuration
+  // The initial fetch below handles data loading, subscriptions can be added later if needed
+  // useEffect(() => {
+  //   // Real-time subscription code...
+  // }, [rider.id]);
 
   // Initial fetch on rider change
   useEffect(() => {
@@ -314,31 +216,50 @@ function DeliveriesDialog({ rider, onClose }: DeliveriesDialogProps): JSX.Elemen
       setDeliveries([]); // Clear previous
 
       try {
-        console.log('Fetching deliveries for rider:', rider.id, 'orderFilter:', orderFilter, 'deliveriesFilter:', deliveriesFilter); // Debug
+        console.log('Fetching deliveries for rider:', rider.id, 'userid:', rider.userid); // Debug
 
-        const [ordersResult, deliveriesResult] = await Promise.all([
-          orderFilter
-            ? supabase
-                .from("orders")
-                .select("id, customer_name, status, created_at")
-                .eq("status", "Delivered")
-                .or(orderFilter)
-                .order("created_at", { ascending: false })
-            : Promise.resolve({ data: [], error: null }),
-          deliveriesFilter
-            ? supabase
-                .from("deliveries")
-                .select("id, customer_name, status, created_at")
-                .or(deliveriesFilter)
-                .order("created_at", { ascending: false })
-            : Promise.resolve({ data: [], error: null }),
-        ]);
+        // Query orders table - match by rider_id (which is the database ID of the rider)
+        // This shows all orders assigned to this rider
+        let ordersQuery = supabase
+          .from("orders")
+          .select("id, customer_name, status, created_at, total, address, contact");
+
+        if (rider.id) {
+          ordersQuery = ordersQuery.eq("rider_id", rider.id);
+        } else {
+          // No rider ID means no results
+          ordersQuery = ordersQuery.eq("rider_id", "");
+        }
+
+        ordersQuery = ordersQuery.order("created_at", { ascending: false });
+
+        // Try to fetch deliveries - this table might not exist or might be restricted by RLS
+        const deliveriesQuery = supabase
+          .from("deliveries")
+          .select("id, customer_name, status, created_at, amount, address, rider_id")
+          .or(`rider_auth_id.eq.${rider.userid},rider_email.eq.${rider.email}`)
+          .order("created_at", { ascending: false });
+
+        // Execute queries with error handling
+        const ordersResult = await ordersQuery;
+        let deliveriesResult = { data: [], error: null };
+        
+        // Try deliveries query but don't fail if table doesn't exist
+        try {
+          deliveriesResult = await deliveriesQuery;
+        } catch (err) {
+          console.warn("Could not fetch deliveries (table may not exist or be restricted):", err);
+        }
 
         console.log('Orders result:', ordersResult);
         console.log('Deliveries result:', deliveriesResult);
 
         if (ordersResult.error) throw ordersResult.error;
-        if (deliveriesResult.error) throw deliveriesResult.error;
+        // Don't throw deliveries error - the table might not exist or be restricted by RLS
+        // We can still show orders even if deliveries table is unavailable
+        if (deliveriesResult.error) {
+          console.warn("Deliveries table error (will show orders only):", deliveriesResult.error);
+        }
 
         const orderRows: Delivery[] = (ordersResult.data ?? []).map((row: any) => ({
           id: String(row.id ?? ""),
@@ -374,7 +295,7 @@ function DeliveriesDialog({ rider, onClose }: DeliveriesDialogProps): JSX.Elemen
     };
 
     void fetchDeliveries();
-  }, [rider.id, orderFilter, deliveriesFilter]);
+  }, [rider.id]);
 
   const presentDeliveries = deliveries.filter(
     (delivery) => !isPastDelivery(delivery.status),
@@ -413,11 +334,14 @@ function DeliveriesDialog({ rider, onClose }: DeliveriesDialogProps): JSX.Elemen
             <p className="text-sm text-gray-500">Loading deliveries...</p>
           )}
 
-          {deliveriesError && (
+          {deliveriesError && deliveriesError.includes("Could not find the table") ? (
+            // Silently handle table not found error - it just means no deliveries data
+            null
+          ) : deliveriesError ? (
             <div className="p-4 bg-red-50 border border-red-200 rounded text-red-700 text-sm font-semibold">
               {deliveriesError}
             </div>
-          )}
+          ) : null}
 
           <section className="space-y-3">
             <h4 className="text-lg font-semibold text-gray-900">
@@ -580,8 +504,12 @@ useEffect(() => {
   };
 
   const handleOpenDeliveries = (): void => {
-    if (!selectedRider) return;
+    if (!selectedRider) {
+      console.error("No selected rider to open deliveries");
+      return;
+    }
 
+    console.log("Opening deliveries for rider:", selectedRider.id, selectedRider.name);
     setDeliveriesRider(selectedRider);
     setSelectedRider(null);
     setIsDeliveriesModalOpen(true);
@@ -810,10 +738,19 @@ useEffect(() => {
         <DeliveriesDialog
           rider={deliveriesRider}
           onClose={() => {
+            console.log("Closing deliveries modal");
             setIsDeliveriesModalOpen(false);
             setDeliveriesRider(null);
           }}
         />
+      )}
+      
+      {isDeliveriesModalOpen && !deliveriesRider && (
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
+          <div className="bg-white rounded-lg shadow-2xl border border-gray-200 p-6">
+            <p className="text-red-600 font-semibold">Error: No rider data available for deliveries</p>
+          </div>
+        </div>
       )}
     </div>
   );
