@@ -216,6 +216,17 @@ function normalizeNameFromEmail(email: string): string {
   return beforeAt.trim() || 'Rider';
 }
 
+function firstNonEmpty(...values: Array<unknown>): string {
+  for (const value of values) {
+    const normalized = String(value ?? '').trim();
+    if (normalized) {
+      return normalized;
+    }
+  }
+
+  return '-';
+}
+
 export async function getRiderProfileData(): Promise<RiderProfileData> {
   const client = getRiderSupabaseClient();
   if (!client) {
@@ -248,7 +259,7 @@ export async function getRiderProfileData(): Promise<RiderProfileData> {
   const metadataName = String(user.user_metadata?.username ?? user.user_metadata?.full_name ?? '').trim();
   const fallbackName = normalizeNameFromEmail(email);
 
-  let profileRow: Record<string, unknown> | null = null;
+  let riderProfileRow: Record<string, unknown> | null = null;
   const { data: riderProfileData, error: riderProfileError } = await client
     .from('rider_profiles')
     .select('*')
@@ -262,44 +273,59 @@ export async function getRiderProfileData(): Promise<RiderProfileData> {
   }
 
   if (riderProfileData && typeof riderProfileData === 'object') {
-    profileRow = riderProfileData as Record<string, unknown>;
+    riderProfileRow = riderProfileData as Record<string, unknown>;
   }
 
-  if (!profileRow) {
-    const { data: riderData, error: riderError } = await client
-      .from('riders')
-      .select('*')
-      .eq('user_id', user.id)
-      .maybeSingle();
+  let riderRow: Record<string, unknown> | null = null;
+  const { data: riderData, error: riderError } = await client
+    .from('riders')
+    .select('*')
+    .eq('user_id', user.id)
+    .maybeSingle();
 
-    if (riderError) {
-      if (!isMissingTableError(riderError)) {
-        setRiderDataIssue(`Rider profile query failed: ${riderError.message}`);
-      }
-    } else if (riderData && typeof riderData === 'object') {
-      profileRow = riderData as Record<string, unknown>;
+  if (riderError) {
+    if (!isMissingTableError(riderError)) {
+      setRiderDataIssue(`Rider profile query failed: ${riderError.message}`);
     }
+  } else if (riderData && typeof riderData === 'object') {
+    riderRow = riderData as Record<string, unknown>;
   }
 
   const fullNameFromRiders = [
-    String(profileRow?.first_name ?? '').trim(),
-    String(profileRow?.last_name ?? '').trim(),
+    String(riderProfileRow?.first_name ?? riderRow?.first_name ?? '').trim(),
+    String(riderProfileRow?.last_name ?? riderRow?.last_name ?? '').trim(),
   ]
     .filter(Boolean)
     .join(' ')
     .trim();
 
-  if (profileRow) {
+  if (riderProfileRow || riderRow) {
     clearRiderDataIssue();
   }
+
+  const profileRow = riderProfileRow ?? riderRow;
 
   return {
     fullName: String(profileRow?.full_name ?? fullNameFromRiders ?? metadataName ?? fallbackName ?? 'Rider'),
     email: email || '-',
-    contact: String(profileRow?.contact ?? profileRow?.phone ?? '-'),
-    assignedArea: String(profileRow?.assigned_area ?? profileRow?.area ?? profileRow?.location ?? '-'),
-    motorModel: String(profileRow?.motor_model ?? profileRow?.motorcycle_model ?? profileRow?.motor ?? '-'),
-    plateNumber: String(profileRow?.plate_number ?? '-'),
+    contact: firstNonEmpty(profileRow?.contact, profileRow?.phone, riderRow?.contact, riderRow?.phone),
+    assignedArea: firstNonEmpty(
+      profileRow?.assigned_area,
+      profileRow?.area,
+      profileRow?.location,
+      riderRow?.assigned_area,
+      riderRow?.area,
+      riderRow?.location,
+    ),
+    motorModel: firstNonEmpty(
+      profileRow?.motor_model,
+      profileRow?.motorcycle_model,
+      profileRow?.motor,
+      riderRow?.motor_model,
+      riderRow?.motorcycle_model,
+      riderRow?.motor,
+    ),
+    plateNumber: firstNonEmpty(profileRow?.plate_number, riderRow?.plate_number),
   };
 }
 

@@ -107,6 +107,56 @@ export default function RiderMapPage() {
   const [stops, setStops] = useState<Stop[]>([]);
   const [stopsToRender, setStopsToRender] = useState<Stop[]>([]);
 
+  const requestRiderLocation = (): void => {
+    if (!navigator.geolocation) {
+      setGpsError('Location access is not supported on this device.');
+      setRiderLocation(manilaCenter);
+      return;
+    }
+
+    if (gpsWatchRef.current !== null) {
+      navigator.geolocation.clearWatch(gpsWatchRef.current);
+      gpsWatchRef.current = null;
+    }
+
+    const successCallback = (position: GeolocationPosition) => {
+      const { latitude, longitude } = position.coords;
+      const newLocation: LatLngTuple = [latitude, longitude];
+      setRiderLocation(newLocation);
+      setGpsError(null);
+
+      const accuracy = position.coords.accuracy;
+      setGpsAccuracy(accuracy);
+      if (accuracy < 10) {
+        setGpsSignalQuality('excellent');
+      } else if (accuracy < 25) {
+        setGpsSignalQuality('good');
+      } else if (accuracy < 100) {
+        setGpsSignalQuality('fair');
+      } else {
+        setGpsSignalQuality('acquiring');
+      }
+    };
+
+    const errorCallback = (error: GeolocationPositionError) => {
+      console.warn('GPS Error:', error.message);
+
+      if (error.code === error.PERMISSION_DENIED) {
+        setGpsError('Please allow location access for the Rider app in your browser settings and reload the page.');
+      } else {
+        setGpsError(`GPS: ${error.message}`);
+      }
+
+      setRiderLocation(manilaCenter);
+    };
+
+    gpsWatchRef.current = navigator.geolocation.watchPosition(successCallback, errorCallback, {
+      enableHighAccuracy: true,
+      timeout: 10000,
+      maximumAge: 0,
+    });
+  };
+
   // Recompute the nearest stop whenever rider location or stop list updates
   useEffect(() => {
     if (!riderLocation) {
@@ -145,49 +195,7 @@ export default function RiderMapPage() {
 
   // Start GPS tracking on mount
   useEffect(() => {
-    if (!navigator.geolocation) {
-      setGpsError('Geolocation not supported on this device');
-      setRiderLocation(manilaCenter);
-      return;
-    }
-
-    const successCallback = (position: GeolocationPosition) => {
-      const { latitude, longitude } = position.coords;
-      const newLocation: LatLngTuple = [latitude, longitude];
-      setRiderLocation(newLocation);
-      setGpsError(null);
-
-      // Track GPS accuracy and signal quality.
-      const accuracy = position.coords.accuracy;
-      setGpsAccuracy(accuracy);
-      if (accuracy < 10) {
-        setGpsSignalQuality('excellent');
-      } else if (accuracy < 25) {
-        setGpsSignalQuality('good');
-      } else if (accuracy < 100) {
-        setGpsSignalQuality('fair');
-      } else {
-        setGpsSignalQuality('acquiring');
-      }
-    };
-
-    const errorCallback = (error: GeolocationPositionError) => {
-      console.warn('GPS Error:', error.message);
-      setGpsError(`GPS: ${error.message}`);
-      // Fallback to Manila
-      setRiderLocation(manilaCenter);
-    };
-
-    // Start watching position with high accuracy
-    gpsWatchRef.current = navigator.geolocation.watchPosition(
-      successCallback,
-      errorCallback,
-      {
-        enableHighAccuracy: true,
-        timeout: 10000,
-        maximumAge: 0,
-      }
-    );
+    requestRiderLocation();
 
     // Cleanup on unmount
     return () => {
@@ -199,29 +207,6 @@ export default function RiderMapPage() {
 
   // Load delivery data
   useEffect(() => {
-    const loadDelivery = async () => {
-      setIsLoading(true);
-      setRoute(null);
-      setRouteGeoError(null);
-
-      if (!deliveryId) {
-        setDelivery(null);
-        setIsLoading(false);
-        return;
-      }
-
-      const data = await getRiderDeliveryById(deliveryId);
-      setDelivery(data);
-      setIsLoading(false);
-    };
-
-    loadDelivery();
-  }, [deliveryId]);
-
-  // Load active deliveries (when not viewing a single delivery) and geocode stops
-  useEffect(() => {
-    if (deliveryId) return; // single-delivery mode
-
     const loadStops = async () => {
       setIsLoadingStops(true);
       try {
@@ -626,31 +611,7 @@ export default function RiderMapPage() {
           type="button"
           className="w-full border-none rounded-[11px] bg-[#3b7f4a] text-white px-4 py-3.25 text-[1.05rem] font-bold cursor-pointer hover:opacity-90"
           onClick={() => {
-            // Manually refresh GPS location
-            if (navigator.geolocation) {
-              navigator.geolocation.getCurrentPosition(
-                (position) => {
-                  const { latitude, longitude } = position.coords;
-                  setRiderLocation([latitude, longitude]);
-                  setGpsError(null);
-
-                  const accuracy = position.coords.accuracy;
-                  setGpsAccuracy(accuracy);
-                  if (accuracy < 10) {
-                    setGpsSignalQuality('excellent');
-                  } else if (accuracy < 25) {
-                    setGpsSignalQuality('good');
-                  } else if (accuracy < 100) {
-                    setGpsSignalQuality('fair');
-                  } else {
-                    setGpsSignalQuality('acquiring');
-                  }
-                },
-                (error) => {
-                  setGpsError(`GPS Error: ${error.message}`);
-                }
-              );
-            }
+            requestRiderLocation();
           }}
         >
           📍 Refresh GPS Location

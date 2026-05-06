@@ -88,10 +88,15 @@ export default function RiderAreaRoutesPage() {
   const geocodeCacheRef = useRef<Map<string, LatLngTuple | null>>(new Map());
   const gpsWatchRef = useRef<number | null>(null);
 
-  useEffect(() => {
+  const requestRiderLocation = (): void => {
     if (!navigator.geolocation) {
-      setGpsError('Geolocation not supported. Using Manila as default origin.');
+      setGpsError('Location access is not supported. Using Manila as default origin.');
       return;
+    }
+
+    if (gpsWatchRef.current !== null) {
+      navigator.geolocation.clearWatch(gpsWatchRef.current);
+      gpsWatchRef.current = null;
     }
 
     gpsWatchRef.current = navigator.geolocation.watchPosition(
@@ -100,7 +105,11 @@ export default function RiderAreaRoutesPage() {
         setGpsError(null);
       },
       (error) => {
-        setGpsError(`GPS: ${error.message}. Using Manila as default origin.`);
+        if (error.code === error.PERMISSION_DENIED) {
+          setGpsError('Please allow location access for the Rider app in your browser settings and reload the page.');
+        } else {
+          setGpsError(`GPS: ${error.message}. Using Manila as default origin.`);
+        }
       },
       {
         enableHighAccuracy: true,
@@ -108,6 +117,10 @@ export default function RiderAreaRoutesPage() {
         maximumAge: 0,
       }
     );
+  };
+
+  useEffect(() => {
+    requestRiderLocation();
 
     return () => {
       if (gpsWatchRef.current !== null) {
