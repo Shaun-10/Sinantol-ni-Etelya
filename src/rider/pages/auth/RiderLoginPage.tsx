@@ -1,5 +1,5 @@
 import React, { FormEvent, useMemo, useState } from 'react';
-import { useNavigate, Link, useLocation } from 'react-router-dom';
+import { useNavigate, useLocation } from 'react-router-dom';
 import RiderAuthShell from '../../components/RiderAuthShell';
 import { getRiderSupabaseClient, hasRiderSupabaseConfig } from '../../lib/supabaseClient';
 
@@ -53,11 +53,6 @@ export default function RiderLoginPage() {
     <RiderAuthShell
       title="RIDER LOGIN"
       subtitle="Sign in to receive delivery tasks and manage your shift."
-      footer={
-        <p>
-          Need a rider account? <Link to="/rider/signup" className="text-[#0a6d1d] font-black no-underline hover:underline">Sign Up</Link>
-        </p>
-      }
     >
       <form onSubmit={handleSubmit} className="w-full">
         {infoMessage ? (
