@@ -59,7 +59,7 @@ export default function RouteOptimizer({ riderLocation, stops, fitBounds = true,
 
       setIsCalculating(true);
 
-      const waypoints: LatLngTuple[] = [riderLocation, ...orderedStops.map((s) => [s.lat, s.lng])];
+      const waypoints: LatLngTuple[] = [riderLocation, ...orderedStops.map((s) => [s.lat, s.lng] as LatLngTuple)];
 
       const r = await calculateRoute(waypoints);
       setRoute(r);
