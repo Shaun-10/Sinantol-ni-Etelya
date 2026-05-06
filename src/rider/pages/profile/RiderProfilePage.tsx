@@ -1,5 +1,5 @@
 import React, { useEffect, useMemo, useState } from 'react';
-import { FiHash, FiMapPin, FiPhone, FiTruck, FiUser } from 'react-icons/fi';
+import { FiHash, FiMapPin, FiPhone, FiUser } from 'react-icons/fi';
 import { useNavigate } from 'react-router-dom';
 import RiderAppLayout from '../../components/RiderAppLayout';
 import { getRiderSupabaseClient } from '../../lib/supabaseClient';
@@ -17,7 +17,6 @@ export default function RiderProfilePage() {
   const [profileEmail, setProfileEmail] = useState('-');
   const [profileContact, setProfileContact] = useState('-');
   const [profileArea, setProfileArea] = useState('-');
-  const [profileMotor, setProfileMotor] = useState('-');
   const [profilePlate, setProfilePlate] = useState('-');
 
   const profileRows: ProfileRow[] = useMemo(
@@ -25,10 +24,9 @@ export default function RiderProfilePage() {
       { icon: FiUser, label: 'Full Name', value: profileName },
       { icon: FiPhone, label: 'Contact', value: profileContact },
       { icon: FiMapPin, label: 'Assigned Area', value: profileArea },
-      { icon: FiTruck, label: 'Motor Model', value: profileMotor },
       { icon: FiHash, label: 'Plate Number', value: profilePlate },
     ],
-    [profileArea, profileContact, profileMotor, profileName, profilePlate]
+    [profileArea, profileContact, profileName, profilePlate]
   );
 
   useEffect(() => {
@@ -38,7 +36,6 @@ export default function RiderProfilePage() {
       setProfileEmail(profile.email || '-');
       setProfileContact(profile.contact || '-');
       setProfileArea(profile.assignedArea || '-');
-      setProfileMotor(profile.motorModel || '-');
       setProfilePlate(profile.plateNumber || '-');
     };
 

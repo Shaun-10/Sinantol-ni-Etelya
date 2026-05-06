@@ -3,6 +3,7 @@ import { FiCheck, FiPlus, FiTruck } from "react-icons/fi";
 import { supabase } from "@lib/supabase";
 import AddRiderModal from "./AddRiderModal";
 import RiderDetailModal from "./RiderDetailModal";
+import ReassignRiderModal from "./ReassignRiderModal";
 import { Rider, RiderFormData, normalizeDbString } from "./riderModalShared";
 
 interface Delivery {
@@ -430,12 +431,11 @@ export default function RidersPage(): JSX.Element {
   const [riders, setRiders] = useState<Rider[]>([]);
   const [, setLoading] = useState(true);
   const [isAddModalOpen, setIsAddModalOpen] = useState(false);
+  const [isReassignModalOpen, setIsReassignModalOpen] = useState(false);
   const [selectedRider, setSelectedRider] = useState<Rider | null>(null);
   const [deliveriesRider, setDeliveriesRider] = useState<Rider | null>(null);
   const [isDeliveriesModalOpen, setIsDeliveriesModalOpen] = useState(false);
 
-  
-useEffect(() => {
   const fetchRiders = async (): Promise<void> => {
     setLoading(true);
 
@@ -499,8 +499,9 @@ useEffect(() => {
     setLoading(false);
   };
 
-  fetchRiders();
-}, []);
+  useEffect(() => {
+    void fetchRiders();
+  }, []);
 
 
   const handleViewDetails = (rider: Rider): void => {
@@ -649,6 +650,14 @@ useEffect(() => {
     }
   };
 
+  const handleReassignRider = (): void => {
+    setIsReassignModalOpen(true);
+  };
+
+  const handleReassigned = async (): Promise<void> => {
+    await fetchRiders();
+  };
+
   const handleSaveRider = async (updatedRider: Rider): Promise<void> => {
     try {
       const { error } = await supabase
@@ -708,14 +717,24 @@ useEffect(() => {
             </div>
           </article>
 
-          <button
-            type="button"
-            className="add-rider-btn"
-            onClick={() => setIsAddModalOpen(true)}
-          >
-            <FiPlus />
-            Add Rider
-          </button>
+          <div className="riders-header-actions">
+            <button
+              type="button"
+              className="reassign-rider-btn"
+              onClick={handleReassignRider}
+            >
+              Reassign Area
+            </button>
+
+            <button
+              type="button"
+              className="add-rider-btn"
+              onClick={() => setIsAddModalOpen(true)}
+            >
+              <FiPlus />
+              Add Rider
+            </button>
+          </div>
         </div>
       </section>
 
@@ -725,6 +744,14 @@ useEffect(() => {
         <AddRiderModal
           onClose={() => setIsAddModalOpen(false)}
           onAddRider={handleAddRider}
+        />
+      )}
+
+      {isReassignModalOpen && (
+        <ReassignRiderModal
+          riders={riders}
+          onClose={() => setIsReassignModalOpen(false)}
+          onReassigned={handleReassigned}
         />
       )}
 
