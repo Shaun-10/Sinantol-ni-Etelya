@@ -297,7 +297,7 @@ export async function getRiderProfileData(): Promise<RiderProfileData> {
     fullName: String(profileRow?.full_name ?? fullNameFromRiders ?? metadataName ?? fallbackName ?? 'Rider'),
     email: email || '-',
     contact: String(profileRow?.contact ?? profileRow?.phone ?? '-'),
-    assignedArea: String(profileRow?.assigned_area ?? profileRow?.area ?? '-'),
+    assignedArea: String(profileRow?.assigned_area ?? profileRow?.area ?? profileRow?.location ?? '-'),
     motorModel: String(profileRow?.motor_model ?? profileRow?.motorcycle_model ?? profileRow?.motor ?? '-'),
     plateNumber: String(profileRow?.plate_number ?? '-'),
   };
