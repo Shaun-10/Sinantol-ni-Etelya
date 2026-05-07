@@ -19,7 +19,7 @@ const RiderHistoryDetailsPage = lazy(() => import('./rider/pages/history/RiderHi
 const RiderHistoryPage = lazy(() => import('./rider/pages/history/RiderHistoryPage'));
 const RiderLoginPage = lazy(() => import('./rider/pages/auth/RiderLoginPage'));
 const RiderProfilePage = lazy(() => import('./rider/pages/profile/RiderProfilePage'));
-const RiderSignupPage = lazy(() => import('./rider/pages/auth/RiderSignupPage'));
+// Rider signup removed — route redirects to login. Keeping import removed.
 const RiderMapPage = lazy(() => import('./rider/pages/navigation/RiderMapPage'));
 const RiderAreaRoutesPage = lazy(() => import('./rider/pages/navigation/RiderAreaRoutesPage'));
 
@@ -38,7 +38,7 @@ function AppRoutes() {
       <Route path="/login" element={<LoginPage />} />
       <Route path="/rider" element={<Navigate to="/rider/login" replace />} />
       <Route path="/rider/login" element={<RiderLoginPage />} />
-      <Route path="/rider/signup" element={<RiderSignupPage />} />
+      <Route path="/rider/signup" element={<Navigate to="/rider/login" replace />} />
       <Route path="/rider/home" element={<RiderProtectedRoute><RiderHomePage /></RiderProtectedRoute>} />
       <Route path="/rider/deliveries" element={<RiderProtectedRoute><RiderDeliveriesPage /></RiderProtectedRoute>} />
       <Route path="/rider/deliveries/details" element={<RiderProtectedRoute><RiderDeliveryDetailsPage /></RiderProtectedRoute>} />
