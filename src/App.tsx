@@ -1,6 +1,7 @@
 import { lazy, Suspense } from 'react';
-import { BrowserRouter, Navigate, Route, Routes } from 'react-router-dom';
+import { BrowserRouter, Navigate, Outlet, Route, Routes } from 'react-router-dom';
 import LoginPage from './admin/components/auth/AdminLoginPage';
+import AdminProtectedRoute from './admin/components/AdminProtectedRoute';
 import Layout from './admin/components/AdminLayout';
 import RiderProtectedRoute from './rider/components/RiderProtectedRoute';
 
@@ -27,7 +28,13 @@ function AppRoutes() {
     <Routes>
       <Route path="/" element={<Navigate to="/login" replace />} />
 
-      <Route element={<Layout />}>
+      <Route
+        element={
+          <AdminProtectedRoute>
+            <Layout />
+          </AdminProtectedRoute>
+        }
+      >
         <Route path="/dashboard" element={<Dashboard />} />
         <Route path="/orders" element={<OrdersPage />} />
         <Route path="/riders" element={<RidersPage />} />
@@ -38,16 +45,27 @@ function AppRoutes() {
       <Route path="/rider" element={<Navigate to="/rider/login" replace />} />
       <Route path="/rider/login" element={<RiderLoginPage />} />
       <Route path="/rider/signup" element={<RiderSignupPage />} />
-      <Route path="/rider/home" element={<RiderProtectedRoute><RiderHomePage /></RiderProtectedRoute>} />
-      <Route path="/rider/deliveries" element={<RiderProtectedRoute><RiderDeliveriesPage /></RiderProtectedRoute>} />
-      <Route path="/rider/deliveries/details" element={<RiderProtectedRoute><RiderDeliveryDetailsPage /></RiderProtectedRoute>} />
-      <Route path="/rider/deliveries/payment" element={<RiderProtectedRoute><RiderDeliveryPaymentPage /></RiderProtectedRoute>} />
-      <Route path="/rider/deliveries/delivered" element={<RiderProtectedRoute><RiderDeliveryDeliveredPage /></RiderProtectedRoute>} />
-      <Route path="/rider/history" element={<RiderProtectedRoute><RiderHistoryPage /></RiderProtectedRoute>} />
-      <Route path="/rider/history/details" element={<RiderProtectedRoute><RiderHistoryDetailsPage /></RiderProtectedRoute>} />
-      <Route path="/rider/profile" element={<RiderProtectedRoute><RiderProfilePage /></RiderProtectedRoute>} />
-      <Route path="/rider/routes" element={<RiderProtectedRoute><RiderAreaRoutesPage /></RiderProtectedRoute>} />
-      <Route path="/rider/map" element={<RiderProtectedRoute><RiderMapPage /></RiderProtectedRoute>} />
+
+      <Route
+        path="/rider"
+        element={
+          <RiderProtectedRoute>
+            <Outlet />
+          </RiderProtectedRoute>
+        }
+      >
+        <Route path="home" element={<RiderHomePage />} />
+        <Route path="deliveries" element={<RiderDeliveriesPage />} />
+        <Route path="deliveries/details" element={<RiderDeliveryDetailsPage />} />
+        <Route path="deliveries/payment" element={<RiderDeliveryPaymentPage />} />
+        <Route path="deliveries/delivered" element={<RiderDeliveryDeliveredPage />} />
+        <Route path="history" element={<RiderHistoryPage />} />
+        <Route path="history/details" element={<RiderHistoryDetailsPage />} />
+        <Route path="profile" element={<RiderProfilePage />} />
+        <Route path="routes" element={<RiderAreaRoutesPage />} />
+        <Route path="map" element={<RiderMapPage />} />
+      </Route>
+
       <Route path="*" element={<Navigate to="/login" replace />} />
     </Routes>
   );
