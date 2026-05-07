@@ -136,6 +136,8 @@ export default function RiderMapPage() {
       } else {
         setGpsSignalQuality('acquiring');
       }
+      // GPS acquired — stop showing the initial loading indicator
+      setIsLoading(false);
     };
 
     const errorCallback = (error: GeolocationPositionError) => {
@@ -148,6 +150,8 @@ export default function RiderMapPage() {
       }
 
       setRiderLocation(manilaCenter);
+      // Ensure loading is cleared when GPS fails and we fall back
+      setIsLoading(false);
     };
 
     gpsWatchRef.current = navigator.geolocation.watchPosition(successCallback, errorCallback, {
@@ -204,6 +208,50 @@ export default function RiderMapPage() {
       }
     };
   }, []);
+
+  // Load selected delivery in single-delivery mode
+  useEffect(() => {
+    let cancelled = false;
+
+    const loadSelectedDelivery = async () => {
+      if (!deliveryId) {
+        setDelivery(null);
+        return;
+      }
+
+      setIsLoading(true);
+      try {
+        const selected = await getRiderDeliveryById(deliveryId);
+        if (cancelled) {
+          return;
+        }
+
+        setDelivery(selected);
+        if (!selected) {
+          setRouteGeoError('Delivery not found for this route.');
+        } else {
+          setRouteGeoError(null);
+        }
+      } catch (error) {
+        if (cancelled) {
+          return;
+        }
+        console.error('Error loading delivery details:', error);
+        setDelivery(null);
+        setRouteGeoError('Unable to load delivery details.');
+      } finally {
+        if (!cancelled) {
+          setIsLoading(false);
+        }
+      }
+    };
+
+    void loadSelectedDelivery();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [deliveryId]);
 
   // Load delivery data
   useEffect(() => {
@@ -286,8 +334,12 @@ export default function RiderMapPage() {
   // Geocode destination address
   useEffect(() => {
     const address = String(delivery?.address ?? '').trim();
-    if (!address) {
+    const hasValidAddress = !!address && address !== '-';
+    if (!hasValidAddress) {
       setDestinationCoords(null);
+      if (deliveryId && delivery && address === '-') {
+        setRouteGeoError('This delivery has no saved address.');
+      }
       return;
     }
 
@@ -398,6 +450,8 @@ export default function RiderMapPage() {
         );
         calculatedRoute.geometry.forEach(coord => bounds.extend(coord));
         mapRef.current = bounds;
+        // Route calculated — hide initial loading indicator
+        setIsLoading(false);
       }
     };
 
