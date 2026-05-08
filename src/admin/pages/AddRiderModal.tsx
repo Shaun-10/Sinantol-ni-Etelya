@@ -97,32 +97,52 @@ export default function AddRiderModal({
               <h3 className="font-semibold text-lg">Rider Information</h3>
 
               <div className="grid grid-cols-3 gap-4">
+                <label className="sr-only" htmlFor="firstName">
+                  First Name
+                </label>
                 <input
+                  id="firstName"
                   name="firstName"
                   placeholder="First Name"
+                  aria-label="First Name"
                   value={form.firstName}
                   onChange={handleChange}
                   className={inputStyle}
                 />
+                <label className="sr-only" htmlFor="lastName">
+                  Last Name
+                </label>
                 <input
+                  id="lastName"
                   name="lastName"
                   placeholder="Last Name"
+                  aria-label="Last Name"
                   value={form.lastName}
                   onChange={handleChange}
                   className={inputStyle}
                 />
+                <label className="sr-only" htmlFor="middleInitial">
+                  Middle Initial
+                </label>
                 <input
+                  id="middleInitial"
                   name="middleInitial"
                   placeholder="Middle Initial"
+                  aria-label="Middle Initial"
                   value={form.middleInitial}
                   onChange={handleChange}
                   className={inputStyle}
                 />
               </div>
 
+              <label className="sr-only" htmlFor="address">
+                Address
+              </label>
               <input
+                id="address"
                 name="address"
                 placeholder="Address"
+                aria-label="Address"
                 value={form.address}
                 onChange={handleChange}
                 className={inputStyle}
@@ -148,43 +168,68 @@ export default function AddRiderModal({
               </label>
 
               <div className="grid grid-cols-2 gap-4">
+                <label className="sr-only" htmlFor="contact">
+                  Contact
+                </label>
                 <input
+                  id="contact"
                   name="contact"
                   placeholder="Contact"
+                  aria-label="Contact"
                   value={form.contact}
                   onChange={handleChange}
                   className={inputStyle}
                 />
+                <label className="sr-only" htmlFor="birthdate">
+                  Birthdate
+                </label>
                 <input
+                  id="birthdate"
                   type="date"
                   name="birthdate"
+                  aria-label="Birthdate"
                   value={form.birthdate}
                   onChange={handleChange}
                   className={inputStyle}
                 />
               </div>
 
+              <label className="sr-only" htmlFor="plate_number">
+                Plate Number
+              </label>
               <input
+                id="plate_number"
                 name="plate_number"
                 placeholder="Plate No."
+                aria-label="Plate Number"
                 value={form.plate_number}
                 onChange={handleChange}
                 className={inputStyle}
               />
 
+              <label className="sr-only" htmlFor="email">
+                Email
+              </label>
               <input
+                id="email"
                 type="email"
                 name="email"
                 placeholder="Email"
+                aria-label="Email"
                 value={form.email}
                 onChange={handleChange}
                 className={inputStyle}
               />
 
+              <label className="sr-only" htmlFor="password">
+                Password
+              </label>
               <input
+                id="password"
                 type="password"
                 name="password"
                 placeholder="Password"
+                aria-label="Password"
                 value={form.password}
                 onChange={handleChange}
                 className={inputStyle}
@@ -195,17 +240,27 @@ export default function AddRiderModal({
             <section className="space-y-4">
               <h3 className="font-semibold text-lg">Emergency Contact</h3>
 
+              <label className="sr-only" htmlFor="emergencyName">
+                Emergency Contact Name
+              </label>
               <input
+                id="emergencyName"
                 name="emergencyName"
                 placeholder="Name"
+                aria-label="Emergency Contact Name"
                 value={form.emergencyName}
                 onChange={handleChange}
                 className={inputStyle}
               />
 
+              <label className="sr-only" htmlFor="emergencyContact">
+                Emergency Contact Number
+              </label>
               <input
+                id="emergencyContact"
                 name="emergencyContact"
                 placeholder="Contact"
+                aria-label="Emergency Contact Number"
                 value={form.emergencyContact}
                 onChange={handleChange}
                 className={inputStyle}

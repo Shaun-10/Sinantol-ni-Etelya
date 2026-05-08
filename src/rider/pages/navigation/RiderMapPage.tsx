@@ -1,16 +1,32 @@
-import React, { useEffect, useState, useRef } from 'react';
-import { LatLngTuple, Icon, LatLngBounds } from 'leaflet';
-import { MapContainer, Marker, Popup, TileLayer, useMap, Polyline } from 'react-leaflet';
-import { useNavigate, useSearchParams } from 'react-router-dom';
-import RiderAppLayout from '../../components/RiderAppLayout';
-import { getRiderDeliveryById, getRiderDeliveries, type RiderDelivery } from '../../lib/riderData';
-import RouteOptimizer from '../../components/RouteOptimizer';
-import type { Stop } from '../../lib/routeOptimizer';
-import { haversineDistance } from '../../lib/routeOptimizer';
-import { calculateRoute, formatDistance, formatDuration, type RouteResponse } from '../../lib/routingService';
-import markerIcon2x from 'leaflet/dist/images/marker-icon-2x.png';
-import markerIcon from 'leaflet/dist/images/marker-icon.png';
-import markerShadow from 'leaflet/dist/images/marker-shadow.png';
+import React, { useEffect, useState, useRef } from "react";
+import { LatLngTuple, Icon, LatLngBounds } from "leaflet";
+import {
+  MapContainer,
+  Marker,
+  Popup,
+  TileLayer,
+  useMap,
+  Polyline,
+} from "react-leaflet";
+import { useNavigate, useSearchParams } from "react-router-dom";
+import RiderAppLayout from "../../components/RiderAppLayout";
+import {
+  getRiderDeliveryById,
+  getRiderDeliveries,
+  type RiderDelivery,
+} from "../../lib/riderData";
+import RouteOptimizer from "../../components/RouteOptimizer";
+import type { Stop } from "../../lib/routeOptimizer";
+import { haversineDistance } from "../../lib/routeOptimizer";
+import {
+  calculateRoute,
+  formatDistance,
+  formatDuration,
+  type RouteResponse,
+} from "../../lib/routingService";
+import markerIcon2x from "leaflet/dist/images/marker-icon-2x.png";
+import markerIcon from "leaflet/dist/images/marker-icon.png";
+import markerShadow from "leaflet/dist/images/marker-shadow.png";
 
 const manilaCenter: LatLngTuple = [14.5995, 120.9842];
 
@@ -21,20 +37,21 @@ interface DirectionStep {
 }
 
 // Custom marker icons for different waypoint types
-const createMarkerIcon = (color: string) => new Icon({
-  iconRetinaUrl: markerIcon2x,
-  iconUrl: markerIcon,
-  shadowUrl: markerShadow,
-  iconSize: [25, 41],
-  iconAnchor: [12, 41],
-  popupAnchor: [1, -34],
-  shadowSize: [41, 41],
-  className: `leaflet-marker-${color}`,
-});
+const createMarkerIcon = (color: string) =>
+  new Icon({
+    iconRetinaUrl: markerIcon2x,
+    iconUrl: markerIcon,
+    shadowUrl: markerShadow,
+    iconSize: [25, 41],
+    iconAnchor: [12, 41],
+    popupAnchor: [1, -34],
+    shadowSize: [41, 41],
+    className: `leaflet-marker-${color}`,
+  });
 
-const originMarker = createMarkerIcon('green');
-const waypointMarker = createMarkerIcon('blue');
-const destinationMarker = createMarkerIcon('red');
+const originMarker = createMarkerIcon("green");
+const waypointMarker = createMarkerIcon("blue");
+const destinationMarker = createMarkerIcon("red");
 
 // Component to fit map bounds to route
 function MapBoundsFitter({ bounds }: { bounds: LatLngBounds | null }) {
@@ -53,17 +70,25 @@ function MapBoundsFitter({ bounds }: { bounds: LatLngBounds | null }) {
 function DirectionsList({ directions }: { directions: DirectionStep[] }) {
   return (
     <article className="bg-rider-details-card rounded-xl p-3 mb-3 max-h-64 overflow-y-auto border border-[#d4e4d5]">
-      <h3 className="m-0 text-[#0c631f] text-[1rem] font-bold mb-3">Turn-by-Turn Directions</h3>
+      <h3 className="m-0 text-[#0c631f] text-[1rem] font-bold mb-3">
+        Turn-by-Turn Directions
+      </h3>
       <div className="space-y-2">
         {directions.map((step, idx) => (
-          <div key={idx} className="flex gap-3 pb-2 border-b border-[#e9f0e9] last:border-b-0">
+          <div
+            key={idx}
+            className="flex gap-3 pb-2 border-b border-[#e9f0e9] last:border-b-0"
+          >
             <div className="flex-shrink-0 w-7 h-7 rounded-full bg-[#0c631f] text-white text-xs font-bold flex items-center justify-center">
               {idx + 1}
             </div>
             <div className="flex-1">
-              <p className="m-0 text-sm text-[#1a1e10] font-semibold leading-tight">{step.instruction}</p>
+              <p className="m-0 text-sm text-[#1a1e10] font-semibold leading-tight">
+                {step.instruction}
+              </p>
               <p className="m-0 text-xs text-[#5b645c] mt-1">
-                {(step.distance / 1000).toFixed(1)} km • {Math.round(step.duration / 60)} min
+                {(step.distance / 1000).toFixed(1)} km •{" "}
+                {Math.round(step.duration / 60)} min
               </p>
             </div>
           </div>
@@ -76,24 +101,26 @@ function DirectionsList({ directions }: { directions: DirectionStep[] }) {
 export default function RiderMapPage() {
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
-  const deliveryId = searchParams.get('id') ?? '';
+  const deliveryId = searchParams.get("id") ?? "";
 
   const [delivery, setDelivery] = useState<RiderDelivery | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [route, setRoute] = useState<RouteResponse | null>(null);
   const [isCalculatingRoute, setIsCalculatingRoute] = useState(false);
-  
+
   // GPS Location tracking
   const [riderLocation, setRiderLocation] = useState<LatLngTuple | null>(null);
   const [gpsError, setGpsError] = useState<string | null>(null);
   const gpsWatchRef = useRef<number | null>(null);
-  
+
   // Directions state
   const [directions, setDirections] = useState<DirectionStep[]>([]);
   const [showDirections, setShowDirections] = useState(false);
-    const [gpsAccuracy, setGpsAccuracy] = useState<number | null>(null);
-    const [gpsSignalQuality, setGpsSignalQuality] = useState<'acquiring' | 'fair' | 'good' | 'excellent'>('acquiring');
-  
+  const [gpsAccuracy, setGpsAccuracy] = useState<number | null>(null);
+  const [gpsSignalQuality, setGpsSignalQuality] = useState<
+    "acquiring" | "fair" | "good" | "excellent"
+  >("acquiring");
+
   // Map state
   const [mapCenter, setMapCenter] = useState<LatLngTuple>(manilaCenter);
   const mapRef = useRef<LatLngBounds | null>(null);
@@ -101,7 +128,8 @@ export default function RiderMapPage() {
 
   // Waypoints state: [origin (rider), destination (customer)]
   const [waypoints, setWaypoints] = useState<LatLngTuple[]>([]);
-  const [destinationCoords, setDestinationCoords] = useState<LatLngTuple | null>(null);
+  const [destinationCoords, setDestinationCoords] =
+    useState<LatLngTuple | null>(null);
   // multiple deliveries / stops
   const [deliveriesList, setDeliveriesList] = useState<RiderDelivery[]>([]);
   const [stops, setStops] = useState<Stop[]>([]);
@@ -120,7 +148,10 @@ export default function RiderMapPage() {
     }
 
     let nearest = stops[0];
-    let nearestDist = haversineDistance(riderLocation, [nearest.lat, nearest.lng]);
+    let nearestDist = haversineDistance(riderLocation, [
+      nearest.lat,
+      nearest.lng,
+    ]);
 
     for (let i = 1; i < stops.length; i++) {
       const s = stops[i];
@@ -146,7 +177,7 @@ export default function RiderMapPage() {
   // Start GPS tracking on mount
   useEffect(() => {
     if (!navigator.geolocation) {
-      setGpsError('Geolocation not supported on this device');
+      setGpsError("Geolocation not supported on this device");
       setRiderLocation(manilaCenter);
       return;
     }
@@ -161,18 +192,18 @@ export default function RiderMapPage() {
       const accuracy = position.coords.accuracy;
       setGpsAccuracy(accuracy);
       if (accuracy < 10) {
-        setGpsSignalQuality('excellent');
+        setGpsSignalQuality("excellent");
       } else if (accuracy < 25) {
-        setGpsSignalQuality('good');
+        setGpsSignalQuality("good");
       } else if (accuracy < 100) {
-        setGpsSignalQuality('fair');
+        setGpsSignalQuality("fair");
       } else {
-        setGpsSignalQuality('acquiring');
+        setGpsSignalQuality("acquiring");
       }
     };
 
     const errorCallback = (error: GeolocationPositionError) => {
-      console.warn('GPS Error:', error.message);
+      console.warn("GPS Error:", error.message);
       setGpsError(`GPS: ${error.message}`);
       // Fallback to Manila
       setRiderLocation(manilaCenter);
@@ -186,7 +217,7 @@ export default function RiderMapPage() {
         enableHighAccuracy: true,
         timeout: 10000,
         maximumAge: 0,
-      }
+      },
     );
 
     // Cleanup on unmount
@@ -226,7 +257,7 @@ export default function RiderMapPage() {
       setIsLoadingStops(true);
       try {
         const data = await getRiderDeliveries();
-        const active = (data || []).filter((d) => d.status === 'In Progress');
+        const active = (data || []).filter((d) => d.status === "In Progress");
         setDeliveriesList(active);
 
         // geocode addresses for stops (fallback to navigation text if coords embedded)
@@ -234,7 +265,9 @@ export default function RiderMapPage() {
           if (!address) return null;
           try {
             const endpoint = `https://nominatim.openstreetmap.org/search?format=json&limit=1&q=${encodeURIComponent(address)}`;
-            const resp = await fetch(endpoint, { headers: { Accept: 'application/json' } });
+            const resp = await fetch(endpoint, {
+              headers: { Accept: "application/json" },
+            });
             if (!resp.ok) return null;
             const payload = await resp.json();
             if (!Array.isArray(payload) || payload.length === 0) return null;
@@ -250,7 +283,9 @@ export default function RiderMapPage() {
         const resolvedStops: Stop[] = [];
         for (const d of active) {
           // try to detect coords in navigationText or navigation_text
-          const nav = String((d as any).navigationText ?? (d as any).navigation_text ?? '').trim();
+          const nav = String(
+            (d as any).navigationText ?? (d as any).navigation_text ?? "",
+          ).trim();
           let coords: LatLngTuple | null = null;
           const coordMatch = nav.match(/(-?\d+\.\d+)[,\s]+(-?\d+\.\d+)/);
           if (coordMatch) {
@@ -262,11 +297,16 @@ export default function RiderMapPage() {
           }
 
           if (!coords) {
-            coords = await geocodeOne(String(d.address ?? d.delivery_address ?? ''));
+            coords = await geocodeOne(String(d.address ?? ""));
           }
 
           if (coords) {
-            resolvedStops.push({ id: d.id, lat: coords[0], lng: coords[1], label: d.customer });
+            resolvedStops.push({
+              id: d.id,
+              lat: coords[0],
+              lng: coords[1],
+              label: d.customer,
+            });
           }
         }
 
@@ -274,7 +314,10 @@ export default function RiderMapPage() {
         // compute nearest stop to riderLocation (if available) and render only that
         if (resolvedStops.length > 0 && riderLocation) {
           let nearest = resolvedStops[0];
-          let nearestDist = haversineDistance(riderLocation, [nearest.lat, nearest.lng]);
+          let nearestDist = haversineDistance(riderLocation, [
+            nearest.lat,
+            nearest.lng,
+          ]);
           for (let i = 1; i < resolvedStops.length; i++) {
             const s = resolvedStops[i];
             const d = haversineDistance(riderLocation, [s.lat, s.lng]);
@@ -288,7 +331,7 @@ export default function RiderMapPage() {
           setStopsToRender([]);
         }
       } catch (err) {
-        console.error('Error loading stops:', err);
+        console.error("Error loading stops:", err);
         setStops([]);
       } finally {
         setIsLoadingStops(false);
@@ -300,7 +343,7 @@ export default function RiderMapPage() {
 
   // Geocode destination address
   useEffect(() => {
-    const address = String(delivery?.address ?? '').trim();
+    const address = String(delivery?.address ?? "").trim();
     if (!address) {
       setDestinationCoords(null);
       return;
@@ -314,18 +357,21 @@ export default function RiderMapPage() {
         const response = await fetch(endpoint, {
           signal: controller.signal,
           headers: {
-            Accept: 'application/json',
+            Accept: "application/json",
           },
         });
 
         if (!response.ok) {
-          setRouteGeoError('Could not geocode destination address');
+          setRouteGeoError("Could not geocode destination address");
           return;
         }
 
-        const payload = (await response.json()) as Array<{ lat: string; lon: string }>;
+        const payload = (await response.json()) as Array<{
+          lat: string;
+          lon: string;
+        }>;
         if (!payload.length) {
-          setRouteGeoError('Address not found');
+          setRouteGeoError("Address not found");
           return;
         }
 
@@ -337,10 +383,10 @@ export default function RiderMapPage() {
           setRouteGeoError(null);
         }
       } catch (error) {
-        if (error instanceof DOMException && error.name === 'AbortError') {
+        if (error instanceof DOMException && error.name === "AbortError") {
           return; // Request cancelled
         }
-        setRouteGeoError('Geocoding error');
+        setRouteGeoError("Geocoding error");
       }
     };
 
@@ -354,7 +400,7 @@ export default function RiderMapPage() {
   // Build waypoints: origin (actual rider GPS) → destination
   useEffect(() => {
     const points: LatLngTuple[] = [];
-    
+
     // Start from rider's actual GPS location
     if (riderLocation) {
       points.push(riderLocation);
@@ -362,7 +408,7 @@ export default function RiderMapPage() {
       // Fallback to Manila if GPS not yet available
       points.push(manilaCenter);
     }
-    
+
     // Add destination
     if (destinationCoords) {
       points.push(destinationCoords);
@@ -383,35 +429,37 @@ export default function RiderMapPage() {
       setIsCalculatingRoute(true);
       const calculatedRoute = await calculateRoute(waypoints);
       setRoute(calculatedRoute);
-      
+
       // Extract turn-by-turn directions from route
       if (calculatedRoute?.routes && calculatedRoute.routes.length > 0) {
         const directionsList: DirectionStep[] = [];
-        
+
         calculatedRoute.routes[0].legs.forEach((leg) => {
           if (leg.steps) {
             leg.steps.forEach((step: any) => {
               directionsList.push({
-                instruction: step.instruction || `Continue for ${(step.distance / 1000).toFixed(1)} km`,
+                instruction:
+                  step.instruction ||
+                  `Continue for ${(step.distance / 1000).toFixed(1)} km`,
                 distance: step.distance || 0,
                 duration: step.duration || 0,
               });
             });
           }
         });
-        
+
         setDirections(directionsList);
       }
-      
+
       setIsCalculatingRoute(false);
 
       // Set map bounds to fit route
       if (calculatedRoute?.geometry && calculatedRoute.geometry.length > 0) {
         const bounds = new LatLngBounds(
           calculatedRoute.geometry[0],
-          calculatedRoute.geometry[calculatedRoute.geometry.length - 1]
+          calculatedRoute.geometry[calculatedRoute.geometry.length - 1],
         );
-        calculatedRoute.geometry.forEach(coord => bounds.extend(coord));
+        calculatedRoute.geometry.forEach((coord) => bounds.extend(coord));
         mapRef.current = bounds;
       }
     };
@@ -431,29 +479,47 @@ export default function RiderMapPage() {
   }, [route, riderLocation, destinationCoords]);
 
   const openGoogleMaps = () => {
-    const destination = String(delivery?.address ?? '').trim();
+    const destination = String(delivery?.address ?? "").trim();
     if (!destination) {
       return;
     }
 
     const mapsUrl = `https://www.google.com/maps/dir/?api=1&destination=${encodeURIComponent(destination)}&travelmode=driving`;
-    window.open(mapsUrl, '_blank', 'noopener,noreferrer');
+    window.open(mapsUrl, "_blank", "noopener,noreferrer");
   };
 
   return (
-    <RiderAppLayout 
-      showBack 
-      backTo={deliveryId ? `/rider/deliveries/details?id=${encodeURIComponent(deliveryId)}` : '/rider/deliveries'}
+    <RiderAppLayout
+      showBack
+      backTo={
+        deliveryId
+          ? `/rider/deliveries/details?id=${encodeURIComponent(deliveryId)}`
+          : "/rider/deliveries"
+      }
     >
-      {isLoading ? <p className="m-0 mb-3 text-sm text-[#5b645c]">Loading map...</p> : null}
-      {isCalculatingRoute ? <p className="m-0 mb-3 text-sm text-[#5b645c]">Calculating route...</p> : null}
-      {gpsError && <p className="m-0 mb-3 text-sm text-amber-600">{gpsError} (using fallback location)</p>}
+      {isLoading ? (
+        <p className="m-0 mb-3 text-sm text-[#5b645c]">Loading map...</p>
+      ) : null}
+      {isCalculatingRoute ? (
+        <p className="m-0 mb-3 text-sm text-[#5b645c]">Calculating route...</p>
+      ) : null}
+      {gpsError && (
+        <p className="m-0 mb-3 text-sm text-amber-600">
+          {gpsError} (using fallback location)
+        </p>
+      )}
 
       {/* Delivery Info Card */}
       <article className="bg-rider-details-card rounded-xl p-3 mb-3">
-        <h2 className="m-0 text-[#0c631f] text-[1.4rem] font-black">Delivery Route</h2>
-        <p className="m-0 mt-1 text-sm text-[#3e473f]">{delivery?.customer || '-'}</p>
-        <p className="m-0 mt-1 text-sm text-[#4d564e]">{delivery?.address || 'No address available.'}</p>
+        <h2 className="m-0 text-[#0c631f] text-[1.4rem] font-black">
+          Delivery Route
+        </h2>
+        <p className="m-0 mt-1 text-sm text-[#3e473f]">
+          {delivery?.customer || "-"}
+        </p>
+        <p className="m-0 mt-1 text-sm text-[#4d564e]">
+          {delivery?.address || "No address available."}
+        </p>
       </article>
 
       {/* Route Summary Card */}
@@ -461,19 +527,29 @@ export default function RiderMapPage() {
         <article className="bg-rider-details-card rounded-xl p-3 mb-3 border border-[#d4e4d5]">
           <div className="flex gap-4">
             <div>
-              <p className="m-0 text-xs text-[#5b645c] font-semibold">DISTANCE</p>
-              <p className="m-0 text-[1.2rem] font-bold text-[#0c631f]">{formatDistance(route.distance)}</p>
+              <p className="m-0 text-xs text-[#5b645c] font-semibold">
+                DISTANCE
+              </p>
+              <p className="m-0 text-[1.2rem] font-bold text-[#0c631f]">
+                {formatDistance(route.distance)}
+              </p>
             </div>
             <div>
-              <p className="m-0 text-xs text-[#5b645c] font-semibold">DURATION</p>
-              <p className="m-0 text-[1.2rem] font-bold text-[#0c631f]">{formatDuration(route.duration)}</p>
+              <p className="m-0 text-xs text-[#5b645c] font-semibold">
+                DURATION
+              </p>
+              <p className="m-0 text-[1.2rem] font-bold text-[#0c631f]">
+                {formatDuration(route.duration)}
+              </p>
             </div>
           </div>
         </article>
       )}
 
       {/* Turn-by-turn Directions (toggled) */}
-      {showDirections && directions.length > 0 && <DirectionsList directions={directions} />}
+      {showDirections && directions.length > 0 && (
+        <DirectionsList directions={directions} />
+      )}
 
       {/* Error Messages */}
       {routeGeoError && (
@@ -481,33 +557,44 @@ export default function RiderMapPage() {
           <p className="m-0 text-sm text-red-700">{routeGeoError}</p>
         </article>
       )}
-      
-        {/* GPS Status Badge */}
-        <article className="bg-blue-50 rounded-xl p-3 mb-3 border border-blue-200 flex items-center justify-between">
-          <div className="flex items-center gap-2">
-            <span className={`inline-block w-3 h-3 rounded-full ${
-              gpsSignalQuality === 'excellent' ? 'bg-green-600' :
-              gpsSignalQuality === 'good' ? 'bg-green-500' :
-              gpsSignalQuality === 'fair' ? 'bg-amber-500' :
-              'bg-orange-600 animate-pulse'
-            }`}></span>
-            <span className="text-sm font-semibold text-blue-900">
-              GPS: {gpsSignalQuality.charAt(0).toUpperCase() + gpsSignalQuality.slice(1)}
-            </span>
-          </div>
-          {gpsAccuracy !== null && (
-            <span className="text-xs text-blue-700 font-mono bg-white px-2 py-1 rounded">
-              ±{gpsAccuracy.toFixed(0)}m
-            </span>
-          )}
-        </article>
+
+      {/* GPS Status Badge */}
+      <article className="bg-blue-50 rounded-xl p-3 mb-3 border border-blue-200 flex items-center justify-between">
+        <div className="flex items-center gap-2">
+          <span
+            className={`inline-block w-3 h-3 rounded-full ${
+              gpsSignalQuality === "excellent"
+                ? "bg-green-600"
+                : gpsSignalQuality === "good"
+                  ? "bg-green-500"
+                  : gpsSignalQuality === "fair"
+                    ? "bg-amber-500"
+                    : "bg-orange-600 animate-pulse"
+            }`}
+          ></span>
+          <span className="text-sm font-semibold text-blue-900">
+            GPS:{" "}
+            {gpsSignalQuality.charAt(0).toUpperCase() +
+              gpsSignalQuality.slice(1)}
+          </span>
+        </div>
+        {gpsAccuracy !== null && (
+          <span className="text-xs text-blue-700 font-mono bg-white px-2 py-1 rounded">
+            ±{gpsAccuracy.toFixed(0)}m
+          </span>
+        )}
+      </article>
 
       {/* Map Container: single-delivery mode uses existing Map; otherwise use RouteOptimizer for active deliveries */}
       <article className="rounded-xl overflow-hidden border border-[#c7cec7] mb-3">
         {deliveryId ? (
-          <MapContainer center={mapCenter} zoom={13} style={{ width: '100%', height: '420px' }}>
+          <MapContainer
+            center={mapCenter}
+            zoom={13}
+            style={{ width: "100%", height: "420px" }}
+          >
             {mapRef.current && <MapBoundsFitter bounds={mapRef.current} />}
-            
+
             <TileLayer
               attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
               url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
@@ -530,21 +617,28 @@ export default function RiderMapPage() {
                 <Popup>
                   <strong>Your Location</strong>
                   <br />
-                  {riderLocation 
-                    ? `${riderLocation[0].toFixed(4)}, ${riderLocation[1].toFixed(4)}` 
-                    : 'Current Position'}
+                  {riderLocation
+                    ? `${riderLocation[0].toFixed(4)}, ${riderLocation[1].toFixed(4)}`
+                    : "Current Position"}
                   <div className="text-xs text-[#5b645c] mt-1">
                     {gpsAccuracy !== null && (
                       <>
-                        Accuracy: ±{gpsAccuracy.toFixed(0)}m
-                        {' '}
-                        <span className={`font-bold ${
-                          gpsSignalQuality === 'excellent' ? 'text-green-600' :
-                          gpsSignalQuality === 'good' ? 'text-green-500' :
-                          gpsSignalQuality === 'fair' ? 'text-amber-500' :
-                          'text-orange-600'
-                        }`}>
-                          ({gpsSignalQuality.charAt(0).toUpperCase() + gpsSignalQuality.slice(1)})
+                        Accuracy: ±{gpsAccuracy.toFixed(0)}m{" "}
+                        <span
+                          className={`font-bold ${
+                            gpsSignalQuality === "excellent"
+                              ? "text-green-600"
+                              : gpsSignalQuality === "good"
+                                ? "text-green-500"
+                                : gpsSignalQuality === "fair"
+                                  ? "text-amber-500"
+                                  : "text-orange-600"
+                          }`}
+                        >
+                          (
+                          {gpsSignalQuality.charAt(0).toUpperCase() +
+                            gpsSignalQuality.slice(1)}
+                          )
                         </span>
                       </>
                     )}
@@ -555,20 +649,23 @@ export default function RiderMapPage() {
 
             {/* Destination Marker (Customer) */}
             {waypoints.length > 1 && (
-              <Marker position={waypoints[waypoints.length - 1]} icon={destinationMarker}>
+              <Marker
+                position={waypoints[waypoints.length - 1]}
+                icon={destinationMarker}
+              >
                 <Popup>
-                  <strong>{delivery?.customer || 'Delivery'}</strong>
+                  <strong>{delivery?.customer || "Delivery"}</strong>
                   <br />
-                  {delivery?.address || 'No address available.'}
+                  {delivery?.address || "No address available."}
                 </Popup>
               </Marker>
             )}
           </MapContainer>
         ) : (
           // multi-stop optimized route using RouteOptimizer
-          <div style={{ width: '100%', height: 420 }}>
+          <div className="w-full h-[420px]">
             <RouteOptimizer
-              key={`nearest-${stopsToRender[0]?.id ?? 'none'}`}
+              key={`nearest-${stopsToRender[0]?.id ?? "none"}`}
               riderLocation={riderLocation}
               stops={stopsToRender}
               fitBounds={true}
@@ -596,7 +693,9 @@ export default function RiderMapPage() {
             onClick={() => setShowDirections(!showDirections)}
             disabled={!route || directions.length === 0}
           >
-            {showDirections ? 'Hide Directions' : `Directions (${directions.length})`}
+            {showDirections
+              ? "Hide Directions"
+              : `Directions (${directions.length})`}
           </button>
 
           <button
@@ -615,7 +714,9 @@ export default function RiderMapPage() {
             className="w-full border-none rounded-[11px] bg-[#1f9d3a] text-white px-4 py-3.25 text-[1.05rem] font-bold cursor-pointer hover:opacity-90"
             onClick={() => {
               // navigate to the delivery details page
-              navigate(`/rider/deliveries/details?id=${encodeURIComponent(deliveryId)}`);
+              navigate(
+                `/rider/deliveries/details?id=${encodeURIComponent(deliveryId)}`,
+              );
             }}
           >
             I'll arrive
@@ -637,18 +738,18 @@ export default function RiderMapPage() {
                   const accuracy = position.coords.accuracy;
                   setGpsAccuracy(accuracy);
                   if (accuracy < 10) {
-                    setGpsSignalQuality('excellent');
+                    setGpsSignalQuality("excellent");
                   } else if (accuracy < 25) {
-                    setGpsSignalQuality('good');
+                    setGpsSignalQuality("good");
                   } else if (accuracy < 100) {
-                    setGpsSignalQuality('fair');
+                    setGpsSignalQuality("fair");
                   } else {
-                    setGpsSignalQuality('acquiring');
+                    setGpsSignalQuality("acquiring");
                   }
                 },
                 (error) => {
                   setGpsError(`GPS Error: ${error.message}`);
-                }
+                },
               );
             }
           }}

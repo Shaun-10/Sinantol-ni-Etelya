@@ -24,6 +24,8 @@ export default function AdminNavbar() {
     setShowMenu(false);
   };
 
+  const ariaExpanded = showMenu ? "true" : undefined;
+
   // Close menu when clicking outside
   useEffect(() => {
     const handleClickOutside = (event: MouseEvent) => {
@@ -73,18 +75,25 @@ export default function AdminNavbar() {
           }`}
           type="button"
           aria-label="Admin menu"
-          aria-expanded={showMenu}
+          aria-haspopup="menu"
+          aria-expanded={ariaExpanded}
         >
-          <div className={`h-6 w-6 rounded-full flex items-center justify-center transition ${
-            showMenu
-              ? "bg-green-500 text-white"
-              : "bg-green-100 text-green-700"
-          }`}>
+          <div
+            className={`h-6 w-6 rounded-full flex items-center justify-center transition ${
+              showMenu
+                ? "bg-green-500 text-white"
+                : "bg-green-100 text-green-700"
+            }`}
+          >
             <FiUser className="h-4 w-4" />
           </div>
-          <span className={`text-sm font-medium transition ${
-            showMenu ? "text-green-700" : "text-gray-900"
-          }`}>Admin</span>
+          <span
+            className={`text-sm font-medium transition ${
+              showMenu ? "text-green-700" : "text-gray-900"
+            }`}
+          >
+            Admin
+          </span>
         </button>
 
         {showMenu && (
@@ -95,7 +104,9 @@ export default function AdminNavbar() {
                   <FiUser className="h-5 w-5" />
                 </div>
                 <div>
-                  <p className="text-sm font-semibold text-gray-900">Admin Account</p>
+                  <p className="text-sm font-semibold text-gray-900">
+                    Admin Account
+                  </p>
                   <p className="text-xs text-gray-500">Administrator</p>
                 </div>
               </div>

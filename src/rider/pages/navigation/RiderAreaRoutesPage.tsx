@@ -1,17 +1,39 @@
-import React, { useEffect, useMemo, useRef, useState } from 'react';
-import { LatLngBounds, LatLngTuple } from 'leaflet';
-import { CircleMarker, MapContainer, Marker, Polyline, Popup, TileLayer, useMap } from 'react-leaflet';
-import RiderAppLayout from '../../components/RiderAppLayout';
-import { useNavigate } from 'react-router-dom';
-import { haversineDistance } from '../../lib/routeOptimizer';
-import { FiMapPin } from 'react-icons/fi';
-import { calculateRoute, formatDistance, formatDuration, type RouteResponse } from '../../lib/routingService';
-import { getRiderDeliveries, type RiderDelivery } from '../../lib/riderData';
-import { getRiderSupabaseClient } from '../../lib/supabaseClient';
+import React, { useEffect, useMemo, useRef, useState } from "react";
+import { LatLngBounds, LatLngTuple } from "leaflet";
+import {
+  CircleMarker,
+  MapContainer,
+  Marker,
+  Polyline,
+  Popup,
+  TileLayer,
+  useMap,
+} from "react-leaflet";
+import RiderAppLayout from "../../components/RiderAppLayout";
+import { useNavigate } from "react-router-dom";
+import { haversineDistance } from "../../lib/routeOptimizer";
+import { FiMapPin } from "react-icons/fi";
+import {
+  calculateRoute,
+  formatDistance,
+  formatDuration,
+  type RouteResponse,
+} from "../../lib/routingService";
+import { getRiderDeliveries, type RiderDelivery } from "../../lib/riderData";
+import { getRiderSupabaseClient } from "../../lib/supabaseClient";
 
 const manilaCenter: LatLngTuple = [14.5995, 120.9842];
 
-const ROUTE_COLORS = ['#0c631f', '#eab308', '#ef4444', '#3b82f6', '#f97316', '#a855f7', '#14b8a6', '#ec4899'];
+const ROUTE_COLORS = [
+  "#0c631f",
+  "#eab308",
+  "#ef4444",
+  "#3b82f6",
+  "#f97316",
+  "#a855f7",
+  "#14b8a6",
+  "#ec4899",
+];
 
 interface AreaRoute {
   deliveryId: string;
@@ -26,21 +48,24 @@ interface AreaRoute {
 function deriveAreaName(address: string): string {
   const value = address.trim();
   if (!value) {
-    return 'Unknown Area';
+    return "Unknown Area";
   }
 
-  const parts = value.split(',').map((part) => part.trim()).filter(Boolean);
+  const parts = value
+    .split(",")
+    .map((part) => part.trim())
+    .filter(Boolean);
   if (parts.length >= 2) {
     return parts[parts.length - 2];
   }
-  return parts[0] || 'Unknown Area';
+  return parts[0] || "Unknown Area";
 }
 
 async function geocodeAddress(address: string): Promise<LatLngTuple | null> {
   const endpoint = `https://nominatim.openstreetmap.org/search?format=json&limit=1&q=${encodeURIComponent(address)}`;
   const response = await fetch(endpoint, {
     headers: {
-      Accept: 'application/json',
+      Accept: "application/json",
     },
   });
 
@@ -48,7 +73,10 @@ async function geocodeAddress(address: string): Promise<LatLngTuple | null> {
     return null;
   }
 
-  const payload = (await response.json()) as Array<{ lat: string; lon: string }>;
+  const payload = (await response.json()) as Array<{
+    lat: string;
+    lon: string;
+  }>;
   if (!payload.length) {
     return null;
   }
@@ -82,7 +110,9 @@ export default function RiderAreaRoutesPage() {
   const [gpsError, setGpsError] = useState<string | null>(null);
   const [liveDataError, setLiveDataError] = useState<string | null>(null);
   const [areaRoutes, setAreaRoutes] = useState<AreaRoute[]>([]);
-  const [sequenceRoute, setSequenceRoute] = useState<RouteResponse | null>(null);
+  const [sequenceRoute, setSequenceRoute] = useState<RouteResponse | null>(
+    null,
+  );
   const [deliveries, setDeliveries] = useState<RiderDelivery[]>([]);
   const [lastUpdated, setLastUpdated] = useState<Date | null>(null);
   const geocodeCacheRef = useRef<Map<string, LatLngTuple | null>>(new Map());
@@ -90,7 +120,7 @@ export default function RiderAreaRoutesPage() {
 
   useEffect(() => {
     if (!navigator.geolocation) {
-      setGpsError('Geolocation not supported. Using Manila as default origin.');
+      setGpsError("Geolocation not supported. Using Manila as default origin.");
       return;
     }
 
@@ -106,7 +136,7 @@ export default function RiderAreaRoutesPage() {
         enableHighAccuracy: true,
         timeout: 10000,
         maximumAge: 0,
-      }
+      },
     );
 
     return () => {
@@ -126,7 +156,12 @@ export default function RiderAreaRoutesPage() {
         return;
       }
 
-      const inProgress = all.filter((item) => item.status === 'In Progress' && String(item.address ?? '').trim() && String(item.address ?? '').trim() !== '-');
+      const inProgress = all.filter(
+        (item) =>
+          item.status === "In Progress" &&
+          String(item.address ?? "").trim() &&
+          String(item.address ?? "").trim() !== "-",
+      );
       setDeliveries(inProgress);
       setLastUpdated(new Date());
       setIsLoadingDeliveries(false);
@@ -136,13 +171,21 @@ export default function RiderAreaRoutesPage() {
 
     const client = getRiderSupabaseClient();
     const channel = client
-      ?.channel('rider-area-routes-live')
-      .on('postgres_changes', { event: '*', schema: 'public', table: 'deliveries' }, () => {
-        loadDeliveries();
-      })
-      .on('postgres_changes', { event: '*', schema: 'public', table: 'orders' }, () => {
-        loadDeliveries();
-      })
+      ?.channel("rider-area-routes-live")
+      .on(
+        "postgres_changes",
+        { event: "*", schema: "public", table: "deliveries" },
+        () => {
+          loadDeliveries();
+        },
+      )
+      .on(
+        "postgres_changes",
+        { event: "*", schema: "public", table: "orders" },
+        () => {
+          loadDeliveries();
+        },
+      )
       .subscribe();
 
     const intervalId = window.setInterval(loadDeliveries, 30000);
@@ -172,7 +215,7 @@ export default function RiderAreaRoutesPage() {
       try {
         const responses = await Promise.all(
           deliveries.map(async (delivery, index) => {
-            const address = String(delivery.address ?? '').trim();
+            const address = String(delivery.address ?? "").trim();
             let coords = geocodeCacheRef.current.get(address);
 
             if (coords === undefined) {
@@ -180,7 +223,9 @@ export default function RiderAreaRoutesPage() {
               geocodeCacheRef.current.set(address, coords);
             }
 
-            const route = coords ? await calculateRoute([riderLocation, coords]) : null;
+            const route = coords
+              ? await calculateRoute([riderLocation, coords])
+              : null;
 
             return {
               deliveryId: delivery.id,
@@ -191,7 +236,7 @@ export default function RiderAreaRoutesPage() {
               color: ROUTE_COLORS[index % ROUTE_COLORS.length],
               route,
             } satisfies AreaRoute;
-          })
+          }),
         );
 
         if (isMounted) {
@@ -199,7 +244,9 @@ export default function RiderAreaRoutesPage() {
         }
       } catch {
         if (isMounted) {
-          setLiveDataError('Could not update live routes right now. Retrying on next refresh.');
+          setLiveDataError(
+            "Could not update live routes right now. Retrying on next refresh.",
+          );
         }
       } finally {
         if (isMounted) {
@@ -224,7 +271,10 @@ export default function RiderAreaRoutesPage() {
         return;
       }
 
-      const waypoints: LatLngTuple[] = [riderLocation, ...areaRoutes.map((entry) => entry.coords)];
+      const waypoints: LatLngTuple[] = [
+        riderLocation,
+        ...areaRoutes.map((entry) => entry.coords),
+      ];
       const calculatedRoute = await calculateRoute(waypoints);
 
       if (isMounted) {
@@ -265,17 +315,35 @@ export default function RiderAreaRoutesPage() {
 
   return (
     <RiderAppLayout pageTitle="All Area Routes" showBack backTo="/rider/home">
-      {gpsError ? <p className="m-0 mb-3 text-sm text-amber-700">{gpsError}</p> : null}
-      {liveDataError ? <p className="m-0 mb-3 text-sm text-red-700">{liveDataError}</p> : null}
-      {isLoadingDeliveries ? <p className="m-0 mb-3 text-sm text-[#5b645c]">Loading live deliveries...</p> : null}
-      {isLoadingRoutes ? <p className="m-0 mb-3 text-sm text-[#5b645c]">Updating live routes...</p> : null}
+      {gpsError ? (
+        <p className="m-0 mb-3 text-sm text-amber-700">{gpsError}</p>
+      ) : null}
+      {liveDataError ? (
+        <p className="m-0 mb-3 text-sm text-red-700">{liveDataError}</p>
+      ) : null}
+      {isLoadingDeliveries ? (
+        <p className="m-0 mb-3 text-sm text-[#5b645c]">
+          Loading live deliveries...
+        </p>
+      ) : null}
+      {isLoadingRoutes ? (
+        <p className="m-0 mb-3 text-sm text-[#5b645c]">
+          Updating live routes...
+        </p>
+      ) : null}
       <p className="m-0 mb-3 text-xs text-[#5b645c]">
         Live data source: active deliveries. Auto refresh every 30s.
-        {lastUpdated ? ` Last update: ${lastUpdated.toLocaleTimeString()}.` : ''}
+        {lastUpdated
+          ? ` Last update: ${lastUpdated.toLocaleTimeString()}.`
+          : ""}
       </p>
 
       <article className="rounded-xl overflow-hidden border border-[#c7cec7] mb-3">
-        <MapContainer center={riderLocation} zoom={12} style={{ width: '100%', height: '440px' }}>
+        <MapContainer
+          center={riderLocation}
+          zoom={12}
+          style={{ width: "100%", height: "440px" }}
+        >
           {mapBounds ? <MapBoundsFitter bounds={mapBounds} /> : null}
 
           <TileLayer
@@ -283,7 +351,15 @@ export default function RiderAreaRoutesPage() {
             url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
           />
 
-          <CircleMarker center={riderLocation} radius={9} pathOptions={{ color: '#145f1f', fillColor: '#22c55e', fillOpacity: 0.9 }}>
+          <CircleMarker
+            center={riderLocation}
+            radius={9}
+            pathOptions={{
+              color: "#145f1f",
+              fillColor: "#22c55e",
+              fillOpacity: 0.9,
+            }}
+          >
             <Popup>
               <strong>Your Location</strong>
               <br />
@@ -294,7 +370,9 @@ export default function RiderAreaRoutesPage() {
           {areaRoutes.map((entry, index) => (
             <Marker key={`marker-${entry.deliveryId}`} position={entry.coords}>
               <Popup>
-                <strong>{index + 1}. {entry.customer}</strong>
+                <strong>
+                  {index + 1}. {entry.customer}
+                </strong>
                 <br />
                 <strong>{entry.areaName}</strong>
                 <br />
@@ -310,17 +388,19 @@ export default function RiderAreaRoutesPage() {
               weight={5}
               opacity={0.88}
             />
-          ) : areaRoutes
-            .filter((entry) => entry.route?.geometry?.length)
-            .map((entry) => (
-              <Polyline
-                key={`poly-${entry.deliveryId}`}
-                positions={entry.route!.geometry}
-                color={entry.color}
-                weight={4}
-                opacity={0.82}
-              />
-            ))}
+          ) : (
+            areaRoutes
+              .filter((entry) => entry.route?.geometry?.length)
+              .map((entry) => (
+                <Polyline
+                  key={`poly-${entry.deliveryId}`}
+                  positions={entry.route!.geometry}
+                  color={entry.color}
+                  weight={4}
+                  opacity={0.82}
+                />
+              ))
+          )}
         </MapContainer>
       </article>
 
@@ -348,31 +428,41 @@ export default function RiderAreaRoutesPage() {
           title="Start nearest delivery"
         >
           <FiMapPin />
-          <span style={{ marginLeft: 8, fontWeight: 800 }}>Start Nearest</span>
+          <span className="ml-2 font-black">Start Nearest</span>
         </button>
       </div>
       <section className="flex flex-col gap-2">
         {!isLoadingDeliveries && !deliveries.length ? (
           <article className="bg-rider-details-card rounded-xl p-3 border border-[#d4e4d5]">
-            <p className="m-0 text-sm text-[#4d564e]">No active deliveries found yet for live routing.</p>
+            <p className="m-0 text-sm text-[#4d564e]">
+              No active deliveries found yet for live routing.
+            </p>
           </article>
         ) : null}
 
         {areaRoutes.map((entry) => (
-          <article key={`card-${entry.deliveryId}`} className="bg-rider-details-card rounded-xl p-3 border border-[#d4e4d5]">
+          <article
+            key={`card-${entry.deliveryId}`}
+            className="bg-rider-details-card rounded-xl p-3 border border-[#d4e4d5]"
+          >
             <div className="flex items-center justify-between gap-2">
               <strong className="text-[#0c631f]">{entry.customer}</strong>
               <span className="inline-flex items-center rounded-full px-2 py-1 text-[0.7rem] font-bold bg-[#eff6ef] text-[#2f4631]">
-                {entry.route ? 'Route available' : 'No route found'}
+                {entry.route ? "Route available" : "No route found"}
               </span>
             </div>
-            <p className="m-0 mt-1 text-xs text-[#59625b]">{entry.areaName} • {entry.address}</p>
+            <p className="m-0 mt-1 text-xs text-[#59625b]">
+              {entry.areaName} • {entry.address}
+            </p>
             {entry.route ? (
               <p className="m-0 mt-1 text-sm text-[#4d564e]">
-                {formatDistance(entry.route.distance)} • {formatDuration(entry.route.duration)}
+                {formatDistance(entry.route.distance)} •{" "}
+                {formatDuration(entry.route.duration)}
               </p>
             ) : (
-              <p className="m-0 mt-1 text-sm text-[#8b3a3a]">Could not calculate this route right now.</p>
+              <p className="m-0 mt-1 text-sm text-[#8b3a3a]">
+                Could not calculate this route right now.
+              </p>
             )}
           </article>
         ))}

@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useState, type Key } from "react";
 import {
   Bar,
   CartesianGrid,
@@ -65,11 +65,10 @@ function normalizeStatus(status: string | null): string {
   return status?.trim().toLowerCase() ?? "";
 }
 
-
 function buildTodaySummary(
   orders: OrderRow[],
   now: Date,
-  activeRiders: number
+  activeRiders: number,
 ): SummaryItem[] {
   const startOfToday = getStartOfDay(now);
 
@@ -79,11 +78,12 @@ function buildTodaySummary(
   });
 
   const completedToday = todaysOrders.filter(
-    (order) => normalizeStatus(order.status) === "delivered"
+    (order) => normalizeStatus(order.status) === "delivered",
   ).length;
 
   const assignedDeliveries = todaysOrders.filter(
-    (order) => normalizeStatus(order.status) === "waiting" && Boolean(order.rider_id)
+    (order) =>
+      normalizeStatus(order.status) === "waiting" && Boolean(order.rider_id),
   ).length;
 
   return [
@@ -130,7 +130,8 @@ function buildSalesSummary(orders: OrderRow[], now: Date): SummaryItem[] {
     }
   }
 
-  const averageOrderValue = orders.length > 0 ? totalCollection / orders.length : 0;
+  const averageOrderValue =
+    orders.length > 0 ? totalCollection / orders.length : 0;
 
   return [
     {
@@ -161,7 +162,10 @@ function buildSalesSummary(orders: OrderRow[], now: Date): SummaryItem[] {
   ];
 }
 
-function buildPerformanceData(orders: OrderRow[], now: Date): PerformanceData[] {
+function buildPerformanceData(
+  orders: OrderRow[],
+  now: Date,
+): PerformanceData[] {
   const months: Array<{
     key: string;
     label: string;
@@ -202,7 +206,15 @@ function buildPerformanceData(orders: OrderRow[], now: Date): PerformanceData[] 
   }));
 }
 
-function SummaryCard({ icon: Icon, value, label }: SummaryItem): JSX.Element {
+interface SummaryCardProps extends SummaryItem {
+  key?: Key;
+}
+
+function SummaryCard({
+  icon: Icon,
+  value,
+  label,
+}: SummaryCardProps): JSX.Element {
   return (
     <article className="summary-card">
       <div className="summary-icon-wrap">
@@ -241,7 +253,9 @@ function DashboardChartsSection({
               stroke="#57674f"
               tickLine={false}
               axisLine={false}
-              tickFormatter={(value: number) => pesoFormatter.format(Number(value))}
+              tickFormatter={(value: number) =>
+                pesoFormatter.format(Number(value))
+              }
             />
             <YAxis
               yAxisId="right"
@@ -253,7 +267,10 @@ function DashboardChartsSection({
             <Tooltip
               formatter={(value, name) => {
                 if (name === "revenue") {
-                  return [pesoFormatter.format(Number(value ?? 0)), "Sales"] as const;
+                  return [
+                    pesoFormatter.format(Number(value ?? 0)),
+                    "Sales",
+                  ] as const;
                 }
 
                 return [Number(value ?? 0), "Orders"] as const;
@@ -311,15 +328,20 @@ export default function DashboardPage(): JSX.Element {
       if (error) {
         console.error("Error fetching dashboard data:", error);
         setErrorMessage(
-          `Failed to load dashboard data. ${error.message ?? "Please check the database connection."}`
+          `Failed to load dashboard data. ${error.message ?? "Please check the database connection."}`,
         );
         setIsLoading(false);
         return;
       }
 
       if (!Array.isArray(data)) {
-        console.error("Dashboard data fetch returned unexpected response:", data);
-        setErrorMessage("Failed to load dashboard data. Unexpected response format.");
+        console.error(
+          "Dashboard data fetch returned unexpected response:",
+          data,
+        );
+        setErrorMessage(
+          "Failed to load dashboard data. Unexpected response format.",
+        );
         setIsLoading(false);
         return;
       }
@@ -340,10 +362,7 @@ export default function DashboardPage(): JSX.Element {
           .map((order) => order.rider_id),
       ).size;
 
-
-
-
-// ✅ use activeRiders AFTER it is calculated
+      // ✅ use activeRiders AFTER it is calculated
       setSummary(buildTodaySummary(orders, now, activeRiders));
       setSales(buildSalesSummary(orders, now));
       setPerformance(buildPerformanceData(orders, now));

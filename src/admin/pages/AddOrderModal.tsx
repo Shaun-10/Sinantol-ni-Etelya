@@ -1,4 +1,10 @@
-import { FormEvent, useEffect, useState } from "react";
+import {
+  FormEvent,
+  useEffect,
+  useState,
+  type ChangeEvent,
+  type Key,
+} from "react";
 import { supabase } from "@lib/supabase";
 import type { AdminOrder } from "./orderTypes";
 
@@ -28,17 +34,20 @@ const PRICES: Record<SizeKey, number> = {
   bottled: 170,
 };
 
+interface QuantityRowProps {
+  key?: Key;
+  label: string;
+  price: number;
+  value: number;
+  onChange: (value: number) => void;
+}
+
 function QuantityRow({
   label,
   price,
   value,
   onChange,
-}: {
-  label: string;
-  price: number;
-  value: number;
-  onChange: (value: number) => void;
-}): JSX.Element {
+}: QuantityRowProps): JSX.Element {
   return (
     <div className="mt-2 flex items-center justify-between rounded-md bg-white px-2 py-1 shadow-sm">
       <span className="text-xs text-gray-700">
@@ -59,7 +68,9 @@ function QuantityRow({
           type="number"
           min={0}
           value={value}
-          onChange={(event) => onChange(Math.max(0, Number(event.target.value) || 0))}
+          onChange={(event: ChangeEvent<HTMLInputElement>) =>
+            onChange(Math.max(0, Number(event.target.value) || 0))
+          }
           className="h-6 w-12 rounded border border-gray-300 text-center text-xs focus:outline-none focus:ring-1 focus:ring-green-500"
           aria-label={`${label} quantity`}
         />
@@ -80,7 +91,7 @@ function QuantityRow({
 function formatCustomerName(
   firstName: string,
   lastName: string,
-  middleInitial: string
+  middleInitial: string,
 ): string {
   return [firstName.trim(), middleInitial.trim(), lastName.trim()]
     .filter(Boolean)
@@ -108,8 +119,16 @@ export default function AddOrderModal({
   const [middleInitial, setMiddleInitial] = useState("");
   const [address, setAddress] = useState("");
   const [contact, setContact] = useState("");
-  const [classic, setClassic] = useState<QuantityState>({ small: 0, large: 0, bottled: 0 });
-  const [spicy, setSpicy] = useState<QuantityState>({ small: 0, large: 0, bottled: 0 });
+  const [classic, setClassic] = useState<QuantityState>({
+    small: 0,
+    large: 0,
+    bottled: 0,
+  });
+  const [spicy, setSpicy] = useState<QuantityState>({
+    small: 0,
+    large: 0,
+    bottled: 0,
+  });
   const [riders, setRiders] = useState<Rider[]>([]);
   const [selectedRiderId, setSelectedRiderId] = useState("");
   const [loadingRiders, setLoadingRiders] = useState(true);
@@ -139,7 +158,7 @@ export default function AddOrderModal({
           (data ?? []).map((rider) => ({
             id: rider.id,
             name: `${rider.first_name} ${rider.last_name}`.trim(),
-          }))
+          })),
         );
       }
 
@@ -192,7 +211,7 @@ export default function AddOrderModal({
         (variants as ProductVariant[]).map((variant) => [
           getVariantKey(variant.flavor, variant.size),
           variant,
-        ])
+        ]),
       );
 
       const orderItemRows: Array<{
@@ -202,7 +221,9 @@ export default function AddOrderModal({
       }> = [];
 
       for (const item of orderItems) {
-        for (const [size, quantity] of Object.entries(item.sizes) as Array<[SizeKey, number]>) {
+        for (const [size, quantity] of Object.entries(item.sizes) as Array<
+          [SizeKey, number]
+        >) {
           if (quantity <= 0) continue;
 
           const variant = variantsByKey.get(getVariantKey(item.flavor, size));
@@ -235,7 +256,9 @@ export default function AddOrderModal({
 
       if (orderError || !order) {
         console.error("Order insert failed:", orderError);
-        alert(`Failed to create order: ${getErrorMessage(orderError, "Unknown error")}`);
+        alert(
+          `Failed to create order: ${getErrorMessage(orderError, "Unknown error")}`,
+        );
         return;
       }
 
@@ -243,12 +266,14 @@ export default function AddOrderModal({
         orderItemRows.map((item) => ({
           order_id: order.id,
           ...item,
-        }))
+        })),
       );
 
       if (itemError) {
         console.error("Order item insert failed:", itemError);
-        alert(`Failed to save order items: ${getErrorMessage(itemError, "Unknown error")}`);
+        alert(
+          `Failed to save order items: ${getErrorMessage(itemError, "Unknown error")}`,
+        );
         return;
       }
 
@@ -277,74 +302,100 @@ export default function AddOrderModal({
           </button>
         </div>
 
-        <form onSubmit={handleSubmit} className="flex flex-1 flex-col overflow-hidden">
+        <form
+          onSubmit={handleSubmit}
+          className="flex flex-1 flex-col overflow-hidden"
+        >
           <div className="flex-1 space-y-6 overflow-y-auto px-6 py-6">
             <section className="space-y-4">
               <h3 className="text-lg font-semibold">Customer Information</h3>
 
               <div className="grid grid-cols-2 gap-x-6 gap-y-3">
                 <div className="flex flex-col gap-1">
-                  <label className="text-sm font-semibold text-gray-700">First Name *</label>
+                  <label className="text-sm font-semibold text-gray-700">
+                    First Name *
+                  </label>
                   <input
                     type="text"
                     placeholder="Enter first name"
                     value={firstName}
-                    onChange={(event) => setFirstName(event.target.value)}
+                    onChange={(event: ChangeEvent<HTMLInputElement>) =>
+                      setFirstName(event.target.value)
+                    }
                     className="rider-input"
                     required
                   />
                 </div>
 
                 <div className="flex flex-col gap-1">
-                  <label className="text-sm font-semibold text-gray-700">Last Name *</label>
+                  <label className="text-sm font-semibold text-gray-700">
+                    Last Name *
+                  </label>
                   <input
                     type="text"
                     placeholder="Enter last name"
                     value={lastName}
-                    onChange={(event) => setLastName(event.target.value)}
+                    onChange={(event: ChangeEvent<HTMLInputElement>) =>
+                      setLastName(event.target.value)
+                    }
                     className="rider-input"
                     required
                   />
                 </div>
 
                 <div className="flex flex-col gap-1">
-                  <label className="text-sm font-semibold text-gray-700">Middle Initial</label>
+                  <label className="text-sm font-semibold text-gray-700">
+                    Middle Initial
+                  </label>
                   <input
                     type="text"
                     placeholder="M.I"
                     value={middleInitial}
-                    onChange={(event) => setMiddleInitial(event.target.value.slice(0, 1))}
+                    onChange={(event: ChangeEvent<HTMLInputElement>) =>
+                      setMiddleInitial(event.target.value.slice(0, 1))
+                    }
                     className="rider-input w-32"
                     maxLength={1}
                   />
                 </div>
 
                 <div className="col-span-1 flex flex-col gap-1">
-                  <label className="text-sm font-semibold text-gray-700">Address *</label>
+                  <label className="text-sm font-semibold text-gray-700">
+                    Address *
+                  </label>
                   <input
                     type="text"
                     placeholder="Enter address"
                     value={address}
-                    onChange={(event) => setAddress(event.target.value)}
+                    onChange={(event: ChangeEvent<HTMLInputElement>) =>
+                      setAddress(event.target.value)
+                    }
                     className="rider-input"
                     required
                   />
                 </div>
 
                 <div className="flex flex-col gap-1">
-                  <label className="text-sm font-semibold text-gray-700">Contact *</label>
+                  <label className="text-sm font-semibold text-gray-700">
+                    Contact *
+                  </label>
                   <input
                     type="text"
                     placeholder="Enter phone number"
                     value={contact}
-                    onChange={(event) => setContact(event.target.value)}
+                    onChange={(event: ChangeEvent<HTMLInputElement>) =>
+                      setContact(event.target.value)
+                    }
                     className="rider-input"
                     required
                   />
                 </div>
 
                 <div className="flex flex-col gap-1">
-                  <label htmlFor="assignedRider" className="text-sm font-semibold text-gray-700">
+                  <label
+                    htmlFor="assignedRider"
+                    className="text-sm font-semibold text-gray-700"
+                  >
                     Assigned Rider *
                   </label>
 
@@ -353,7 +404,9 @@ export default function AddOrderModal({
                       id="assignedRider"
                       name="assignedRider"
                       value={selectedRiderId}
-                      onChange={(event) => setSelectedRiderId(event.target.value)}
+                      onChange={(event: ChangeEvent<HTMLSelectElement>) =>
+                        setSelectedRiderId(event.target.value)
+                      }
                       disabled={loadingRiders}
                       className="rider-input cursor-pointer appearance-none pr-10"
                       required
@@ -395,7 +448,9 @@ export default function AddOrderModal({
                       label={`Classic (${size})`}
                       price={PRICES[size]}
                       value={classic[size]}
-                      onChange={(value) => setClassic({ ...classic, [size]: value })}
+                      onChange={(value) =>
+                        setClassic({ ...classic, [size]: value })
+                      }
                     />
                   ))}
                 </div>
@@ -414,7 +469,9 @@ export default function AddOrderModal({
                       label={`Spicy (${size})`}
                       price={PRICES[size]}
                       value={spicy[size]}
-                      onChange={(value) => setSpicy({ ...spicy, [size]: value })}
+                      onChange={(value) =>
+                        setSpicy({ ...spicy, [size]: value })
+                      }
                     />
                   ))}
                 </div>
@@ -423,13 +480,24 @@ export default function AddOrderModal({
           </div>
 
           <div className="flex flex-shrink-0 items-center justify-between border-t px-6 py-4">
-            <p className="text-lg font-semibold">Total: PHP {total.toFixed(2)}</p>
+            <p className="text-lg font-semibold">
+              Total: PHP {total.toFixed(2)}
+            </p>
 
             <div className="flex gap-2">
-              <button type="button" onClick={onClose} className="btn-outline" disabled={isSubmitting}>
+              <button
+                type="button"
+                onClick={onClose}
+                className="btn-outline"
+                disabled={isSubmitting}
+              >
                 Cancel
               </button>
-              <button type="submit" className="btn-primary" disabled={isSubmitting}>
+              <button
+                type="submit"
+                className="btn-primary"
+                disabled={isSubmitting}
+              >
                 {isSubmitting ? "Saving..." : "Submit"}
               </button>
             </div>
