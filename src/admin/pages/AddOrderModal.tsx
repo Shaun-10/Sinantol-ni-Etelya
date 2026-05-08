@@ -11,6 +11,7 @@ import type { AdminOrder } from "./orderTypes";
 interface Rider {
   id: string;
   name: string;
+  area: string;
 }
 
 interface ProductVariant {
@@ -133,6 +134,8 @@ export default function AddOrderModal({
   const [selectedRiderId, setSelectedRiderId] = useState("");
   const [loadingRiders, setLoadingRiders] = useState(true);
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [area, setArea] = useState("");
+  const [deliveryFee, setDeliveryFee] = useState(0);
 
   const total =
     classic.small * PRICES.small +
@@ -148,7 +151,7 @@ export default function AddOrderModal({
 
       const { data, error } = await supabase
         .from("riders")
-        .select("id, first_name, last_name")
+        .select("id, first_name, last_name, area")
         .order("last_name", { ascending: true });
 
       if (error) {
@@ -158,6 +161,7 @@ export default function AddOrderModal({
           (data ?? []).map((rider) => ({
             id: rider.id,
             name: `${rider.first_name} ${rider.last_name}`.trim(),
+            area: rider.area ?? "",
           })),
         );
       }
@@ -249,6 +253,7 @@ export default function AddOrderModal({
           contact: contact.trim(),
           rider_id: selectedRiderId,
           total,
+          delivery_fee: deliveryFee,
           status: "waiting",
         })
         .select()
@@ -377,6 +382,33 @@ export default function AddOrderModal({
 
                 <div className="flex flex-col gap-1">
                   <label className="text-sm font-semibold text-gray-700">
+                    Area
+                  </label>
+                  <input
+                    type="text"
+                    value={area}
+                    readOnly
+                    className="rider-input bg-gray-100"
+                  />
+                </div>
+
+                <div className="flex flex-col gap-1">
+                  <label className="text-sm font-semibold text-gray-700">
+                    Delivery Fee
+                  </label>
+                  <input
+                    type="number"
+                    value={deliveryFee}
+                    onChange={(e: ChangeEvent<HTMLInputElement>) =>
+                      setDeliveryFee(Number(e.target.value) || 0)
+                    }
+                    className="rider-input"
+                    min={0}
+                  />
+                </div>
+
+                <div className="flex flex-col gap-1">
+                  <label className="text-sm font-semibold text-gray-700">
                     Contact *
                   </label>
                   <input
@@ -404,9 +436,13 @@ export default function AddOrderModal({
                       id="assignedRider"
                       name="assignedRider"
                       value={selectedRiderId}
-                      onChange={(event: ChangeEvent<HTMLSelectElement>) =>
-                        setSelectedRiderId(event.target.value)
-                      }
+                      onChange={(event: ChangeEvent<HTMLSelectElement>) => {
+                        const riderId = event.target.value;
+                        setSelectedRiderId(riderId);
+
+                        const selected = riders.find((r) => r.id === riderId);
+                        setArea(selected?.area ?? "");
+                      }}
                       disabled={loadingRiders}
                       className="rider-input cursor-pointer appearance-none pr-10"
                       required
