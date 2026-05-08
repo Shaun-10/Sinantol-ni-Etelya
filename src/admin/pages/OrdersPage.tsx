@@ -22,6 +22,21 @@ function StatusBadge({ status }: { status: OrderStatus }): JSX.Element {
   );
 }
 
+function PaymentStatusBadge({ status }: { status: "paid" | "unpaid" }) {
+  const styles = {
+    paid: "bg-green-100 text-green-700",
+    unpaid: "bg-red-100 text-red-700",
+  };
+
+  return (
+    <span
+      className={`rounded-full px-3 py-1 text-xs font-semibold ${styles[status]}`}
+    >
+      {status.toUpperCase()}
+    </span>
+  );
+}
+
 function OrdersListSection({
   orders,
   onViewReceipt,
@@ -31,7 +46,10 @@ function OrdersListSection({
 }): JSX.Element {
   const [currentPage, setCurrentPage] = useState<number>(1);
   const totalPages = Math.ceil(orders.length / 10);
-  const paginatedOrders = orders.slice((currentPage - 1) * 10, currentPage * 10);
+  const paginatedOrders = orders.slice(
+    (currentPage - 1) * 10,
+    currentPage * 10,
+  );
 
   const handleNextPage = () => {
     if (currentPage < totalPages) {
@@ -50,10 +68,11 @@ function OrdersListSection({
       <table className="w-full border-collapse">
         <thead>
           <tr className="border-b bg-gray-100 text-left text-sm">
-            <th className="px-4 py-2">Order ID</th>
             <th className="px-4 py-2">Customer</th>
             <th className="px-4 py-2">Total</th>
             <th className="px-4 py-2">Date</th>
+            <th className="px-4 py-2">Payment Status</th>
+            <th className="px-4 py-2">Payment Method</th>
             <th className="px-4 py-2">Status</th>
             <th className="px-4 py-2">Receipt</th>
           </tr>
@@ -62,10 +81,17 @@ function OrdersListSection({
         <tbody>
           {paginatedOrders.map((order) => (
             <tr key={order.id} className="border-b text-sm hover:bg-gray-50">
-              <td className="px-4 py-2 font-semibold">{order.id}</td>
               <td className="px-4 py-2">{order.customer}</td>
               <td className="px-4 py-2">PHP {order.total.toFixed(2)}</td>
               <td className="px-4 py-2">{order.date}</td>
+
+              <td className="px-4 py-2">
+                <PaymentStatusBadge status={order.paymentStatus} />
+              </td>
+
+              <td className="px-4 py-2">
+                <PaymentMethodBadge method={order.paymentMethod} />
+              </td>
 
               <td className="px-4 py-2">
                 <StatusBadge status={order.status} />
@@ -84,7 +110,7 @@ function OrdersListSection({
 
           {paginatedOrders.length === 0 && (
             <tr>
-              <td colSpan={6} className="px-4 py-6 text-center text-gray-500">
+              <td colSpan={7} className="px-4 py-6 text-center text-gray-500">
                 No orders found
               </td>
             </tr>
@@ -156,6 +182,8 @@ export default function OrdersPage(): JSX.Element {
         date: new Date(order.created_at).toLocaleDateString(),
         dateRange: "Today",
         status: normalizeStatus(order.status),
+        paymentStatus: order.payment_status ?? "unpaid",
+        paymentMethod: order.payment_method ?? "cod",
       }));
 
       setOrders(mapped);
@@ -195,7 +223,10 @@ export default function OrdersPage(): JSX.Element {
       <OrdersListSection orders={orders} onViewReceipt={handleViewReceipt} />
 
       {isAddOrderOpen && (
-        <AddOrderModal onClose={() => setIsAddOrderOpen(false)} onAdd={handleAddOrder} />
+        <AddOrderModal
+          onClose={() => setIsAddOrderOpen(false)}
+          onAdd={handleAddOrder}
+        />
       )}
 
       {isReceiptOpen && selectedOrderId && (
