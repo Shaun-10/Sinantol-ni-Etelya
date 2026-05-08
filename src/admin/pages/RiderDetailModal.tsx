@@ -325,7 +325,9 @@ export default function RiderDetailModal({
                       placeholder="Enter last name"
                       value={form.lastName}
                       onChange={handleChange}
-                      aria-invalid={lastNameInvalid}
+                      {...(lastNameInvalid && {
+                        "aria-invalid": lastNameInvalid,
+                      })}
                     />
                     {errors.lastName && (
                       <p className="text-xs text-red-600 font-semibold">
@@ -353,7 +355,9 @@ export default function RiderDetailModal({
                       placeholder="Enter first name"
                       value={form.firstName}
                       onChange={handleChange}
-                      aria-invalid={firstNameInvalid}
+                      {...(firstNameInvalid && {
+                        "aria-invalid": firstNameInvalid,
+                      })}
                     />
                     {errors.firstName && (
                       <p className="text-xs text-red-600 font-semibold">
@@ -381,7 +385,9 @@ export default function RiderDetailModal({
                       placeholder="Enter middle initial"
                       value={form.middleInitial}
                       onChange={handleChange}
-                      aria-invalid={middleInitialInvalid}
+                      {...(middleInitialInvalid && {
+                        "aria-invalid": middleInitialInvalid,
+                      })}
                     />
                     {errors.middleInitial && (
                       <p className="text-xs text-red-600 font-semibold">
@@ -459,7 +465,9 @@ export default function RiderDetailModal({
                       aria-label="Contact number"
                       value={form.contact}
                       onChange={handleChange}
-                      aria-invalid={contactInvalid}
+                      {...(contactInvalid && {
+                        "aria-invalid": contactInvalid,
+                      })}
                     />
                     {errors.contact && (
                       <p className="text-xs text-red-600 font-semibold">
@@ -490,7 +498,9 @@ export default function RiderDetailModal({
                         name="birthdate"
                         value={form.birthdate}
                         onChange={handleChange}
-                        aria-invalid={birthdateInvalid}
+                        {...(birthdateInvalid && {
+                          "aria-invalid": birthdateInvalid,
+                        })}
                       />
                     </>
                     {errors.birthdate && (
@@ -620,7 +630,9 @@ export default function RiderDetailModal({
                     placeholder="Enter emergency contact number"
                     value={form.emergencyContact}
                     onChange={handleChange}
-                    aria-invalid={emergencyContactInvalid}
+                    {...(emergencyContactInvalid && {
+                      "aria-invalid": emergencyContactInvalid,
+                    })}
                   />
                   {errors.emergencyContact && (
                     <p className="text-xs text-red-600 font-semibold">

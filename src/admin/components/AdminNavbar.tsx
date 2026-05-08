@@ -76,7 +76,7 @@ export default function AdminNavbar() {
           type="button"
           aria-label="Admin menu"
           aria-haspopup="menu"
-          aria-expanded={ariaExpanded}
+          {...(ariaExpanded && { "aria-expanded": ariaExpanded })}
         >
           <div
             className={`h-6 w-6 rounded-full flex items-center justify-center transition ${

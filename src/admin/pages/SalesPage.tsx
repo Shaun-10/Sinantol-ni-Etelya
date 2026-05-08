@@ -200,7 +200,10 @@ function OrdersByAreaSection({
   }, [orders, selectedArea]);
 
   const totalPages = Math.ceil(filteredOrders.length / 10);
-  const paginatedOrders = filteredOrders.slice((currentPage - 1) * 10, currentPage * 10);
+  const paginatedOrders = filteredOrders.slice(
+    (currentPage - 1) * 10,
+    currentPage * 10,
+  );
 
   const handleNextPage = () => {
     if (currentPage < totalPages) {
@@ -387,13 +390,11 @@ function MonthlySalesSection({ data }: MonthlySalesSectionProps): JSX.Element {
   );
 }
 
-
 function FlavorBreakdownCard({
   flavorData,
 }: {
   flavorData: FlavorData[];
 }): JSX.Element {
-
   return (
     <article
       className="bg-white rounded-lg border border-gray-200 shadow-sm overflow-hidden"
@@ -402,7 +403,7 @@ function FlavorBreakdownCard({
       <div className="p-4 border-b border-gray-200">
         <h3 className="text-lg font-semibold text-gray-900">Sales by Flavor</h3>
       </div>
-      
+
       <div className="p-4 h-80">
         <ResponsiveContainer width="100%" height="100%">
           <PieChart>
@@ -434,13 +435,15 @@ function FlavorBreakdownCard({
             key={item.name}
             role="listitem"
           >
-            <div
-              className="w-3 h-3 rounded-full"
+            <span
+              className="w-3 h-3 rounded-full inline-block"
               style={{ backgroundColor: item.color }}
               aria-hidden="true"
             />
             <span className="text-gray-700">{item.name}</span>
-            <span className="ml-auto font-semibold text-gray-900">{item.value}</span>
+            <span className="ml-auto font-semibold text-gray-900">
+              {item.value}
+            </span>
           </div>
         ))}
       </div>
@@ -629,9 +632,7 @@ export default function SalesPage(): JSX.Element {
     const fetchSalesData = async () => {
       setIsLoading(true);
 
-      const { data, error } = await supabase
-        .from("orders")
-        .select(`
+      const { data, error } = await supabase.from("orders").select(`
           id,
           created_at,
           address,
@@ -663,26 +664,26 @@ export default function SalesPage(): JSX.Element {
 
   // ✅ Compute Classic & Spicy totals (GLOBAL)
   useEffect(() => {
-  let classic = 0;
-  let spicy = 0;
+    let classic = 0;
+    let spicy = 0;
 
-  orders.forEach(order => {
-    order.order_items?.forEach((item: any) => {
-      const qty = Number(item.quantity ?? 0);
-      const flavor = item.product_variants?.flavor;
+    orders.forEach((order) => {
+      order.order_items?.forEach((item: any) => {
+        const qty = Number(item.quantity ?? 0);
+        const flavor = item.product_variants?.flavor;
 
-      if (flavor === "classic") classic += qty;
-      if (flavor === "spicy") spicy += qty;
+        if (flavor === "classic") classic += qty;
+        if (flavor === "spicy") spicy += qty;
+      });
     });
-  });
 
-  setFlavorTotals({ classic, spicy });
-}, [orders]);
+    setFlavorTotals({ classic, spicy });
+  }, [orders]);
 
   // ✅ Total sales
   const totalSales = useMemo(
     () => orders.reduce((sum, o) => sum + Number(o.total || 0), 0),
-    [orders]
+    [orders],
   );
 
   // ✅ Summary cards
@@ -707,21 +708,20 @@ export default function SalesPage(): JSX.Element {
   const ordersByAreaData: OrderByArea[] = useMemo(() => {
     return orders.map((order, index) => {
       let classic = 0;
-let spicy = 0;
+      let spicy = 0;
 
-order.order_items?.forEach((item: any) => {
-  const qty = Number(item.quantity ?? 0);
-  const flavor = item.product_variants?.flavor;
+      order.order_items?.forEach((item: any) => {
+        const qty = Number(item.quantity ?? 0);
+        const flavor = item.product_variants?.flavor;
 
-  if (flavor === "classic") {
-    classic += qty;
-  }
+        if (flavor === "classic") {
+          classic += qty;
+        }
 
-  if (flavor === "spicy") {
-    spicy += qty;
-  }
-});
-
+        if (flavor === "spicy") {
+          spicy += qty;
+        }
+      });
 
       return {
         id: index + 1,
@@ -739,7 +739,7 @@ order.order_items?.forEach((item: any) => {
   const monthlySalesData: MonthlySalesData[] = useMemo(() => {
     const map = new Map<string, MonthlySalesData>();
 
-    orders.forEach(order => {
+    orders.forEach((order) => {
       if (!order.created_at) return;
 
       const date = new Date(order.created_at);

@@ -103,7 +103,7 @@ export default function RiderHomePage() {
     <RiderAppLayout
       headerContent={
         <>
-          <div className="bg-[#efefef] border-t border-[#d8d8d8] border-b border-[#b8b8b8] p-2 flex items-center justify-between">
+          <div className="bg-gray-100 border-t border-gray-300 p-2 flex items-center justify-between">
             <img
               src="/images/logo_delivery.png"
               alt="Sinantol ni Etelya Riders"
