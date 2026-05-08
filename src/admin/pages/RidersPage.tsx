@@ -32,7 +32,9 @@ function getErrorMessage(error: unknown, fallback: string): string {
 }
 
 function normalizeDeliveryStatus(status: unknown): string {
-  const normalized = String(status ?? "").replace(/_/g, " ").trim();
+  const normalized = String(status ?? "")
+    .replace(/_/g, " ")
+    .trim();
 
   if (!normalized) return "Waiting";
 
@@ -89,7 +91,10 @@ function RidersListSection({
 }: RidersListSectionProps): JSX.Element {
   const [currentPage, setCurrentPage] = useState<number>(1);
   const totalPages = Math.ceil(riders.length / 10);
-  const paginatedRiders = riders.slice((currentPage - 1) * 10, currentPage * 10);
+  const paginatedRiders = riders.slice(
+    (currentPage - 1) * 10,
+    currentPage * 10,
+  );
 
   const handleNextPage = () => {
     if (currentPage < totalPages) {
@@ -129,16 +134,16 @@ function RidersListSection({
                 <td>{rider.location}</td>
                 <td>{rider.plate_number}</td>
                 <td>
-  <span
-    className={`px-3 py-1 rounded-full text-xs font-semibold ${
-      rider.isOnline
-        ? "bg-green-100 text-green-700"
-        : "bg-gray-200 text-gray-600"
-    }`}
-  >
-    {rider.isOnline ? "Online" : "Offline"}
-  </span>
-</td>
+                  <span
+                    className={`px-3 py-1 rounded-full text-xs font-semibold ${
+                      rider.isOnline
+                        ? "bg-green-100 text-green-700"
+                        : "bg-gray-200 text-gray-600"
+                    }`}
+                  >
+                    {rider.isOnline ? "Online" : "Offline"}
+                  </span>
+                </td>
                 <td>
                   <button
                     type="button"
@@ -194,7 +199,10 @@ function RidersListSection({
   );
 }
 
-function DeliveriesDialog({ rider, onClose }: DeliveriesDialogProps): JSX.Element {
+function DeliveriesDialog({
+  rider,
+  onClose,
+}: DeliveriesDialogProps): JSX.Element {
   const [deliveries, setDeliveries] = useState<Delivery[]>([]);
   const [isLoadingDeliveries, setIsLoadingDeliveries] = useState(true);
   const [deliveriesError, setDeliveriesError] = useState("");
@@ -206,98 +214,161 @@ function DeliveriesDialog({ rider, onClose }: DeliveriesDialogProps): JSX.Elemen
   useEffect(() => {
     if (!orderFilter && !deliveriesFilter) return;
 
-    let orderChannel: any = null;
+    let orderChannel: ReturnType<typeof supabase.channel> | null = null;
     if (orderFilter) {
       orderChannel = supabase
-        .channel('rider_orders')
-        .onPostgresChanges({
-          event: { type: 'INSERT', schema: 'public', table: 'orders' },
-          filter: orderFilter, // No status filter here
-          callback: (payload: any) => {
+        .channel("rider_orders")
+
+        .on(
+          "postgres_changes",
+          {
+            event: "INSERT",
+            schema: "public",
+            table: "orders",
+            filter: orderFilter,
+          },
+          (payload: any) => {
             const newRow = payload.new;
-            if (newRow.status === 'Delivered') {
+
+            if (newRow.status === "Delivered") {
               const newDelivery: Delivery = {
                 id: String(newRow.id ?? ""),
                 status: normalizeDeliveryStatus(newRow.status),
-                customer: normalizeDbString(newRow.customer_name) || "No customer name",
+                customer:
+                  normalizeDbString(newRow.customer_name) || "No customer name",
                 createdAt: String(newRow.created_at ?? ""),
                 source: "orders",
               };
-              setDeliveries(prev => {
-                const exists = prev.some(d => d.id === newDelivery.id);
+
+              setDeliveries((prev) => {
+                const exists = prev.some((d) => d.id === newDelivery.id);
                 if (exists) return prev;
-                return [newDelivery, ...prev].sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
+
+                return [newDelivery, ...prev].sort(
+                  (a, b) =>
+                    new Date(b.createdAt).getTime() -
+                    new Date(a.createdAt).getTime(),
+                );
               });
             }
-          }
-        })
-        .onPostgresChanges({
-          event: { type: 'UPDATE', schema: 'public', table: 'orders' },
-          filter: orderFilter,
-          callback: (payload: any) => {
+          },
+        )
+
+        .on(
+          "postgres_changes",
+          {
+            event: "UPDATE",
+            schema: "public",
+            table: "orders",
+            filter: orderFilter,
+          },
+          (payload: any) => {
             const updatedRow = payload.new;
+
             const updatedDelivery: Delivery = {
               id: String(updatedRow.id ?? ""),
               status: normalizeDeliveryStatus(updatedRow.status),
-              customer: normalizeDbString(updatedRow.customer_name) || "No customer name",
+              customer:
+                normalizeDbString(updatedRow.customer_name) ||
+                "No customer name",
               createdAt: String(updatedRow.created_at ?? ""),
               source: "orders",
             };
-            setDeliveries(prev => {
-              const idx = prev.findIndex(d => d.id === updatedDelivery.id);
+
+            setDeliveries((prev) => {
+              const idx = prev.findIndex((d) => d.id === updatedDelivery.id);
               if (idx === -1) return prev;
-              const newList = prev.slice();
+
+              const newList = [...prev];
               newList[idx] = updatedDelivery;
-              return newList.sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
+
+              return newList.sort(
+                (a, b) =>
+                  new Date(b.createdAt).getTime() -
+                  new Date(a.createdAt).getTime(),
+              );
             });
-          }
-        }).subscribe();
+          },
+        )
+
+        .subscribe();
     }
 
-    let deliveriesChannel: any = null;
+    let deliveriesChannel: ReturnType<typeof supabase.channel> | null = null;
     if (deliveriesFilter) {
       deliveriesChannel = supabase
-        .channel('rider_deliveries')
-        .onPostgresChanges({
-          event: { type: 'INSERT', schema: 'public', table: 'deliveries' },
-          filter: deliveriesFilter,
-          callback: (payload: any) => {
+        .channel("rider_deliveries")
+        .on(
+          "postgres_changes",
+          {
+            event: "INSERT",
+            schema: "public",
+            table: "deliveries",
+            filter: deliveriesFilter,
+          },
+          (payload: any) => {
             const newRow = payload.new;
+
             const newDelivery: Delivery = {
               id: String(newRow.id ?? ""),
               status: normalizeDeliveryStatus(newRow.status),
-              customer: normalizeDbString(newRow.customer_name) || "No customer name",
+              customer:
+                normalizeDbString(newRow.customer_name) || "No customer name",
               createdAt: String(newRow.created_at ?? ""),
               source: "deliveries",
             };
-            setDeliveries(prev => {
-              const exists = prev.some(d => d.id === newDelivery.id);
+
+            setDeliveries((prev) => {
+              const exists = prev.some((d) => d.id === newDelivery.id);
               if (exists) return prev;
-              return [newDelivery, ...prev].sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
+
+              return [newDelivery, ...prev].sort(
+                (a, b) =>
+                  new Date(b.createdAt).getTime() -
+                  new Date(a.createdAt).getTime(),
+              );
             });
-          }
-        })
-        .onPostgresChanges({
-          event: { type: 'UPDATE', schema: 'public', table: 'deliveries' },
-          filter: deliveriesFilter,
-          callback: (payload: any) => {
+          },
+        )
+
+        .on(
+          "postgres_changes",
+          {
+            event: "UPDATE",
+            schema: "public",
+            table: "deliveries",
+            filter: deliveriesFilter,
+          },
+          (payload: any) => {
             const updatedRow = payload.new;
+
             const updatedDelivery: Delivery = {
               id: String(updatedRow.id ?? ""),
               status: normalizeDeliveryStatus(updatedRow.status),
-              customer: normalizeDbString(updatedRow.customer_name) || "No customer name",
+              customer:
+                normalizeDbString(updatedRow.customer_name) ||
+                "No customer name",
               createdAt: String(updatedRow.created_at ?? ""),
               source: "deliveries",
             };
-            setDeliveries(prev => {
-              const idx = prev.findIndex(d => d.id === updatedDelivery.id);
+
+            setDeliveries((prev) => {
+              const idx = prev.findIndex((d) => d.id === updatedDelivery.id);
               if (idx === -1) return prev;
-              const newList = prev.slice();
+
+              const newList = [...prev];
               newList[idx] = updatedDelivery;
-              return newList.sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
+
+              return newList.sort(
+                (a, b) =>
+                  new Date(b.createdAt).getTime() -
+                  new Date(a.createdAt).getTime(),
+              );
             });
-          }
-        }).subscribe();
+          },
+        )
+
+        .subscribe();
     }
 
     return () => {
@@ -314,7 +385,14 @@ function DeliveriesDialog({ rider, onClose }: DeliveriesDialogProps): JSX.Elemen
       setDeliveries([]); // Clear previous
 
       try {
-        console.log('Fetching deliveries for rider:', rider.id, 'orderFilter:', orderFilter, 'deliveriesFilter:', deliveriesFilter); // Debug
+        console.log(
+          "Fetching deliveries for rider:",
+          rider.id,
+          "orderFilter:",
+          orderFilter,
+          "deliveriesFilter:",
+          deliveriesFilter,
+        ); // Debug
 
         const [ordersResult, deliveriesResult] = await Promise.all([
           orderFilter
@@ -334,40 +412,51 @@ function DeliveriesDialog({ rider, onClose }: DeliveriesDialogProps): JSX.Elemen
             : Promise.resolve({ data: [], error: null }),
         ]);
 
-        console.log('Orders result:', ordersResult);
-        console.log('Deliveries result:', deliveriesResult);
+        console.log("Orders result:", ordersResult);
+        console.log("Deliveries result:", deliveriesResult);
 
         if (ordersResult.error) throw ordersResult.error;
         if (deliveriesResult.error) throw deliveriesResult.error;
 
-        const orderRows: Delivery[] = (ordersResult.data ?? []).map((row: any) => ({
-          id: String(row.id ?? ""),
-          status: normalizeDeliveryStatus(row.status),
-          customer: normalizeDbString(row.customer_name) || "No customer name",
-          createdAt: String(row.created_at ?? ""),
-          source: "orders",
-        }));
+        const orderRows: Delivery[] = (ordersResult.data ?? []).map(
+          (row: any) => ({
+            id: String(row.id ?? ""),
+            status: normalizeDeliveryStatus(row.status),
+            customer:
+              normalizeDbString(row.customer_name) || "No customer name",
+            createdAt: String(row.created_at ?? ""),
+            source: "orders",
+          }),
+        );
 
-        const deliveryRows: Delivery[] = (deliveriesResult.data ?? []).map((row: any) => ({
-          id: String(row.id ?? ""),
-          status: normalizeDeliveryStatus(row.status),
-          customer: normalizeDbString(row.customer_name) || "No customer name",
-          createdAt: String(row.created_at ?? ""),
-          source: "deliveries",
-        }));
+        const deliveryRows: Delivery[] = (deliveriesResult.data ?? []).map(
+          (row: any) => ({
+            id: String(row.id ?? ""),
+            status: normalizeDeliveryStatus(row.status),
+            customer:
+              normalizeDbString(row.customer_name) || "No customer name",
+            createdAt: String(row.created_at ?? ""),
+            source: "deliveries",
+          }),
+        );
 
         const allDeliveries = [...deliveryRows, ...orderRows].sort((a, b) => {
           const aDate = new Date(a.createdAt).getTime();
           const bDate = new Date(b.createdAt).getTime();
-          return (Number.isNaN(bDate) ? 0 : bDate) - (Number.isNaN(aDate) ? 0 : aDate);
+          return (
+            (Number.isNaN(bDate) ? 0 : bDate) -
+            (Number.isNaN(aDate) ? 0 : aDate)
+          );
         });
 
-        console.log('Setting deliveries:', allDeliveries);
+        console.log("Setting deliveries:", allDeliveries);
 
         setDeliveries(allDeliveries);
       } catch (error) {
         console.error("Error fetching rider deliveries:", error);
-        setDeliveriesError(getErrorMessage(error, "Failed to load rider deliveries."));
+        setDeliveriesError(
+          getErrorMessage(error, "Failed to load rider deliveries."),
+        );
       } finally {
         setIsLoadingDeliveries(false);
       }
@@ -439,10 +528,14 @@ function DeliveriesDialog({ rider, onClose }: DeliveriesDialogProps): JSX.Elemen
                     <FiCheck className="w-4 h-4" />
                   </span>
                   <div>
-                    <p className="text-gray-700">Delivery #{delivery.id.slice(0, 8)}</p>
+                    <p className="text-gray-700">
+                      Delivery #{delivery.id.slice(0, 8)}
+                    </p>
                     <p className="text-xs text-gray-500">
                       {delivery.customer}
-                      {delivery.createdAt ? ` - ${formatDeliveryDate(delivery.createdAt)}` : ""}
+                      {delivery.createdAt
+                        ? ` - ${formatDeliveryDate(delivery.createdAt)}`
+                        : ""}
                     </p>
                   </div>
                 </div>
@@ -471,10 +564,14 @@ function DeliveriesDialog({ rider, onClose }: DeliveriesDialogProps): JSX.Elemen
                     <FiCheck className="w-4 h-4" />
                   </span>
                   <div>
-                    <p className="text-gray-700">Delivery #{delivery.id.slice(0, 8)}</p>
+                    <p className="text-gray-700">
+                      Delivery #{delivery.id.slice(0, 8)}
+                    </p>
                     <p className="text-xs text-gray-500">
                       {delivery.customer}
-                      {delivery.createdAt ? ` - ${formatDeliveryDate(delivery.createdAt)}` : ""}
+                      {delivery.createdAt
+                        ? ` - ${formatDeliveryDate(delivery.createdAt)}`
+                        : ""}
                     </p>
                   </div>
                 </div>
@@ -506,14 +603,14 @@ export default function RidersPage(): JSX.Element {
   const [deliveriesRider, setDeliveriesRider] = useState<Rider | null>(null);
   const [isDeliveriesModalOpen, setIsDeliveriesModalOpen] = useState(false);
 
-  
-useEffect(() => {
-  const fetchRiders = async (): Promise<void> => {
-    setLoading(true);
+  useEffect(() => {
+    const fetchRiders = async (): Promise<void> => {
+      setLoading(true);
 
-    const { data, error } = await supabase
-      .from("riders")
-      .select(`
+      const { data, error } = await supabase
+        .from("riders")
+        .select(
+          `
         id,
         user_id,
         first_name,
@@ -531,49 +628,51 @@ useEffect(() => {
           id,
           status
         )
-      `)
-      .order("created_at", { ascending: true });
+      `,
+        )
+        .order("created_at", { ascending: true });
 
-    if (error) {
-      console.error("Error fetching riders:", error);
+      if (error) {
+        console.error("Error fetching riders:", error);
+        setLoading(false);
+        return;
+      }
+
+      const transformed: Rider[] = (data ?? []).map(
+        (rider: any, index: number) => {
+          const activeOrders =
+            rider.orders?.filter((o: any) => o.status === "waiting") ?? [];
+
+          return {
+            orderId: index + 1,
+            id: rider.id,
+            userid: rider.user_id,
+
+            name: `${normalizeDbString(rider.first_name)} ${normalizeDbString(rider.last_name)}`.trim(),
+            firstName: normalizeDbString(rider.first_name),
+            lastName: normalizeDbString(rider.last_name),
+            middleInitial: normalizeDbString(rider.middle_initial),
+            address: normalizeDbString(rider.address),
+
+            contact: normalizeDbString(rider.contact),
+            location: normalizeDbString(rider.location),
+            plate_number: normalizeDbString(rider.plate_number),
+            email: normalizeDbString(rider.email),
+
+            birthdate: rider.birthdate ?? "",
+            emergencyName: normalizeDbString(rider.emergency_name),
+            emergencyContact: normalizeDbString(rider.emergency_contact),
+            isOnline: activeOrders.length > 0,
+          };
+        },
+      );
+
+      setRiders(transformed);
       setLoading(false);
-      return;
-    }
+    };
 
-    const transformed: Rider[] = (data ?? []).map((rider: any, index: number) => {
-      const activeOrders =
-        rider.orders?.filter((o: any) => o.status === "waiting") ?? [];
-
-      return {
-        orderId: index + 1,
-        id: rider.id,
-        userid: rider.user_id,
-
-        name: `${normalizeDbString(rider.first_name)} ${normalizeDbString(rider.last_name)}`.trim(),
-        firstName: normalizeDbString(rider.first_name),
-        lastName: normalizeDbString(rider.last_name),
-        middleInitial: normalizeDbString(rider.middle_initial),
-        address: normalizeDbString(rider.address),
-
-        contact: normalizeDbString(rider.contact),
-        location: normalizeDbString(rider.location),
-        plate_number: normalizeDbString(rider.plate_number),
-        email: normalizeDbString(rider.email),
-
-        birthdate: rider.birthdate ?? "",
-        emergencyName: normalizeDbString(rider.emergency_name),
-        emergencyContact: normalizeDbString(rider.emergency_contact),
-        isOnline: activeOrders.length > 0,
-      };
-    });
-
-    setRiders(transformed);
-    setLoading(false);
-  };
-
-  fetchRiders();
-}, []);
-
+    fetchRiders();
+  }, []);
 
   const handleViewDetails = (rider: Rider): void => {
     setSelectedRider(rider);
@@ -677,40 +776,56 @@ useEffect(() => {
 
       if (riderError || !data) {
         console.error("Rider insert failed:", riderError);
-        alert(`Failed to save rider to database: ${getErrorMessage(riderError, "Unknown error")}`);
+        alert(
+          `Failed to save rider to database: ${getErrorMessage(riderError, "Unknown error")}`,
+        );
         return;
       }
 
       setRiders((prev) => [
-  ...prev,
-  {
-    orderId: prev.length + 1,
-    id: data.id,
-    userid: userId,
+        ...prev,
+        {
+          orderId: prev.length + 1,
+          id: data.id,
+          userid: userId,
 
-    name: `${normalizeDbString(data.first_name)} ${normalizeDbString(data.last_name)}`.trim(),
-    firstName: normalizeDbString(data.first_name),
-    lastName: normalizeDbString(data.last_name),
-    middleInitial: normalizeDbString(formValues.middleInitial),
-    address: normalizeDbString(data.address) || normalizeDbString(formValues.address),
+          name: `${normalizeDbString(data.first_name)} ${normalizeDbString(data.last_name)}`.trim(),
+          firstName: normalizeDbString(data.first_name),
+          lastName: normalizeDbString(data.last_name),
+          middleInitial: normalizeDbString(formValues.middleInitial),
+          address:
+            normalizeDbString(data.address) ||
+            normalizeDbString(formValues.address),
 
-    contact: normalizeDbString(data.contact),
-    location: normalizeDbString(data.location) || normalizeDbString(formValues.location),
-    plate_number: normalizeDbString(data.plate_number) || normalizeDbString(formValues.plate_number),
-    email: normalizeDbString(data.email) || normalizeDbString(formValues.email),
+          contact: normalizeDbString(data.contact),
+          location:
+            normalizeDbString(data.location) ||
+            normalizeDbString(formValues.location),
+          plate_number:
+            normalizeDbString(data.plate_number) ||
+            normalizeDbString(formValues.plate_number),
+          email:
+            normalizeDbString(data.email) ||
+            normalizeDbString(formValues.email),
 
-    birthdate: normalizeDbString(data.birthdate) || normalizeDbString(formValues.birthdate),
-    emergencyName:
-      normalizeDbString(data.emergency_name) || normalizeDbString(formValues.emergencyName),
-    emergencyContact:
-      normalizeDbString(data.emergency_contact) || normalizeDbString(formValues.emergencyContact),
+          birthdate:
+            normalizeDbString(data.birthdate) ||
+            normalizeDbString(formValues.birthdate),
+          emergencyName:
+            normalizeDbString(data.emergency_name) ||
+            normalizeDbString(formValues.emergencyName),
+          emergencyContact:
+            normalizeDbString(data.emergency_contact) ||
+            normalizeDbString(formValues.emergencyContact),
 
-    isOnline: false,
-  },
-]);
+          isOnline: false,
+        },
+      ]);
       setIsAddModalOpen(false);
 
-      alert(`Rider account created successfully.\n\nEmail: ${formValues.email}`);
+      alert(
+        `Rider account created successfully.\n\nEmail: ${formValues.email}`,
+      );
     } catch (err) {
       console.error("Unexpected error:", err);
       alert("Unexpected error while adding rider.");
