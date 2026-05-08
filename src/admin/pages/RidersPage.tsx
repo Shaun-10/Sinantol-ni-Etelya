@@ -618,7 +618,7 @@ export default function RidersPage(): JSX.Element {
         last_name,
         contact,
         address,
-        location,
+        area,
         plate_number,
         email,
         emergency_name,
@@ -655,7 +655,7 @@ export default function RidersPage(): JSX.Element {
             address: normalizeDbString(rider.address),
 
             contact: normalizeDbString(rider.contact),
-            location: normalizeDbString(rider.location),
+            location: normalizeDbString(rider.area),
             plate_number: normalizeDbString(rider.plate_number),
             email: normalizeDbString(rider.email),
 
@@ -764,7 +764,7 @@ export default function RidersPage(): JSX.Element {
           last_name: formValues.lastName.trim(),
           contact: formValues.contact.trim() || null,
           address: formValues.address.trim() || null,
-          location: formValues.location.trim() || null,
+          area: formValues.location.trim() || null,
           plate_number: formValues.plate_number.trim() || null,
           email: formValues.email.trim() || null,
           birthdate: formValues.birthdate || null,

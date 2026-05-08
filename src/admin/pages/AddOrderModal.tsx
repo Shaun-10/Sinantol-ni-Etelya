@@ -137,6 +137,10 @@ export default function AddOrderModal({
   const [loadingRiders, setLoadingRiders] = useState(true);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [area, setArea] = useState("");
+  const [paymentStatus, setPaymentStatus] = useState<"paid" | "unpaid">(
+    "unpaid",
+  );
+  const [paymentMethod, setPaymentMethod] = useState<"cod" | "online">("cod");
   const [deliveryFee, setDeliveryFee] = useState(0);
 
   const itemTotal =
@@ -147,7 +151,15 @@ export default function AddOrderModal({
     spicy.large * PRICES.large +
     spicy.bottled * PRICES.bottled;
 
-  const total = itemTotal + deliveryFee;
+  const totalQuantity =
+    classic.small +
+    classic.large +
+    classic.bottled +
+    spicy.small +
+    spicy.large +
+    spicy.bottled;
+
+  const total = itemTotal + deliveryFee * totalQuantity;
 
   useEffect(() => {
     const fetchRiders = async () => {
@@ -259,6 +271,8 @@ export default function AddOrderModal({
           total,
           delivery_fee: deliveryFee,
           status: "waiting",
+          payment_status: paymentStatus,
+          payment_method: paymentMethod,
         })
         .select()
         .single();
@@ -293,8 +307,8 @@ export default function AddOrderModal({
         date: new Date(order.created_at).toLocaleDateString(),
         dateRange: "Today",
         status: "waiting",
-        paymentStatus: "unpaid",
-        paymentMethod: "cod",
+        paymentStatus,
+        paymentMethod,
       });
 
       onClose();
@@ -386,62 +400,6 @@ export default function AddOrderModal({
                   />
                 </div>
 
-                <div className="col-span-2 flex flex-col gap-1">
-                  <label
-                    htmlFor="address"
-                    className="text-sm font-semibold text-gray-700"
-                  >
-                    Address *
-                  </label>
-                  <input
-                    id="address"
-                    type="text"
-                    placeholder="Enter address"
-                    value={address}
-                    onChange={(event: ChangeEvent<HTMLInputElement>) =>
-                      setAddress(event.target.value)
-                    }
-                    className={inputStyle}
-                    required
-                  />
-                </div>
-
-                <div className="flex flex-col gap-1">
-                  <label
-                    htmlFor="area"
-                    className="text-sm font-semibold text-gray-700"
-                  >
-                    Area
-                  </label>
-                  <input
-                    id="area"
-                    type="text"
-                    value={area}
-                    readOnly
-                    className={`${inputStyle} bg-gray-50`}
-                  />
-                </div>
-
-                <div className="flex flex-col gap-1">
-                  <label
-                    htmlFor="deliveryFee"
-                    className="text-sm font-semibold text-gray-700"
-                  >
-                    Delivery Fee
-                  </label>
-                  <input
-                    id="deliveryFee"
-                    type="number"
-                    placeholder="0"
-                    value={deliveryFee}
-                    onChange={(e: ChangeEvent<HTMLInputElement>) =>
-                      setDeliveryFee(Number(e.target.value) || 0)
-                    }
-                    className={inputStyle}
-                    min={1}
-                  />
-                </div>
-
                 <div className="flex flex-col gap-1">
                   <label
                     htmlFor="contact"
@@ -501,6 +459,106 @@ export default function AddOrderModal({
                       ▼
                     </span>
                   </div>
+                </div>
+
+                <div className="flex flex-col gap-1">
+                  <label
+                    htmlFor="area"
+                    className="text-sm font-semibold text-gray-700"
+                  >
+                    Area
+                  </label>
+                  <input
+                    id="area"
+                    type="text"
+                    value={area}
+                    readOnly
+                    className={`${inputStyle} bg-gray-50`}
+                  />
+                </div>
+
+                <div className="col-span-2 flex flex-col gap-1">
+                  <label
+                    htmlFor="address"
+                    className="text-sm font-semibold text-gray-700"
+                  >
+                    Address *
+                  </label>
+                  <input
+                    id="address"
+                    type="text"
+                    placeholder="Enter address"
+                    value={address}
+                    onChange={(event: ChangeEvent<HTMLInputElement>) =>
+                      setAddress(event.target.value)
+                    }
+                    className={inputStyle}
+                    required
+                  />
+                </div>
+
+                <div className="flex flex-col gap-1">
+                  <label
+                    htmlFor="paymentStatus"
+                    className="text-sm font-semibold text-gray-700"
+                  >
+                    Payment Status *
+                  </label>
+
+                  <select
+                    id="paymentStatus"
+                    name="paymentStatus"
+                    value={paymentStatus}
+                    onChange={(e: ChangeEvent<HTMLSelectElement>) =>
+                      setPaymentStatus(e.target.value as "paid" | "unpaid")
+                    }
+                    className={inputStyle}
+                  >
+                    <option value="unpaid">Unpaid</option>
+                    <option value="paid">Paid</option>
+                  </select>
+                </div>
+
+                <div className="flex flex-col gap-1">
+                  <label
+                    htmlFor="paymentMethod"
+                    className="text-sm font-semibold text-gray-700"
+                  >
+                    Payment Method *
+                  </label>
+                  <select
+                    id="paymentMethod"
+                    name="paymentMethod"
+                    value={paymentMethod}
+                    onChange={(e: ChangeEvent<HTMLSelectElement>) =>
+                      setPaymentMethod(e.target.value as "cod" | "online")
+                    }
+                    className={inputStyle}
+                  >
+                    <option value="cod">Cash on Delivery</option>
+                    <option value="online">Online Payment</option>
+                  </select>
+                </div>
+
+                <div className="flex flex-col gap-1">
+                  <label
+                    htmlFor="deliveryFee"
+                    className="text-sm font-semibold text-gray-700"
+                  >
+                    Delivery Fee
+                  </label>
+                  <input
+                    id="deliveryFee"
+                    type="number"
+                    placeholder="0"
+                    value={deliveryFee === 0 ? "" : deliveryFee}
+                    onChange={(e: ChangeEvent<HTMLInputElement>) => {
+                      const value = e.target.value;
+                      setDeliveryFee(value === "" ? 0 : Number(value));
+                    }}
+                    className={inputStyle}
+                    min={0}
+                  />
                 </div>
               </div>
             </section>

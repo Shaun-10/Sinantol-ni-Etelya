@@ -628,9 +628,11 @@ function PriceListCard(): JSX.Element {
 
 interface OrderItem {
   quantity: number;
-  product_variants: {
-    flavor: string;
-  }[];
+  product_variants:
+    | {
+        flavor: string;
+      }
+    | { flavor: string }[];
 }
 
 interface Order {
@@ -641,6 +643,9 @@ interface Order {
   total: number;
   customer_name: string;
   contact: string;
+  rider?: {
+    area: string;
+  };
   order_items: OrderItem[];
 }
 
@@ -662,6 +667,9 @@ export default function SalesPage(): JSX.Element {
           total,
           customer_name,
           contact,
+rider:riders (
+    area
+    ),
           order_items (
             quantity,
             product_variants:product_variants!order_items_product_variant_id_fkey (
@@ -676,7 +684,7 @@ export default function SalesPage(): JSX.Element {
         return;
       }
 
-      setOrders((data as Order[]) ?? []);
+      setOrders((data as unknown as Order[]) ?? []);
       console.log("ORDERS DEBUG:", JSON.stringify(data, null, 2));
       setIsLoading(false);
     };
@@ -692,10 +700,15 @@ export default function SalesPage(): JSX.Element {
     orders.forEach((order: Order) => {
       order.order_items?.forEach((item: OrderItem) => {
         const qty = Number(item.quantity ?? 0);
-        const flavor = item.product_variants?.[0]?.flavor;
+        const variants = Array.isArray(item.product_variants)
+          ? item.product_variants
+          : [item.product_variants];
+        const flavor = variants[0]?.flavor;
 
-        if (flavor === "classic") classic += qty;
-        if (flavor === "spicy") spicy += qty;
+        const f = String(flavor || "").toLowerCase();
+
+        if (f === "classic") classic += qty;
+        if (f === "spicy") spicy += qty;
       });
     });
 
@@ -734,13 +747,18 @@ export default function SalesPage(): JSX.Element {
 
       order.order_items?.forEach((item: OrderItem) => {
         const qty = Number(item.quantity ?? 0);
-        const flavor = item.product_variants?.[0]?.flavor;
+        const variants = Array.isArray(item.product_variants)
+          ? item.product_variants
+          : [item.product_variants];
+        const flavor = variants[0]?.flavor;
 
-        if (flavor === "classic") {
+        const f = String(flavor || "").toLowerCase();
+
+        if (f === "classic") {
           classic += qty;
         }
 
-        if (flavor === "spicy") {
+        if (f === "spicy") {
           spicy += qty;
         }
       });
@@ -749,7 +767,7 @@ export default function SalesPage(): JSX.Element {
         id: index + 1,
         clientName: order.customer_name || "N/A",
         contactNo: order.contact || "N/A",
-        area: extractArea(order.address),
+        area: extractArea(order.address) || "Unknown",
         classic,
         spicy,
         amount: Number(order.total || 0),
