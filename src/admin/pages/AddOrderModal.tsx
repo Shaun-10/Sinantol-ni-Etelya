@@ -1,10 +1,4 @@
-import {
-  FormEvent,
-  useEffect,
-  useState,
-  type ChangeEvent,
-  type Key,
-} from "react";
+import { FormEvent, useEffect, useState, type ChangeEvent } from "react";
 import { supabase } from "@lib/supabase";
 import type { AdminOrder } from "./orderTypes";
 
@@ -45,19 +39,14 @@ const btnOutline =
   "px-4 py-2 border border-gray-300 text-gray-700 rounded-md hover:bg-gray-100 disabled:opacity-50";
 
 interface QuantityRowProps {
-  key?: Key;
+  key?: React.Key;
   label: string;
   price: number;
   value: number;
   onChange: (value: number) => void;
 }
 
-function QuantityRow({
-  label,
-  price,
-  value,
-  onChange,
-}: QuantityRowProps): JSX.Element {
+function QuantityRow({ label, price, value, onChange }: QuantityRowProps) {
   return (
     <div className="mt-2 flex items-center justify-between rounded-md bg-white px-2 py-1 shadow-sm">
       <span className="text-xs text-gray-700">
@@ -70,6 +59,7 @@ function QuantityRow({
           onClick={() => onChange(Math.max(0, value - 1))}
           className="flex h-6 w-6 items-center justify-center rounded border border-gray-300 text-sm hover:bg-gray-100"
           aria-label={`Decrease ${label}`}
+          title={`Decrease ${label} quantity`}
         >
           -
         </button>
@@ -82,7 +72,9 @@ function QuantityRow({
             onChange(Math.max(0, Number(event.target.value) || 0))
           }
           className="h-6 w-12 rounded border border-gray-300 text-center text-xs focus:outline-none focus:ring-1 focus:ring-green-500"
+          placeholder="0"
           aria-label={`${label} quantity`}
+          title={`${label} quantity`}
         />
 
         <button
@@ -90,6 +82,7 @@ function QuantityRow({
           onClick={() => onChange(value + 1)}
           className="flex h-6 w-6 items-center justify-center rounded border border-gray-300 text-sm hover:bg-gray-100"
           aria-label={`Increase ${label}`}
+          title={`Increase ${label} quantity`}
         >
           +
         </button>
@@ -146,13 +139,15 @@ export default function AddOrderModal({
   const [area, setArea] = useState("");
   const [deliveryFee, setDeliveryFee] = useState(0);
 
-  const total =
+  const itemTotal =
     classic.small * PRICES.small +
     classic.large * PRICES.large +
     classic.bottled * PRICES.bottled +
     spicy.small * PRICES.small +
     spicy.large * PRICES.large +
     spicy.bottled * PRICES.bottled;
+
+  const total = itemTotal + deliveryFee;
 
   useEffect(() => {
     const fetchRiders = async () => {
@@ -185,7 +180,7 @@ export default function AddOrderModal({
     event.preventDefault();
 
     const customerName = formatCustomerName(firstName, lastName, middleInitial);
-    const hasItems = total > 0;
+    const hasItems = itemTotal > 0;
 
     if (!customerName || !address.trim() || !contact.trim()) {
       alert("Please complete the customer details.");
@@ -215,8 +210,8 @@ export default function AddOrderModal({
         .select("id, flavor, size, price");
 
       if (variantsError || !variants) {
-        console.error("Error fetching product variants:", variantsError);
         alert("Failed to load product variants.");
+        setIsSubmitting(false);
         return;
       }
 
@@ -332,10 +327,14 @@ export default function AddOrderModal({
 
               <div className="grid grid-cols-2 gap-x-6 gap-y-3">
                 <div className="flex flex-col gap-1">
-                  <label className="text-sm font-semibold text-gray-700">
+                  <label
+                    htmlFor="firstName"
+                    className="text-sm font-semibold text-gray-700"
+                  >
                     First Name *
                   </label>
                   <input
+                    id="firstName"
                     type="text"
                     placeholder="Enter first name"
                     value={firstName}
@@ -348,10 +347,14 @@ export default function AddOrderModal({
                 </div>
 
                 <div className="flex flex-col gap-1">
-                  <label className="text-sm font-semibold text-gray-700">
+                  <label
+                    htmlFor="lastName"
+                    className="text-sm font-semibold text-gray-700"
+                  >
                     Last Name *
                   </label>
                   <input
+                    id="lastName"
                     type="text"
                     placeholder="Enter last name"
                     value={lastName}
@@ -364,10 +367,14 @@ export default function AddOrderModal({
                 </div>
 
                 <div className="flex flex-col gap-1">
-                  <label className="text-sm font-semibold text-gray-700">
+                  <label
+                    htmlFor="middleInitial"
+                    className="text-sm font-semibold text-gray-700"
+                  >
                     Middle Initial
                   </label>
                   <input
+                    id="middleInitial"
                     type="text"
                     placeholder="M.I"
                     value={middleInitial}
@@ -379,11 +386,15 @@ export default function AddOrderModal({
                   />
                 </div>
 
-                <div className="col-span-1 flex flex-col gap-1">
-                  <label className="text-sm font-semibold text-gray-700">
+                <div className="col-span-2 flex flex-col gap-1">
+                  <label
+                    htmlFor="address"
+                    className="text-sm font-semibold text-gray-700"
+                  >
                     Address *
                   </label>
                   <input
+                    id="address"
                     type="text"
                     placeholder="Enter address"
                     value={address}
@@ -396,10 +407,14 @@ export default function AddOrderModal({
                 </div>
 
                 <div className="flex flex-col gap-1">
-                  <label className="text-sm font-semibold text-gray-700">
+                  <label
+                    htmlFor="area"
+                    className="text-sm font-semibold text-gray-700"
+                  >
                     Area
                   </label>
                   <input
+                    id="area"
                     type="text"
                     value={area}
                     readOnly
@@ -408,10 +423,14 @@ export default function AddOrderModal({
                 </div>
 
                 <div className="flex flex-col gap-1">
-                  <label className="text-sm font-semibold text-gray-700">
+                  <label
+                    htmlFor="deliveryFee"
+                    className="text-sm font-semibold text-gray-700"
+                  >
                     Delivery Fee
                   </label>
                   <input
+                    id="deliveryFee"
                     type="number"
                     placeholder="0"
                     value={deliveryFee}
@@ -419,15 +438,19 @@ export default function AddOrderModal({
                       setDeliveryFee(Number(e.target.value) || 0)
                     }
                     className={inputStyle}
-                    min={0}
+                    min={1}
                   />
                 </div>
 
                 <div className="flex flex-col gap-1">
-                  <label className="text-sm font-semibold text-gray-700">
+                  <label
+                    htmlFor="contact"
+                    className="text-sm font-semibold text-gray-700"
+                  >
                     Contact *
                   </label>
                   <input
+                    id="contact"
                     type="text"
                     placeholder="Enter phone number"
                     value={contact}
@@ -475,7 +498,7 @@ export default function AddOrderModal({
                     </select>
 
                     <span className="pointer-events-none absolute inset-y-0 right-3 flex items-center text-gray-500">
-                      v
+                      ▼
                     </span>
                   </div>
                 </div>
@@ -494,7 +517,7 @@ export default function AddOrderModal({
                   />
                   <p className="mt-2 text-center font-semibold">Classic</p>
 
-                  {(["small", "large", "bottled"] as SizeKey[]).map((size) => (
+                  {(["small", "large", "bottled"] as const).map((size) => (
                     <QuantityRow
                       key={size}
                       label={`Classic (${size})`}
@@ -515,7 +538,7 @@ export default function AddOrderModal({
                   />
                   <p className="mt-2 text-center font-semibold">Spicy</p>
 
-                  {(["small", "large", "bottled"] as SizeKey[]).map((size) => (
+                  {(["small", "large", "bottled"] as const).map((size) => (
                     <QuantityRow
                       key={size}
                       label={`Spicy (${size})`}
@@ -533,7 +556,8 @@ export default function AddOrderModal({
 
           <div className="flex flex-shrink-0 items-center justify-between border-t px-6 py-4">
             <p className="text-lg font-semibold">
-              Total: PHP {total.toFixed(2)}
+              Subtotal: PHP {itemTotal.toFixed(2)} <br />
+              Total (Incl. Delivery): PHP {total.toFixed(2)}
             </p>
 
             <div className="flex gap-2">
