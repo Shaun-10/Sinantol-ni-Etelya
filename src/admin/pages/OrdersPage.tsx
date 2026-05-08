@@ -37,6 +37,21 @@ function PaymentStatusBadge({ status }: { status: "paid" | "unpaid" }) {
   );
 }
 
+function PaymentMethodBadge({ method }: { method: "online" | "cod" }) {
+  const styles = {
+    online: "bg-blue-100 text-blue-700",
+    cod: "bg-purple-100 text-purple-700",
+  };
+
+  return (
+    <span
+      className={`rounded-full px-3 py-1 text-xs font-semibold ${styles[method]}`}
+    >
+      {method === "cod" ? "COD" : "ONLINE"}
+    </span>
+  );
+}
+
 function OrdersListSection({
   orders,
   onViewReceipt,
