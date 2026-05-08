@@ -435,6 +435,37 @@ textarea {
   box-shadow: 0 8px 16px rgba(31, 143, 56, 0.18);
 }
 
+.riders-header-actions {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+
+.reassign-rider-btn {
+  min-height: 38px;
+  border: 1px solid #c9a227;
+  border-radius: 8px;
+  background: #fff6d8;
+  color: #7a5b00;
+  padding: 8px 14px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  font-size: 0.9rem;
+  font-weight: 800;
+  cursor: pointer;
+  transition: transform 160ms ease, background-color 160ms ease, box-shadow 160ms ease;
+}
+
+.reassign-rider-btn:hover {
+  transform: translateY(-1px);
+  background: #fdecb0;
+  box-shadow: 0 8px 16px rgba(122, 91, 0, 0.12);
+}
+
 .riders-list-section,
 .sales-panel,
 .sales-pie-card,
@@ -453,6 +484,7 @@ textarea {
   display: flex;
   align-items: center;
   justify-content: space-between;
+  flex-wrap: wrap;
   gap: 12px;
   border-bottom: 1px solid rgba(36, 51, 31, 0.1);
   background: rgba(255, 255, 255, 0.72);
@@ -588,7 +620,7 @@ textarea {
 
 .sales-summary-grid {
   display: grid;
-  grid-template-columns: repeat(2, minmax(0, 1fr));
+  grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
   gap: 14px;
 }
 
@@ -626,6 +658,16 @@ textarea {
 }
 
 .sales-area-filter select {
+  height: 34px;
+  border: 1px solid #c7cfc2;
+  border-radius: 8px;
+  background: #ffffff;
+  color: #273221;
+  padding: 0 10px;
+  font-size: 0.84rem;
+}
+
+.sales-area-filter-select {
   height: 34px;
   border: 1px solid #c7cfc2;
   border-radius: 8px;
@@ -1053,7 +1095,116 @@ textarea {
   box-shadow: 0 8px 16px rgba(31, 143, 56, 0.18);
 }
 
+/* Unified status badge styles for all admin pages */
+.status-badge {
+  display: inline-block;
+  border-radius: 999px;
+  padding: 6px 12px;
+  font-size: 0.75rem;
+  font-weight: 700;
+}
+
+.status-badge.status-waiting {
+  background: #fff3cd;
+  color: #856404;
+  border: 1px solid #ffc107;
+}
+
+.status-badge.status-delivered {
+  background: #d4edda;
+  color: #155724;
+  border: 1px solid #28a745;
+}
+
+.status-badge.status-cancelled {
+  background: #f8d7da;
+  color: #721c24;
+  border: 1px solid #f5c6cb;
+}
+
 @media (max-width: 1100px) {
+
+.sales-left-column {
+  display: flex;
+  flex-direction: column;
+  gap: 24px;
+  min-width: 0;
+}
+
+.sales-right-column {
+  display: flex;
+  flex-direction: column;
+  gap: 24px;
+  min-width: 0;
+}
+
+
+/* Sales page main layout */
+.sales-main-content {
+  display: flex;
+  flex-direction: column;
+  gap: 24px;
+  flex: 1;
+}
+
+.sales-page-title {
+  margin: 0;
+  color: #263123;
+  font-size: 1.5rem;
+  font-weight: 800;
+}
+
+.sales-layout-grid {
+  display: grid;
+  grid-template-columns: minmax(0, 1.8fr) minmax(280px, 0.9fr);
+  gap: 24px;
+}
+
+.sales-main-content {
+  display: flex;
+  flex-direction: column;
+  gap: 24px;
+}
+
+.sales-header {
+  margin-bottom: 0;
+}
+
+
+  /* Orders page header and container styles */
+  .orders-main-content {
+    display: flex;
+    flex-direction: column;
+    gap: 16px;
+  }
+
+  .orders-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 16px;
+  }
+
+  .orders-header-top {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+  }
+
+  .orders-header-icon {
+    font-size: 1.8rem;
+    color: #263123;
+    display: flex;
+    align-items: center;
+  }
+
+  .orders-header-top h2 {
+    margin: 0;
+    color: #263123;
+    font-size: 1.5rem;
+    font-weight: 800;
+  }
+
   .admin-content-grid {
     grid-template-columns: 1fr;
   }
@@ -1092,5 +1243,18 @@ textarea {
 
   .rider-auth-panel {
     padding: 18px 16px;
+  }
+
+  .sales-summary-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .sales-layout-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .sales-list-footer {
+    flex-direction: column;
+    align-items: flex-start;
   }
 }

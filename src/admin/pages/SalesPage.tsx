@@ -1,6 +1,11 @@
 import { useMemo, useState, ChangeEvent, useEffect } from "react";
 import { supabase } from "@/lib/supabase";
-import { FiCalendar, FiShoppingCart } from "react-icons/fi";
+import {
+  FiCalendar,
+  FiPackage,
+  FiPieChart,
+  FiShoppingCart,
+} from "react-icons/fi";
 import {
   Bar,
   CartesianGrid,
@@ -121,8 +126,13 @@ function extractArea(address?: string | null): string {
 
 const RADIAN = Math.PI / 180;
 
-const renderPercentageLabel = (props: any): JSX.Element => {
+const renderPercentageLabel = (props: any): JSX.Element | null => {
   const { cx, cy, midAngle, innerRadius, outerRadius, percent } = props;
+
+  if (!percent || percent <= 0) {
+    return null;
+  }
+
   const radius = innerRadius + (outerRadius - innerRadius) * 0.56;
   const x = cx + radius * Math.cos(-midAngle * RADIAN);
   const y = cy + radius * Math.sin(-midAngle * RADIAN);
@@ -150,30 +160,27 @@ function SalesSummarySection({
   salesSummaryCards,
 }: SalesSummarySectionProps): JSX.Element {
   return (
-    <section
-      className="grid grid-cols-2 gap-6"
-      aria-label="Sales summary cards"
-    >
+    <section className="sales-summary-grid" aria-label="Sales summary cards">
       {salesSummaryCards.map((card) => {
         const CardIcon = card.icon;
 
         return (
           <article
             key={card.id}
-            className="bg-white rounded-lg border border-gray-200 shadow-sm p-4"
+            className="sales-summary-card"
           >
-            <div className="flex items-center gap-3 mb-4">
-              <span className="text-3xl text-gray-600" aria-hidden="true">
+            <div className="sales-summary-card-top">
+              <span className="sales-summary-icon" aria-hidden="true">
                 <CardIcon />
               </span>
 
               <div>
-                <p className="font-semibold text-gray-700">{card.title}</p>
-                <p className="text-sm text-gray-500">{card.subtitle}</p>
+                <p className="sales-summary-title">{card.title}</p>
+                <p className="sales-summary-subtitle">{card.subtitle}</p>
               </div>
             </div>
 
-            <p className="text-2xl font-bold text-gray-900">{card.amount}</p>
+            <p className="sales-summary-amount">{card.amount}</p>
           </article>
         );
       })}
@@ -228,25 +235,22 @@ function OrdersByAreaSection({
   }, [selectedArea]);
 
   return (
-    <section
-      className="bg-white rounded-lg border border-gray-200 shadow-sm overflow-hidden"
-      aria-label="Orders by area"
-    >
-      <div className="p-4 border-b border-gray-200">
-        <h3 className="text-lg font-semibold text-gray-900">Orders by Area</h3>
+    <section className="sales-panel" aria-label="Orders by area">
+      <div className="sales-panel-header">
+        <h3>Orders by Area</h3>
 
         <label
-          className="mt-4 flex items-center gap-3"
+          className="sales-area-filter"
           htmlFor="sales-area-select"
         >
-          <span className="text-sm font-medium text-gray-700">Filter by:</span>
+          <span>Filter by:</span>
           <select
             id="sales-area-select"
             value={selectedArea}
             onChange={(event: ChangeEvent<HTMLSelectElement>) =>
               setSelectedArea(event.target.value)
             }
-            className="px-3 py-2 border border-gray-300 rounded-lg text-sm"
+            className="sales-area-filter-select"
           >
             {uniqueAreas.map((area) => (
               <option key={area} value={area}>
@@ -257,8 +261,8 @@ function OrdersByAreaSection({
         </label>
       </div>
 
-      <div className="overflow-x-auto">
-        <Table>
+      <div className="sales-table-wrap">
+        <Table className="sales-table">
           <TableHeader>
             <TableRow>
               <TableHead>ID</TableHead>
@@ -287,8 +291,8 @@ function OrdersByAreaSection({
       </div>
 
       {totalPages > 1 && (
-        <div className="p-4 border-t border-gray-200 flex justify-between items-center">
-          <span className="text-sm text-gray-600">
+        <div className="sales-list-footer">
+          <span>
             Page {currentPage} of {totalPages}
           </span>
           <div className="flex gap-2">
@@ -296,7 +300,7 @@ function OrdersByAreaSection({
               <button
                 type="button"
                 onClick={handlePreviousPage}
-                className="px-3 py-1 bg-gray-200 text-gray-700 rounded text-sm hover:bg-gray-300 transition"
+                className="sales-page-btn secondary"
               >
                 Previous
               </button>
@@ -305,7 +309,7 @@ function OrdersByAreaSection({
               <button
                 type="button"
                 onClick={handleNextPage}
-                className="px-3 py-1 bg-blue-500 text-white rounded text-sm hover:bg-blue-600 transition"
+                className="sales-page-btn"
               >
                 Next Page
               </button>
@@ -323,15 +327,12 @@ interface MonthlySalesSectionProps {
 
 function MonthlySalesSection({ data }: MonthlySalesSectionProps): JSX.Element {
   return (
-    <section
-      className="bg-white rounded-lg border border-gray-200 shadow-sm overflow-hidden"
-      aria-label="Monthly sales chart"
-    >
-      <div className="p-4 border-b border-gray-200">
-        <h3 className="text-lg font-semibold text-gray-900">Monthly Sales</h3>
+    <section className="sales-panel" aria-label="Monthly sales chart">
+      <div className="sales-panel-header">
+        <h3>Monthly Sales</h3>
       </div>
 
-      <div className="p-4 h-80">
+      <div className="sales-chart-wrap">
         <ResponsiveContainer width="100%" height="100%">
           <ComposedChart
             data={data}
@@ -349,7 +350,7 @@ function MonthlySalesSection({ data }: MonthlySalesSectionProps): JSX.Element {
               stroke="#57674f"
               tickLine={false}
               axisLine={false}
-              tickFormatter={(value: number) => `PHP ${value}`}
+              tickFormatter={(value: number) => pesoFormatter.format(value)}
             />
             <YAxis
               yAxisId="right"
@@ -359,8 +360,12 @@ function MonthlySalesSection({ data }: MonthlySalesSectionProps): JSX.Element {
               axisLine={false}
             />
             <Tooltip
-              formatter={(value: unknown) => {
-                return [String(value), "Orders"] as const;
+              formatter={(value: unknown, name) => {
+                if (name === "sales") {
+                  return [pesoFormatter.format(Number(value ?? 0)), "Sales"] as const;
+                }
+
+                return [String(value ?? 0), "Orders"] as const;
               }}
               contentStyle={{
                 borderRadius: 10,
@@ -402,11 +407,11 @@ function FlavorBreakdownCard({
 }): JSX.Element {
   return (
     <article
-      className="bg-white rounded-lg border border-gray-200 shadow-sm overflow-hidden"
+      className="sales-pie-card"
       aria-label="Sales flavor breakdown"
     >
-      <div className="p-4 border-b border-gray-200">
-        <h3 className="text-lg font-semibold text-gray-900">Sales by Flavor</h3>
+      <div className="sales-panel-header">
+        <h3>Sales by Flavor</h3>
       </div>
 
       <div className="p-4 h-80">
@@ -433,10 +438,10 @@ function FlavorBreakdownCard({
         </ResponsiveContainer>
       </div>
 
-      <div className="p-4 space-y-2" role="list" aria-label="Flavor legend">
+      <div className="sales-pie-legend" role="list" aria-label="Flavor legend">
         {flavorData.map((item) => (
           <div
-            className="flex items-center gap-3 text-sm"
+            className="sales-pie-legend-item"
             key={item.name}
             role="listitem"
           >
@@ -514,22 +519,22 @@ function PriceListCard(): JSX.Element {
   return (
     <>
       <article
-        className="bg-white rounded-lg border border-gray-200 shadow-sm overflow-hidden"
+        className="sales-price-card"
         aria-label="Product price list"
       >
-        <header className="p-4 border-b border-gray-200 flex justify-between items-center">
-          <h3 className="text-lg font-semibold text-gray-900">Price List</h3>
+        <header className="sales-price-header">
+          <h3>Price List</h3>
           <button
             type="button"
-            className="px-3 py-1 bg-blue-500 text-white rounded text-sm hover:bg-blue-600 transition font-semibold"
+            className="sales-price-edit-btn"
             onClick={handleStartEdit}
           >
             Edit
           </button>
         </header>
 
-        <div className="overflow-x-auto">
-          <Table>
+        <div className="sales-price-table-wrap">
+          <Table className="sales-price-table">
             <TableHeader>
               <TableRow>
                 <TableHead>Flavor</TableHead>
@@ -586,7 +591,7 @@ function PriceListCard(): JSX.Element {
                           type="number"
                           min="0"
                           placeholder="0"
-                          className="px-2 py-1 border border-gray-300 rounded text-sm w-20 text-center"
+                            className="sales-price-input"
                           value={item.amount}
                           onChange={(event: ChangeEvent<HTMLInputElement>) =>
                             handlePriceChange(
@@ -607,14 +612,14 @@ function PriceListCard(): JSX.Element {
           <DialogFooter>
             <button
               type="button"
-              className="px-3 py-2 bg-gray-300 text-gray-900 rounded text-sm hover:bg-gray-400 transition"
+              className="sales-page-btn secondary"
               onClick={handleCancelEdit}
             >
               Cancel
             </button>
             <button
               type="button"
-              className="px-3 py-2 bg-blue-500 text-white rounded text-sm hover:bg-blue-600 transition"
+              className="sales-page-btn"
               onClick={handleSaveEdit}
             >
               Save
@@ -737,6 +742,20 @@ rider:riders (
       amount: String(orders.length),
       icon: FiCalendar,
     },
+    {
+      id: "classic-orders",
+      title: "Classic Orders",
+      subtitle: "All Time",
+      amount: String(flavorTotals.classic),
+      icon: FiPackage,
+    },
+    {
+      id: "spicy-orders",
+      title: "Spicy Orders",
+      subtitle: "All Time",
+      amount: String(flavorTotals.spicy),
+      icon: FiPieChart,
+    },
   ];
 
   // ✅ Orders by area (PER ORDER classic/spicy)
@@ -814,17 +833,19 @@ rider:riders (
   }
 
   return (
-    <section className="flex-1 space-y-6">
-      <h2 className="text-3xl font-bold">Sales</h2>
+    <section className="sales-main-content">
+      <div className="sales-header">
+        <h2>Sales</h2>
+      </div>
 
-      <div className="grid grid-cols-3 gap-6">
-        <div className="col-span-2 space-y-6">
+      <div className="sales-layout-grid">
+        <div className="sales-left-column">
           <SalesSummarySection salesSummaryCards={salesSummaryCards} />
           <OrdersByAreaSection orders={ordersByAreaData} />
           <MonthlySalesSection data={monthlySalesData} />
         </div>
 
-        <div className="col-span-1 space-y-6">
+  <div className="sales-right-column">
           <FlavorBreakdownCard flavorData={flavorData} />
           <PriceListCard />
         </div>

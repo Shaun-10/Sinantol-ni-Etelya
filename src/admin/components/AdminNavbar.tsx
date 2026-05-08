@@ -1,6 +1,7 @@
 import { useState, useRef, useEffect } from "react";
 import { FiChevronRight, FiUser, FiLogOut } from "react-icons/fi";
 import { useLocation, useNavigate } from "react-router-dom";
+import { supabase } from "@lib/supabase";
 
 export default function AdminNavbar() {
   const { pathname } = useLocation();
@@ -19,8 +20,9 @@ export default function AdminNavbar() {
     setShowMenu(!showMenu);
   };
 
-  const handleLogout = () => {
-    navigate("/login");
+  const handleLogout = async () => {
+    await supabase.auth.signOut();
+    navigate("/login", { replace: true });
     setShowMenu(false);
   };
 

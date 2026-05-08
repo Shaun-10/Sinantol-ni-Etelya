@@ -436,7 +436,7 @@ export default function DashboardPage(): JSX.Element {
         <h3>Today's Summary</h3>
         <div className="summary-grid">
           {summary.map((item) => (
-            <SummaryCard key={item.label} {...item} />
+            <SummaryCard key={item.label} item={item} />
           ))}
         </div>
       </section>
@@ -445,7 +445,7 @@ export default function DashboardPage(): JSX.Element {
         <h3>Sales Summary</h3>
         <div className="dashboard-sales-grid">
           {sales.map((item) => (
-            <SummaryCard key={item.label} {...item} />
+            <SummaryCard key={item.label} item={item} />
           ))}
         </div>
       </section>

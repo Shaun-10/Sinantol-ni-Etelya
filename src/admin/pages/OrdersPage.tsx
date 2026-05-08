@@ -8,15 +8,13 @@ import type { AdminOrder, OrderStatus } from "./orderTypes";
 
 function StatusBadge({ status }: { status: OrderStatus }): JSX.Element {
   const styles = {
-    waiting: "bg-yellow-100 text-yellow-700",
-    delivered: "bg-green-100 text-green-700",
-    cancelled: "bg-red-100 text-red-700",
+    waiting: "status-badge status-waiting",
+    delivered: "status-badge status-delivered",
+    cancelled: "status-badge status-cancelled",
   };
 
   return (
-    <span
-      className={`rounded-full px-3 py-1 text-xs font-semibold ${styles[status]}`}
-    >
+    <span className={styles[status]}>
       {status.toUpperCase()}
     </span>
   );
@@ -79,8 +77,8 @@ function OrdersListSection({
   };
 
   return (
-    <section className="overflow-hidden rounded-lg border bg-yellow-50">
-      <table className="w-full border-collapse">
+    <section className="riders-list-section">
+      <table className="riders-table">
         <thead>
           <tr className="border-b bg-gray-100 text-left text-sm">
             <th className="px-4 py-2">Customer</th>
@@ -112,12 +110,13 @@ function OrdersListSection({
                 <StatusBadge status={order.status} />
               </td>
 
-              <td className="px-4 py-2">
+              <td>
                 <button
                   onClick={() => onViewReceipt(order.id)}
-                  className="rounded-full border border-orange-400 px-3 py-1 text-xs text-orange-600 hover:bg-orange-50"
+                  className="riders-details-btn"
+                  title="View Receipt"
                 >
-                  View Receipt
+                  👁
                 </button>
               </td>
             </tr>
@@ -134,27 +133,27 @@ function OrdersListSection({
       </table>
 
       {totalPages > 1 && (
-        <div className="p-4 border-t border-gray-200 flex justify-between items-center bg-white">
-          <span className="text-sm text-gray-600">
+        <div className="riders-footer">
+          <span>
             Page {currentPage} of {totalPages}
           </span>
-          <div className="flex gap-2">
+          <div style={{ display: "flex", gap: "8px" }}>
             {currentPage > 1 && (
               <button
                 type="button"
                 onClick={handlePreviousPage}
-                className="px-3 py-1 bg-gray-200 text-gray-700 rounded text-sm hover:bg-gray-300 transition"
+                className="riders-prev-btn"
               >
-                Previous
+                &lt; Previous
               </button>
             )}
             {currentPage < totalPages && (
               <button
                 type="button"
                 onClick={handleNextPage}
-                className="px-3 py-1 bg-blue-500 text-white rounded text-sm hover:bg-blue-600 transition"
+                className="riders-next-btn"
               >
-                Next Page
+                Next &gt;
               </button>
             )}
           </div>
@@ -218,18 +217,18 @@ export default function OrdersPage(): JSX.Element {
   };
 
   return (
-    <div className="space-y-6 bg-white p-6">
-      <div className="flex items-start justify-between">
-        <div>
-          <div className="mb-2 flex items-center gap-2">
-            <FiBox className="text-2xl text-gray-700" />
-            <h1 className="text-3xl font-bold">ORDERS</h1>
+    <div className="orders-main-content">
+      <div className="orders-header">
+        <div className="orders-header-top">
+          <div className="orders-header-icon">
+            <FiBox />
           </div>
+          <h2>ORDERS</h2>
         </div>
 
         <button
           onClick={() => setIsAddOrderOpen(true)}
-          className="rounded-lg bg-green-600 px-4 py-2 text-white hover:bg-green-700"
+          className="orders-add-btn"
         >
           + Add Order
         </button>

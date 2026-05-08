@@ -3,6 +3,7 @@ import { FiCheck, FiPlus, FiTruck } from "react-icons/fi";
 import { supabase } from "@lib/supabase";
 import AddRiderModal from "./AddRiderModal";
 import RiderDetailModal from "./RiderDetailModal";
+import ReassignRiderModal from "./ReassignRiderModal";
 import { Rider, RiderFormData, normalizeDbString } from "./riderModalShared";
 
 interface Delivery {
@@ -416,7 +417,11 @@ function DeliveriesDialog({
         console.log("Deliveries result:", deliveriesResult);
 
         if (ordersResult.error) throw ordersResult.error;
-        if (deliveriesResult.error) throw deliveriesResult.error;
+        // Don't throw deliveries error - the table might not exist or be restricted by RLS
+        // We can still show orders even if deliveries table is unavailable
+        if (deliveriesError) {
+          console.warn("Deliveries table error (will show orders only):", deliveriesError);
+        }
 
         const orderRows: Delivery[] = (ordersResult.data ?? []).map(
           (row: any) => ({
@@ -463,7 +468,7 @@ function DeliveriesDialog({
     };
 
     void fetchDeliveries();
-  }, [rider.id, orderFilter, deliveriesFilter]);
+  }, [rider.id]);
 
   const presentDeliveries = deliveries.filter(
     (delivery) => !isPastDelivery(delivery.status),
@@ -502,11 +507,14 @@ function DeliveriesDialog({
             <p className="text-sm text-gray-500">Loading deliveries...</p>
           )}
 
-          {deliveriesError && (
+          {deliveriesError && deliveriesError.includes("Could not find the table") ? (
+            // Silently handle table not found error - it just means no deliveries data
+            null
+          ) : deliveriesError ? (
             <div className="p-4 bg-red-50 border border-red-200 rounded text-red-700 text-sm font-semibold">
               {deliveriesError}
             </div>
-          )}
+          ) : null}
 
           <section className="space-y-3">
             <h4 className="text-lg font-semibold text-gray-900">
@@ -599,6 +607,7 @@ export default function RidersPage(): JSX.Element {
   const [riders, setRiders] = useState<Rider[]>([]);
   const [, setLoading] = useState(true);
   const [isAddModalOpen, setIsAddModalOpen] = useState(false);
+  const [isReassignModalOpen, setIsReassignModalOpen] = useState(false);
   const [selectedRider, setSelectedRider] = useState<Rider | null>(null);
   const [deliveriesRider, setDeliveriesRider] = useState<Rider | null>(null);
   const [isDeliveriesModalOpen, setIsDeliveriesModalOpen] = useState(false);
@@ -679,8 +688,12 @@ export default function RidersPage(): JSX.Element {
   };
 
   const handleOpenDeliveries = (): void => {
-    if (!selectedRider) return;
+    if (!selectedRider) {
+      console.error("No selected rider to open deliveries");
+      return;
+    }
 
+    console.log("Opening deliveries for rider:", selectedRider.id, selectedRider.name);
     setDeliveriesRider(selectedRider);
     setSelectedRider(null);
     setIsDeliveriesModalOpen(true);
@@ -832,6 +845,14 @@ export default function RidersPage(): JSX.Element {
     }
   };
 
+  const handleReassignRider = (): void => {
+    setIsReassignModalOpen(true);
+  };
+
+  const handleReassigned = async (): Promise<void> => {
+    await fetchRiders();
+  };
+
   const handleSaveRider = async (updatedRider: Rider): Promise<void> => {
     try {
       const { error } = await supabase
@@ -891,14 +912,24 @@ export default function RidersPage(): JSX.Element {
             </div>
           </article>
 
-          <button
-            type="button"
-            className="add-rider-btn"
-            onClick={() => setIsAddModalOpen(true)}
-          >
-            <FiPlus />
-            Add Rider
-          </button>
+          <div className="riders-header-actions">
+            <button
+              type="button"
+              className="reassign-rider-btn"
+              onClick={handleReassignRider}
+            >
+              Reassign Area
+            </button>
+
+            <button
+              type="button"
+              className="add-rider-btn"
+              onClick={() => setIsAddModalOpen(true)}
+            >
+              <FiPlus />
+              Add Rider
+            </button>
+          </div>
         </div>
       </section>
 
@@ -908,6 +939,14 @@ export default function RidersPage(): JSX.Element {
         <AddRiderModal
           onClose={() => setIsAddModalOpen(false)}
           onAddRider={handleAddRider}
+        />
+      )}
+
+      {isReassignModalOpen && (
+        <ReassignRiderModal
+          riders={riders}
+          onClose={() => setIsReassignModalOpen(false)}
+          onReassigned={handleReassigned}
         />
       )}
 
@@ -925,10 +964,19 @@ export default function RidersPage(): JSX.Element {
         <DeliveriesDialog
           rider={deliveriesRider}
           onClose={() => {
+            console.log("Closing deliveries modal");
             setIsDeliveriesModalOpen(false);
             setDeliveriesRider(null);
           }}
         />
+      )}
+      
+      {isDeliveriesModalOpen && !deliveriesRider && (
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
+          <div className="bg-white rounded-lg shadow-2xl border border-gray-200 p-6">
+            <p className="text-red-600 font-semibold">Error: No rider data available for deliveries</p>
+          </div>
+        </div>
       )}
     </div>
   );
