@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useState, type Key } from "react";
 import {
   Bar,
   CartesianGrid,
@@ -39,6 +39,13 @@ interface OrderRow {
   rider_id: string | null;
   status: string | null;
   total: number | string | null;
+  delivery_fee: number | string | null;
+  id: string;
+}
+
+interface OrderItem {
+  order_id: string;
+  quantity: number;
 }
 
 const pesoFormatter = new Intl.NumberFormat("en-PH", {
@@ -65,11 +72,10 @@ function normalizeStatus(status: string | null): string {
   return status?.trim().toLowerCase() ?? "";
 }
 
-
 function buildTodaySummary(
   orders: OrderRow[],
   now: Date,
-  activeRiders: number
+  activeRiders: number,
 ): SummaryItem[] {
   const startOfToday = getStartOfDay(now);
 
@@ -79,11 +85,12 @@ function buildTodaySummary(
   });
 
   const completedToday = todaysOrders.filter(
-    (order) => normalizeStatus(order.status) === "delivered"
+    (order) => normalizeStatus(order.status) === "delivered",
   ).length;
 
   const assignedDeliveries = todaysOrders.filter(
-    (order) => normalizeStatus(order.status) === "waiting" && Boolean(order.rider_id)
+    (order) =>
+      normalizeStatus(order.status) === "waiting" && Boolean(order.rider_id),
   ).length;
 
   return [
@@ -105,63 +112,88 @@ function buildTodaySummary(
   ];
 }
 
-function buildSalesSummary(orders: OrderRow[], now: Date): SummaryItem[] {
-  const startOfToday = getStartOfDay(now);
-  const startOfThisMonth = getStartOfMonth(now);
+function buildSalesSummary(
+  orders: OrderRow[],
+  orderItems: OrderItem[],
+  now: Date,
+): SummaryItem[] {
+  const orderQuantityMap = new Map<string, number>();
+  for (const item of orderItems) {
+    const current = orderQuantityMap.get(item.order_id) || 0;
+    orderQuantityMap.set(item.order_id, current + item.quantity);
+  }
 
+  let totalSales = 0;
+  let totalDeliveryFee = 0;
+  let totalCommission = 0;
   let totalCollection = 0;
-  let todaySales = 0;
-  let monthSales = 0;
+  let totalRidersFee = 0;
+  let totalAmountToRemit = 0;
 
   for (const order of orders) {
     if (!order.created_at) continue;
 
     const orderDate = new Date(order.created_at);
     const amount = toAmount(order.total);
+    const deliveryFee = Number(order.delivery_fee ?? 0);
+    const quantity = orderQuantityMap.get(order.id) || 0;
 
-    totalCollection += amount;
+    const orderTotalSales = amount - deliveryFee;
+    // Commission = quantity × 20
+    const commission = quantity * 20;
+    // Total Collection = Total Sales + Delivery Fee
+    const collection = orderTotalSales + deliveryFee;
+    // Rider's Fee = Delivery Fee + Commission
+    const ridersFee = deliveryFee + commission;
+    // Amount to Remit = Total Collection - Rider's Fee
+    const amountToRemit = collection - ridersFee;
 
-    if (orderDate >= startOfToday) {
-      todaySales += amount;
-    }
-
-    if (orderDate >= startOfThisMonth) {
-      monthSales += amount;
-    }
+    totalSales += orderTotalSales;
+    totalDeliveryFee += deliveryFee;
+    totalCommission += commission;
+    totalCollection += collection;
+    totalRidersFee += ridersFee;
+    totalAmountToRemit += amountToRemit;
   }
-
-  const averageOrderValue = orders.length > 0 ? totalCollection / orders.length : 0;
 
   return [
     {
       icon: FiPackage,
+      label: "Total Sales",
+      value: pesoFormatter.format(totalSales),
+    },
+    {
+      icon: FiDollarSign,
+      label: "Total Delivery Fee",
+      value: pesoFormatter.format(totalDeliveryFee),
+    },
+    {
+      icon: FiCheckSquare,
+      label: "Commission",
+      value: pesoFormatter.format(totalCommission),
+    },
+    {
+      icon: FiBarChart2,
       label: "Total Collection",
       value: pesoFormatter.format(totalCollection),
     },
     {
-      icon: FiDollarSign,
-      label: "Sales Today",
-      value: pesoFormatter.format(todaySales),
-    },
-    {
-      icon: FiBarChart2,
-      label: "Sales This Month",
-      value: pesoFormatter.format(monthSales),
-    },
-    {
-      icon: FiCheckSquare,
-      label: "Average Order Value",
-      value: pesoFormatter.format(averageOrderValue),
-    },
-    {
       icon: FiTruck,
-      label: "Total Orders",
-      value: String(orders.length),
+      label: "Rider's Fee",
+      value: pesoFormatter.format(totalRidersFee),
+    },
+    {
+      icon: FiMapPin,
+      label: "Amount to Remit",
+      value: pesoFormatter.format(totalAmountToRemit),
     },
   ];
 }
 
-function buildPerformanceData(orders: OrderRow[], now: Date): PerformanceData[] {
+function buildPerformanceData(
+  orders: OrderRow[],
+  now: Date,
+): PerformanceData[] {
   const months: Array<{
     key: string;
     label: string;
@@ -202,9 +234,15 @@ function buildPerformanceData(orders: OrderRow[], now: Date): PerformanceData[] 
   }));
 }
 
-function SummaryCard({ item }: { item: SummaryItem; key?: string }): JSX.Element {
-  const { icon: Icon, value, label } = item;
+interface SummaryCardProps extends SummaryItem {
+  key?: Key;
+}
 
+function SummaryCard({
+  icon: Icon,
+  value,
+  label,
+}: SummaryCardProps): JSX.Element {
   return (
     <article className="summary-card">
       <div className="summary-icon-wrap">
@@ -243,7 +281,9 @@ function DashboardChartsSection({
               stroke="#57674f"
               tickLine={false}
               axisLine={false}
-              tickFormatter={(value: number) => pesoFormatter.format(Number(value))}
+              tickFormatter={(value: number) =>
+                pesoFormatter.format(Number(value))
+              }
             />
             <YAxis
               yAxisId="right"
@@ -255,7 +295,10 @@ function DashboardChartsSection({
             <Tooltip
               formatter={(value, name) => {
                 if (name === "revenue") {
-                  return [pesoFormatter.format(Number(value ?? 0)), "Sales"] as const;
+                  return [
+                    pesoFormatter.format(Number(value ?? 0)),
+                    "Sales",
+                  ] as const;
                 }
 
                 return [Number(value ?? 0), "Orders"] as const;
@@ -305,28 +348,51 @@ export default function DashboardPage(): JSX.Element {
       setIsLoading(true);
       setErrorMessage(null);
 
-      const { data, error } = await supabase
+      // Fetch orders
+      const { data: ordersData, error: ordersError } = await supabase
         .from("orders")
         .select("*")
         .order("created_at", { ascending: true });
 
-      if (error) {
-        console.error("Error fetching dashboard data:", error);
+      if (ordersError) {
+        console.error("Error fetching dashboard data:", ordersError);
         setErrorMessage(
-          `Failed to load dashboard data. ${error.message ?? "Please check the database connection."}`
+          `Failed to load dashboard data. ${ordersError.message ?? "Please check the database connection."}`,
         );
         setIsLoading(false);
         return;
       }
 
-      if (!Array.isArray(data)) {
-        console.error("Dashboard data fetch returned unexpected response:", data);
-        setErrorMessage("Failed to load dashboard data. Unexpected response format.");
+      if (!Array.isArray(ordersData)) {
+        console.error(
+          "Dashboard data fetch returned unexpected response:",
+          ordersData,
+        );
+        setErrorMessage(
+          "Failed to load dashboard data. Unexpected response format.",
+        );
         setIsLoading(false);
         return;
       }
 
-      const orders = data as OrderRow[];
+      // Fetch order items
+      const { data: itemsData, error: itemsError } = await supabase
+        .from("order_items")
+        .select("order_id, quantity");
+
+      if (itemsError) {
+        console.error("Error fetching order items:", itemsError);
+        setErrorMessage(
+          `Failed to load order items. ${itemsError.message ?? "Please check the database connection."}`,
+        );
+        setIsLoading(false);
+        return;
+      }
+
+      const orders = ordersData as OrderRow[];
+      const orderItems = (
+        Array.isArray(itemsData) ? itemsData : []
+      ) as OrderItem[];
       const now = new Date();
       const startOfToday = getStartOfDay(now);
 
@@ -342,12 +408,9 @@ export default function DashboardPage(): JSX.Element {
           .map((order) => order.rider_id),
       ).size;
 
-
-
-
-// ✅ use activeRiders AFTER it is calculated
+      // ✅ use activeRiders AFTER it is calculated
       setSummary(buildTodaySummary(orders, now, activeRiders));
-      setSales(buildSalesSummary(orders, now));
+      setSales(buildSalesSummary(orders, orderItems, now));
       setPerformance(buildPerformanceData(orders, now));
       setIsLoading(false);
     };

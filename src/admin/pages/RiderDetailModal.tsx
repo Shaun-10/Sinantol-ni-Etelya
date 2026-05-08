@@ -63,6 +63,13 @@ export default function RiderDetailModal({
     }
   };
 
+  const lastNameInvalid = errors.lastName ? "true" : undefined;
+  const firstNameInvalid = errors.firstName ? "true" : undefined;
+  const middleInitialInvalid = errors.middleInitial ? "true" : undefined;
+  const contactInvalid = errors.contact ? "true" : undefined;
+  const birthdateInvalid = errors.birthdate ? "true" : undefined;
+  const emergencyContactInvalid = errors.emergencyContact ? "true" : undefined;
+
   const validateForm = (): RiderFormErrors => {
     const nextErrors: RiderFormErrors = {};
 
@@ -127,21 +134,25 @@ export default function RiderDetailModal({
         }
 
         try {
-          const response = await fetch(`${adminApiUrl}/admin/update-rider-password`, {
-            method: 'POST',
-            headers: {
-              'Content-Type': 'application/json',
+          const response = await fetch(
+            `${adminApiUrl}/admin/update-rider-password`,
+            {
+              method: "POST",
+              headers: {
+                "Content-Type": "application/json",
+              },
+              body: JSON.stringify({
+                userId: rider.userid,
+                newPassword: newPassword.trim(),
+              }),
             },
-            body: JSON.stringify({
-              userId: rider.userid,
-              newPassword: newPassword.trim(),
-            }),
-          });
+          );
 
           const data = await response.json();
 
           if (!response.ok) {
-            const message = data?.error || `Failed to update password (${response.status})`;
+            const message =
+              data?.error || `Failed to update password (${response.status})`;
             throw new Error(message);
           }
         } catch (error: unknown) {
@@ -204,7 +215,9 @@ export default function RiderDetailModal({
     } catch (error: unknown) {
       console.error("Unexpected error:", error);
       const errorMessage =
-        error instanceof Error ? error.message : "An unexpected error occurred.";
+        error instanceof Error
+          ? error.message
+          : "An unexpected error occurred.";
       setFormError(errorMessage);
     } finally {
       setIsSaving(false);
@@ -312,7 +325,9 @@ export default function RiderDetailModal({
                       placeholder="Enter last name"
                       value={form.lastName}
                       onChange={handleChange}
-                      aria-invalid={errors.lastName ? "true" : "false"}
+                      {...(lastNameInvalid && {
+                        "aria-invalid": lastNameInvalid,
+                      })}
                     />
                     {errors.lastName && (
                       <p className="text-xs text-red-600 font-semibold">
@@ -340,7 +355,9 @@ export default function RiderDetailModal({
                       placeholder="Enter first name"
                       value={form.firstName}
                       onChange={handleChange}
-                      aria-invalid={errors.firstName ? "true" : "false"}
+                      {...(firstNameInvalid && {
+                        "aria-invalid": firstNameInvalid,
+                      })}
                     />
                     {errors.firstName && (
                       <p className="text-xs text-red-600 font-semibold">
@@ -368,7 +385,9 @@ export default function RiderDetailModal({
                       placeholder="Enter middle initial"
                       value={form.middleInitial}
                       onChange={handleChange}
-                      aria-invalid={errors.middleInitial ? "true" : "false"}
+                      {...(middleInitialInvalid && {
+                        "aria-invalid": middleInitialInvalid,
+                      })}
                     />
                     {errors.middleInitial && (
                       <p className="text-xs text-red-600 font-semibold">
@@ -385,39 +404,57 @@ export default function RiderDetailModal({
             <div className="flex flex-col gap-2">
               <p className="text-sm font-semibold text-gray-700">Address</p>
               {isEditing ? (
-                <input
-                  className="px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-green-500"
-                  name="address"
-                  placeholder="Enter address"
-                  value={form.address}
-                  onChange={handleChange}
-                />
+                <>
+                  <label className="sr-only" htmlFor="detail-address">
+                    Address
+                  </label>
+                  <input
+                    id="detail-address"
+                    className="px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-green-500"
+                    name="address"
+                    placeholder="Enter address"
+                    aria-label="Address"
+                    value={form.address}
+                    onChange={handleChange}
+                  />
+                </>
               ) : (
                 <p className="text-gray-700">{rider.address}</p>
               )}
             </div>
 
             <div className="flex flex-col gap-2">
-  <p className="text-sm font-semibold text-gray-700">Location</p>
-  {isEditing ? (
-    <input
-      className="px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-green-500"
-      name="location"
-      placeholder="Enter location (City / Area / Barangay)"
-      value={form.location}
-      onChange={handleChange}
-    />
-  ) : (
-    <p className="text-gray-700">{rider.location}</p>
-  )}
-</div>
+              <p className="text-sm font-semibold text-gray-700">Location</p>
+              {isEditing ? (
+                <>
+                  <label className="sr-only" htmlFor="detail-location">
+                    Location
+                  </label>
+                  <input
+                    id="detail-location"
+                    className="px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-green-500"
+                    name="location"
+                    placeholder="Enter location (City / Area / Barangay)"
+                    aria-label="Location"
+                    value={form.location}
+                    onChange={handleChange}
+                  />
+                </>
+              ) : (
+                <p className="text-gray-700">{rider.location}</p>
+              )}
+            </div>
 
             <div className="grid grid-cols-2 gap-4">
               <div className="flex flex-col gap-2">
                 <p className="text-sm font-semibold text-gray-700">Contact</p>
                 {isEditing ? (
                   <>
+                    <label className="sr-only" htmlFor="detail-contact">
+                      Contact
+                    </label>
                     <input
+                      id="detail-contact"
                       className={`px-3 py-2 border rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-green-500 ${
                         errors.contact
                           ? "border-red-500 bg-red-50"
@@ -425,9 +462,12 @@ export default function RiderDetailModal({
                       }`}
                       name="contact"
                       placeholder="Enter contact number"
+                      aria-label="Contact number"
                       value={form.contact}
                       onChange={handleChange}
-                      aria-invalid={errors.contact ? "true" : "false"}
+                      {...(contactInvalid && {
+                        "aria-invalid": contactInvalid,
+                      })}
                     />
                     {errors.contact && (
                       <p className="text-xs text-red-600 font-semibold">
@@ -443,18 +483,26 @@ export default function RiderDetailModal({
                 <p className="text-sm font-semibold text-gray-700">Birthdate</p>
                 {isEditing ? (
                   <>
-                    <input
-                      className={`px-3 py-2 border rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-green-500 ${
-                        errors.birthdate
-                          ? "border-red-500 bg-red-50"
-                          : "border-gray-300 bg-white"
-                      }`}
-                      type="date"
-                      name="birthdate"
-                      value={form.birthdate}
-                      onChange={handleChange}
-                      aria-invalid={errors.birthdate ? "true" : "false"}
-                    />
+                    <>
+                      <label className="sr-only" htmlFor="detail-birthdate">
+                        Birthdate
+                      </label>
+                      <input
+                        id="detail-birthdate"
+                        className={`px-3 py-2 border rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-green-500 ${
+                          errors.birthdate
+                            ? "border-red-500 bg-red-50"
+                            : "border-gray-300 bg-white"
+                        }`}
+                        type="date"
+                        name="birthdate"
+                        value={form.birthdate}
+                        onChange={handleChange}
+                        {...(birthdateInvalid && {
+                          "aria-invalid": birthdateInvalid,
+                        })}
+                      />
+                    </>
                     {errors.birthdate && (
                       <p className="text-xs text-red-600 font-semibold">
                         {errors.birthdate}
@@ -470,13 +518,20 @@ export default function RiderDetailModal({
             <div className="flex flex-col gap-2">
               <p className="text-sm font-semibold text-gray-700">Plate No.</p>
               {isEditing ? (
-                <input
-                  className="px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-green-500"
-                  name="plate_number"
-                  placeholder="Enter plate number"
-                  value={form.plate_number}
-                  onChange={handleChange}
-                />
+                <>
+                  <label className="sr-only" htmlFor="detail-plate_number">
+                    Plate Number
+                  </label>
+                  <input
+                    id="detail-plate_number"
+                    className="px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-green-500"
+                    name="plate_number"
+                    placeholder="Enter plate number"
+                    aria-label="Plate Number"
+                    value={form.plate_number}
+                    onChange={handleChange}
+                  />
+                </>
               ) : (
                 <p className="text-gray-700">{rider.plate_number}</p>
               )}
@@ -485,14 +540,21 @@ export default function RiderDetailModal({
             <div className="flex flex-col gap-2">
               <p className="text-sm font-semibold text-gray-700">Email</p>
               {isEditing ? (
-                <input
-                  className="px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-green-500"
-                  type="email"
-                  name="email"
-                  placeholder="Enter email address"
-                  value={form.email}
-                  onChange={handleChange}
-                />
+                <>
+                  <label className="sr-only" htmlFor="detail-email">
+                    Email
+                  </label>
+                  <input
+                    id="detail-email"
+                    className="px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-green-500"
+                    type="email"
+                    name="email"
+                    placeholder="Enter email address"
+                    aria-label="Email"
+                    value={form.email}
+                    onChange={handleChange}
+                  />
+                </>
               ) : (
                 <p className="text-gray-700">{rider.email}</p>
               )}
@@ -500,32 +562,34 @@ export default function RiderDetailModal({
           </section>
 
           {isEditing && (
-  <div className="flex flex-col gap-2">
-    <p className="text-sm font-semibold text-gray-700">
-      New Password
-    </p>
-    <input
-      type="password"
-      placeholder="Leave blank to keep current password"
-      value={newPassword}
-      onChange={(e) => setNewPassword(e.target.value)}
-      className={`px-3 py-2 border rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-green-500 ${
-        errors.password
-          ? "border-red-500 bg-red-50"
-          : "border-gray-300 bg-white"
-      }`}
-    />
-    {errors.password ? (
-      <p className="text-xs text-red-600 font-semibold">
-        {errors.password}
-      </p>
-    ) : (
-      <p className="text-xs text-gray-500">
-        Must be at least 8 characters
-      </p>
-    )}
-  </div>
-)}
+            <div className="flex flex-col gap-2">
+              <p className="text-sm font-semibold text-gray-700">
+                New Password
+              </p>
+              <input
+                type="password"
+                placeholder="Leave blank to keep current password"
+                value={newPassword}
+                onChange={(e: ChangeEvent<HTMLInputElement>) =>
+                  setNewPassword(e.target.value)
+                }
+                className={`px-3 py-2 border rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-green-500 ${
+                  errors.password
+                    ? "border-red-500 bg-red-50"
+                    : "border-gray-300 bg-white"
+                }`}
+              />
+              {errors.password ? (
+                <p className="text-xs text-red-600 font-semibold">
+                  {errors.password}
+                </p>
+              ) : (
+                <p className="text-xs text-gray-500">
+                  Must be at least 8 characters
+                </p>
+              )}
+            </div>
+          )}
 
           <section className="space-y-4">
             <h4 className="text-lg font-semibold text-gray-900">
@@ -534,13 +598,20 @@ export default function RiderDetailModal({
             <div className="flex flex-col gap-2">
               <p className="text-sm font-semibold text-gray-700">Name:</p>
               {isEditing ? (
-                <input
-                  className="px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-green-500"
-                  name="emergencyName"
-                  placeholder="Enter emergency contact name"
-                  value={form.emergencyName}
-                  onChange={handleChange}
-                />
+                <>
+                  <label className="sr-only" htmlFor="detail-emergencyName">
+                    Emergency Contact Name
+                  </label>
+                  <input
+                    id="detail-emergencyName"
+                    className="px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-green-500"
+                    name="emergencyName"
+                    placeholder="Enter emergency contact name"
+                    aria-label="Emergency contact name"
+                    value={form.emergencyName}
+                    onChange={handleChange}
+                  />
+                </>
               ) : (
                 <p className="text-gray-700">{rider.emergencyName}</p>
               )}
@@ -559,7 +630,9 @@ export default function RiderDetailModal({
                     placeholder="Enter emergency contact number"
                     value={form.emergencyContact}
                     onChange={handleChange}
-                    aria-invalid={errors.emergencyContact ? "true" : "false"}
+                    {...(emergencyContactInvalid && {
+                      "aria-invalid": emergencyContactInvalid,
+                    })}
                   />
                   {errors.emergencyContact && (
                     <p className="text-xs text-red-600 font-semibold">
@@ -620,7 +693,8 @@ export default function RiderDetailModal({
                   onClick={handleDelete}
                   disabled={isDeleting}
                 >
-                  <FiTrash2 className="w-4 h-4" /> {isDeleting ? "Deleting..." : "Delete"}
+                  <FiTrash2 className="w-4 h-4" />{" "}
+                  {isDeleting ? "Deleting..." : "Delete"}
                 </button>
               </div>
             </>

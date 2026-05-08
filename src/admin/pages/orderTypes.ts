@@ -1,4 +1,6 @@
 export type OrderStatus = "waiting" | "delivered" | "cancelled";
+export type PaymentStatus = "paid" | "unpaid";
+export type PaymentMethod = "online" | "cod";
 
 export interface AdminOrder {
   id: string;
@@ -7,4 +9,6 @@ export interface AdminOrder {
   date: string;
   dateRange: string;
   status: OrderStatus;
+  paymentStatus: PaymentStatus;
+  paymentMethod: PaymentMethod;
 }

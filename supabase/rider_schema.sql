@@ -77,6 +77,7 @@ create table if not exists public.orders (
   rider_auth_id uuid references auth.users (id) on delete set null,
   rider_email text,
   total numeric(10,2) not null default 0,
+  delivery_fee numeric(10,2) not null default 0,
   status text not null default 'waiting',
   payment_method text not null default 'Cash on Delivery',
   payment_status text not null default 'pending',

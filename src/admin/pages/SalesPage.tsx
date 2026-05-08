@@ -66,6 +66,11 @@ interface FlavorData {
   color: string;
 }
 
+const flavorColorClass: Record<string, string> = {
+  Classic: "bg-[#1f8f38]",
+  Spicy: "bg-[#d08aa7]",
+};
+
 interface PriceItem {
   size: string;
   amount: number;
@@ -207,7 +212,10 @@ function OrdersByAreaSection({
   }, [orders, selectedArea]);
 
   const totalPages = Math.ceil(filteredOrders.length / 10);
-  const paginatedOrders = filteredOrders.slice((currentPage - 1) * 10, currentPage * 10);
+  const paginatedOrders = filteredOrders.slice(
+    (currentPage - 1) * 10,
+    currentPage * 10,
+  );
 
   const handleNextPage = () => {
     if (currentPage < totalPages) {
@@ -392,13 +400,11 @@ function MonthlySalesSection({ data }: MonthlySalesSectionProps): JSX.Element {
   );
 }
 
-
 function FlavorBreakdownCard({
   flavorData,
 }: {
   flavorData: FlavorData[];
 }): JSX.Element {
-
   return (
     <article
       className="sales-pie-card"
@@ -407,8 +413,8 @@ function FlavorBreakdownCard({
       <div className="sales-panel-header">
         <h3>Sales by Flavor</h3>
       </div>
-      
-      <div className="sales-pie-wrap">
+
+      <div className="p-4 h-80">
         <ResponsiveContainer width="100%" height="100%">
           <PieChart>
             <Pie
@@ -439,13 +445,14 @@ function FlavorBreakdownCard({
             key={item.name}
             role="listitem"
           >
-            <div
-              className="sales-pie-dot"
-              style={{ backgroundColor: item.color }}
+            <span
+              className={`w-3 h-3 rounded-full inline-block ${flavorColorClass[item.name] ?? "bg-gray-300"}`}
               aria-hidden="true"
             />
-            <span>{item.name}</span>
-            <span>{item.value}</span>
+            <span className="text-gray-700">{item.name}</span>
+            <span className="ml-auto font-semibold text-gray-900">
+              {item.value}
+            </span>
           </div>
         ))}
       </div>
@@ -624,19 +631,40 @@ function PriceListCard(): JSX.Element {
   );
 }
 
+interface OrderItem {
+  quantity: number;
+  product_variants:
+    | {
+        flavor: string;
+      }
+    | { flavor: string }[];
+}
+
+interface Order {
+  id: number;
+  created_at: string;
+  address: string;
+  status: string;
+  total: number;
+  customer_name: string;
+  contact: string;
+  rider?: {
+    area: string;
+  };
+  order_items: OrderItem[];
+}
+
 export default function SalesPage(): JSX.Element {
-  const [orders, setOrders] = useState<any[]>([]);
+  const [orders, setOrders] = useState<Order[]>([]);
   const [flavorTotals, setFlavorTotals] = useState({ classic: 0, spicy: 0 });
   const [isLoading, setIsLoading] = useState(true);
 
   // ✅ Fetch orders + items
   useEffect(() => {
-    const fetchSalesData = async () => {
+    const fetchSalesData = async (): Promise<void> => {
       setIsLoading(true);
 
-      const { data, error } = await supabase
-        .from("orders")
-        .select(`
+      const { data, error } = await supabase.from("orders").select(`
           id,
           created_at,
           address,
@@ -644,6 +672,9 @@ export default function SalesPage(): JSX.Element {
           total,
           customer_name,
           contact,
+rider:riders (
+    area
+    ),
           order_items (
             quantity,
             product_variants:product_variants!order_items_product_variant_id_fkey (
@@ -658,7 +689,7 @@ export default function SalesPage(): JSX.Element {
         return;
       }
 
-      setOrders(data ?? []);
+      setOrders((data as unknown as Order[]) ?? []);
       console.log("ORDERS DEBUG:", JSON.stringify(data, null, 2));
       setIsLoading(false);
     };
@@ -668,26 +699,31 @@ export default function SalesPage(): JSX.Element {
 
   // ✅ Compute Classic & Spicy totals (GLOBAL)
   useEffect(() => {
-  let classic = 0;
-  let spicy = 0;
+    let classic = 0;
+    let spicy = 0;
 
-  orders.forEach(order => {
-    order.order_items?.forEach((item: any) => {
-      const qty = Number(item.quantity ?? 0);
-      const flavor = item.product_variants?.flavor;
+    orders.forEach((order: Order) => {
+      order.order_items?.forEach((item: OrderItem) => {
+        const qty = Number(item.quantity ?? 0);
+        const variants = Array.isArray(item.product_variants)
+          ? item.product_variants
+          : [item.product_variants];
+        const flavor = variants[0]?.flavor;
 
-      if (flavor === "classic") classic += qty;
-      if (flavor === "spicy") spicy += qty;
+        const f = String(flavor || "").toLowerCase();
+
+        if (f === "classic") classic += qty;
+        if (f === "spicy") spicy += qty;
+      });
     });
-  });
 
-  setFlavorTotals({ classic, spicy });
-}, [orders]);
+    setFlavorTotals({ classic, spicy });
+  }, [orders]);
 
   // ✅ Total sales
   const totalSales = useMemo(
     () => orders.reduce((sum, o) => sum + Number(o.total || 0), 0),
-    [orders]
+    [orders],
   );
 
   // ✅ Summary cards
@@ -724,29 +760,33 @@ export default function SalesPage(): JSX.Element {
 
   // ✅ Orders by area (PER ORDER classic/spicy)
   const ordersByAreaData: OrderByArea[] = useMemo(() => {
-    return orders.map((order, index) => {
+    return orders.map((order: Order, index: number) => {
       let classic = 0;
-let spicy = 0;
+      let spicy = 0;
 
-order.order_items?.forEach((item: any) => {
-  const qty = Number(item.quantity ?? 0);
-  const flavor = item.product_variants?.flavor;
+      order.order_items?.forEach((item: OrderItem) => {
+        const qty = Number(item.quantity ?? 0);
+        const variants = Array.isArray(item.product_variants)
+          ? item.product_variants
+          : [item.product_variants];
+        const flavor = variants[0]?.flavor;
 
-  if (flavor === "classic") {
-    classic += qty;
-  }
+        const f = String(flavor || "").toLowerCase();
 
-  if (flavor === "spicy") {
-    spicy += qty;
-  }
-});
+        if (f === "classic") {
+          classic += qty;
+        }
 
+        if (f === "spicy") {
+          spicy += qty;
+        }
+      });
 
       return {
         id: index + 1,
         clientName: order.customer_name || "N/A",
         contactNo: order.contact || "N/A",
-        area: extractArea(order.address),
+        area: extractArea(order.address) || "Unknown",
         classic,
         spicy,
         amount: Number(order.total || 0),
@@ -758,7 +798,7 @@ order.order_items?.forEach((item: any) => {
   const monthlySalesData: MonthlySalesData[] = useMemo(() => {
     const map = new Map<string, MonthlySalesData>();
 
-    orders.forEach(order => {
+    orders.forEach((order: Order) => {
       if (!order.created_at) return;
 
       const date = new Date(order.created_at);
