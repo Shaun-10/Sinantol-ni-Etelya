@@ -1,4 +1,4 @@
-@import url('https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;600;700;800&family=Nunito:wght@500;600;700;800&display=swap');
+@import url("https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;600;700;800&family=Nunito:wght@500;600;700;800&display=swap");
 
 @tailwind base;
 @tailwind components;
@@ -26,11 +26,19 @@ html {
 body {
   margin: 0;
   min-height: 100vh;
-  font-family: 'Manrope', sans-serif;
+  font-family: "Manrope", sans-serif;
   color: var(--app-text);
   background:
-    radial-gradient(circle at top left, rgba(255, 237, 130, 0.5), transparent 34%),
-    radial-gradient(circle at top right, rgba(66, 160, 86, 0.18), transparent 28%),
+    radial-gradient(
+      circle at top left,
+      rgba(255, 237, 130, 0.5),
+      transparent 34%
+    ),
+    radial-gradient(
+      circle at top right,
+      rgba(66, 160, 86, 0.18),
+      transparent 28%
+    ),
     linear-gradient(180deg, #faf8ef 0%, #f0eddc 100%);
 }
 
@@ -43,7 +51,8 @@ body::before {
   position: fixed;
   inset: 0;
   pointer-events: none;
-  background-image: linear-gradient(rgba(255, 255, 255, 0.2) 1px, transparent 1px),
+  background-image:
+    linear-gradient(rgba(255, 255, 255, 0.2) 1px, transparent 1px),
     linear-gradient(90deg, rgba(255, 255, 255, 0.18) 1px, transparent 1px);
   background-size: 72px 72px;
   opacity: 0.16;
@@ -65,6 +74,7 @@ textarea {
   border: 1px solid var(--app-border);
   border-radius: var(--app-radius);
   box-shadow: var(--app-shadow);
+  -webkit-backdrop-filter: blur(10px);
   backdrop-filter: blur(10px);
 }
 
@@ -99,6 +109,7 @@ textarea {
   background: rgba(255, 255, 255, 0.88);
   border-bottom: 1px solid rgba(36, 51, 31, 0.12);
   box-shadow: 0 4px 18px rgba(37, 48, 28, 0.08);
+  -webkit-backdrop-filter: blur(12px);
   backdrop-filter: blur(12px);
 }
 
@@ -184,7 +195,10 @@ textarea {
   gap: 12px;
   cursor: pointer;
   text-decoration: none;
-  transition: transform 160ms ease, background-color 160ms ease, box-shadow 160ms ease;
+  transition:
+    transform 160ms ease,
+    background-color 160ms ease,
+    box-shadow 160ms ease;
 }
 
 .admin-sidebar-link:hover,
@@ -195,7 +209,11 @@ textarea {
 }
 
 .admin-sidebar-link.active {
-  background: linear-gradient(90deg, rgba(31, 143, 56, 0.12), rgba(255, 255, 255, 0.96));
+  background: linear-gradient(
+    90deg,
+    rgba(31, 143, 56, 0.12),
+    rgba(255, 255, 255, 0.96)
+  );
   color: #0d6822;
   border-left: 4px solid #1f8f38;
   box-shadow: 0 10px 20px rgba(31, 143, 56, 0.08);
@@ -217,7 +235,11 @@ textarea {
   padding: 16px;
   border: 1px solid rgba(255, 255, 255, 0.58);
   border-radius: 18px;
-  background: linear-gradient(180deg, rgba(246, 242, 202, 0.92), rgba(238, 231, 170, 0.92));
+  background: linear-gradient(
+    180deg,
+    rgba(246, 242, 202, 0.92),
+    rgba(238, 231, 170, 0.92)
+  );
   box-shadow: var(--app-shadow-soft);
 }
 
@@ -253,7 +275,13 @@ textarea {
   gap: 12px;
   border: 1px solid rgba(36, 51, 31, 0.1);
   border-radius: 12px;
-  background: linear-gradient(180deg, #ffffff 0%, #f7f8f1 54%, #d5f0dc 54%, #bde7c8 100%);
+  background: linear-gradient(
+    180deg,
+    #ffffff 0%,
+    #f7f8f1 54%,
+    #d5f0dc 54%,
+    #bde7c8 100%
+  );
   box-shadow: 0 10px 22px rgba(37, 48, 28, 0.1);
 }
 
@@ -334,7 +362,13 @@ textarea {
   overflow: hidden;
   border: 1px solid rgba(36, 51, 31, 0.1);
   border-radius: 14px;
-  background: linear-gradient(180deg, #ffffff 0%, #f7f8f1 54%, #d5f0dc 54%, #bde7c8 100%);
+  background: linear-gradient(
+    180deg,
+    #ffffff 0%,
+    #f7f8f1 54%,
+    #d5f0dc 54%,
+    #bde7c8 100%
+  );
   box-shadow: 0 10px 22px rgba(37, 48, 28, 0.1);
 }
 
@@ -387,7 +421,10 @@ textarea {
   font-size: 0.9rem;
   font-weight: 800;
   cursor: pointer;
-  transition: transform 160ms ease, background-color 160ms ease, box-shadow 160ms ease;
+  transition:
+    transform 160ms ease,
+    background-color 160ms ease,
+    box-shadow 160ms ease;
 }
 
 .add-rider-btn:hover,
@@ -676,7 +713,9 @@ textarea {
   background: rgba(255, 255, 255, 0.7);
   border-left: 1px solid rgba(36, 51, 31, 0.12);
   border-right: 1px solid rgba(36, 51, 31, 0.12);
-  box-shadow: 0 0 0 1px rgba(255, 255, 255, 0.26), 0 24px 36px rgba(41, 52, 31, 0.1);
+  box-shadow:
+    0 0 0 1px rgba(255, 255, 255, 0.26),
+    0 24px 36px rgba(41, 52, 31, 0.1);
 }
 
 .rider-top-shell {
@@ -693,6 +732,7 @@ textarea {
   padding: 10px 10px 12px;
   border-top: 1px solid rgba(36, 51, 31, 0.12);
   background: rgba(255, 255, 255, 0.84);
+  -webkit-backdrop-filter: blur(10px);
   backdrop-filter: blur(10px);
 }
 
@@ -709,11 +749,14 @@ textarea {
   cursor: pointer;
   padding: 8px 6px;
   border-radius: 12px;
-  transition: background-color 160ms ease, transform 160ms ease, color 160ms ease;
+  transition:
+    background-color 160ms ease,
+    transform 160ms ease,
+    color 160ms ease;
 }
 
 .rider-bottom-nav button:hover,
-.rider-bottom-nav button[aria-current='page'] {
+.rider-bottom-nav button[aria-current="page"] {
   background: rgba(31, 143, 56, 0.1);
   color: #0f6e23;
   transform: translateY(-1px);
@@ -722,8 +765,16 @@ textarea {
 .rider-auth-shell {
   min-height: 100vh;
   background:
-    radial-gradient(circle at top left, rgba(255, 240, 156, 0.75), transparent 32%),
-    radial-gradient(circle at bottom right, rgba(40, 146, 63, 0.18), transparent 30%),
+    radial-gradient(
+      circle at top left,
+      rgba(255, 240, 156, 0.75),
+      transparent 32%
+    ),
+    radial-gradient(
+      circle at bottom right,
+      rgba(40, 146, 63, 0.18),
+      transparent 30%
+    ),
     linear-gradient(180deg, #f7f1c6 0%, #eff0e7 100%);
 }
 
@@ -759,6 +810,7 @@ textarea {
   border: 1px solid rgba(36, 51, 31, 0.12);
   border-radius: 24px;
   box-shadow: var(--app-shadow);
+  -webkit-backdrop-filter: blur(10px);
   backdrop-filter: blur(10px);
   padding: 22px;
 }
@@ -779,7 +831,11 @@ textarea {
   inset: -12% -8% auto -10%;
   height: 55%;
   transform: rotate(-10deg);
-  background: linear-gradient(120deg, rgba(255, 245, 166, 0.7), rgba(47, 150, 53, 0.42));
+  background: linear-gradient(
+    120deg,
+    rgba(255, 245, 166, 0.7),
+    rgba(47, 150, 53, 0.42)
+  );
 }
 
 .auth-layer-2 {
@@ -787,7 +843,11 @@ textarea {
   inset: auto -14% -18% 20%;
   height: 52%;
   transform: rotate(-8deg);
-  background: linear-gradient(130deg, rgba(255, 255, 255, 0.3), rgba(33, 126, 41, 0.42));
+  background: linear-gradient(
+    130deg,
+    rgba(255, 255, 255, 0.3),
+    rgba(33, 126, 41, 0.42)
+  );
 }
 
 .fade-in-card {
@@ -811,7 +871,11 @@ textarea {
   padding: 16px;
   border: 1px solid rgba(255, 255, 255, 0.58);
   border-radius: 18px;
-  background: linear-gradient(180deg, rgba(246, 242, 202, 0.92), rgba(238, 231, 170, 0.92));
+  background: linear-gradient(
+    180deg,
+    rgba(246, 242, 202, 0.92),
+    rgba(238, 231, 170, 0.92)
+  );
   box-shadow: var(--app-shadow-soft);
 }
 
@@ -953,7 +1017,9 @@ textarea {
   font-size: 0.84rem;
   font-weight: 700;
   cursor: pointer;
-  transition: background-color 160ms ease, box-shadow 160ms ease;
+  transition:
+    background-color 160ms ease,
+    box-shadow 160ms ease;
 }
 
 .orders-receipt-btn:hover {
@@ -975,7 +1041,10 @@ textarea {
   font-size: 0.9rem;
   font-weight: 800;
   cursor: pointer;
-  transition: transform 160ms ease, background-color 160ms ease, box-shadow 160ms ease;
+  transition:
+    transform 160ms ease,
+    background-color 160ms ease,
+    box-shadow 160ms ease;
 }
 
 .orders-add-btn:hover {
@@ -990,11 +1059,11 @@ textarea {
   }
 
   .admin-sidebar-shell {
-    min-height: auto;
+    min-height: 0;
   }
 
   .admin-main-inner {
-    min-height: auto;
+    min-height: 0;
   }
 }
 

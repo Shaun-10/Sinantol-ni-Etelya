@@ -622,14 +622,32 @@ function PriceListCard(): JSX.Element {
   );
 }
 
+interface OrderItem {
+  quantity: number;
+  product_variants: {
+    flavor: string;
+  }[];
+}
+
+interface Order {
+  id: number;
+  created_at: string;
+  address: string;
+  status: string;
+  total: number;
+  customer_name: string;
+  contact: string;
+  order_items: OrderItem[];
+}
+
 export default function SalesPage(): JSX.Element {
-  const [orders, setOrders] = useState<any[]>([]);
+  const [orders, setOrders] = useState<Order[]>([]);
   const [flavorTotals, setFlavorTotals] = useState({ classic: 0, spicy: 0 });
   const [isLoading, setIsLoading] = useState(true);
 
   // ✅ Fetch orders + items
   useEffect(() => {
-    const fetchSalesData = async () => {
+    const fetchSalesData = async (): Promise<void> => {
       setIsLoading(true);
 
       const { data, error } = await supabase.from("orders").select(`
@@ -654,7 +672,7 @@ export default function SalesPage(): JSX.Element {
         return;
       }
 
-      setOrders(data ?? []);
+      setOrders((data as Order[]) ?? []);
       console.log("ORDERS DEBUG:", JSON.stringify(data, null, 2));
       setIsLoading(false);
     };
@@ -667,10 +685,10 @@ export default function SalesPage(): JSX.Element {
     let classic = 0;
     let spicy = 0;
 
-    orders.forEach((order) => {
-      order.order_items?.forEach((item: any) => {
+    orders.forEach((order: Order) => {
+      order.order_items?.forEach((item: OrderItem) => {
         const qty = Number(item.quantity ?? 0);
-        const flavor = item.product_variants?.flavor;
+        const flavor = item.product_variants?.[0]?.flavor;
 
         if (flavor === "classic") classic += qty;
         if (flavor === "spicy") spicy += qty;
@@ -706,13 +724,13 @@ export default function SalesPage(): JSX.Element {
 
   // ✅ Orders by area (PER ORDER classic/spicy)
   const ordersByAreaData: OrderByArea[] = useMemo(() => {
-    return orders.map((order, index) => {
+    return orders.map((order: Order, index: number) => {
       let classic = 0;
       let spicy = 0;
 
-      order.order_items?.forEach((item: any) => {
+      order.order_items?.forEach((item: OrderItem) => {
         const qty = Number(item.quantity ?? 0);
-        const flavor = item.product_variants?.flavor;
+        const flavor = item.product_variants?.[0]?.flavor;
 
         if (flavor === "classic") {
           classic += qty;
@@ -739,7 +757,7 @@ export default function SalesPage(): JSX.Element {
   const monthlySalesData: MonthlySalesData[] = useMemo(() => {
     const map = new Map<string, MonthlySalesData>();
 
-    orders.forEach((order) => {
+    orders.forEach((order: Order) => {
       if (!order.created_at) return;
 
       const date = new Date(order.created_at);
