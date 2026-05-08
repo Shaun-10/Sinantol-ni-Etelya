@@ -10,6 +10,9 @@ const areaOptions = [
   "Quezon City",
   "Makati",
   "Manila",
+  "Marikina",
+  "Taguig",
+  "Paranaque",
 ];
 
 const defaultRiderFormValues: RiderFormData = {
@@ -30,7 +33,6 @@ const defaultRiderFormValues: RiderFormData = {
 export default function AddRiderModal({
   onClose,
   onAddRider,
-  
 }: AddRiderModalProps): JSX.Element {
   const [form, setForm] = useState<RiderFormData>(defaultRiderFormValues);
   const [errorMessage, setErrorMessage] = useState("");
@@ -43,33 +45,31 @@ export default function AddRiderModal({
     if (errorMessage) setErrorMessage("");
   };
 
-  
-const handleSubmit = (e: FormEvent) => {
-  e.preventDefault();
+  const handleSubmit = (e: FormEvent) => {
+    e.preventDefault();
 
-  const requiredFields: (keyof RiderFormData)[] = [
-    "firstName",
-    "lastName",
-    "contact",
-    "email",
-    "password",
-  ];
+    const requiredFields: (keyof RiderFormData)[] = [
+      "firstName",
+      "lastName",
+      "contact",
+      "email",
+      "password",
+    ];
 
-  const emptyField = requiredFields.find((field) => !form[field]);
+    const emptyField = requiredFields.find((field) => !form[field]);
 
-  if (emptyField) {
-    setErrorMessage("Please fill in all required fields.");
-    return;
-  }
+    if (emptyField) {
+      setErrorMessage("Please fill in all required fields.");
+      return;
+    }
 
-  if (!/^\d{10,11}$/.test(form.contact)) {
-    setErrorMessage("Contact number must be 10–11 digits.");
-    return;
-  }
+    if (!/^\d{10,11}$/.test(form.contact)) {
+      setErrorMessage("Contact number must be 10–11 digits.");
+      return;
+    }
 
-  onAddRider(form);
-};
-
+    onAddRider(form);
+  };
 
   const inputStyle =
     "w-full bg-gray-100 border border-green-400 rounded-md px-4 py-2 text-sm " +
@@ -97,28 +97,28 @@ const handleSubmit = (e: FormEvent) => {
               <h3 className="font-semibold text-lg">Rider Information</h3>
 
               <div className="grid grid-cols-3 gap-4">
-  <input
-    name="firstName"
-    placeholder="First Name"
-    value={form.firstName}
-    onChange={handleChange}
-    className={inputStyle}
-  />
-  <input
-    name="lastName"
-    placeholder="Last Name"
-    value={form.lastName}
-    onChange={handleChange}
-    className={inputStyle}
-  />
-  <input
-    name="middleInitial"
-    placeholder="Middle Initial"
-    value={form.middleInitial}
-    onChange={handleChange}
-    className={inputStyle}
-  />
-</div>
+                <input
+                  name="firstName"
+                  placeholder="First Name"
+                  value={form.firstName}
+                  onChange={handleChange}
+                  className={inputStyle}
+                />
+                <input
+                  name="lastName"
+                  placeholder="Last Name"
+                  value={form.lastName}
+                  onChange={handleChange}
+                  className={inputStyle}
+                />
+                <input
+                  name="middleInitial"
+                  placeholder="Middle Initial"
+                  value={form.middleInitial}
+                  onChange={handleChange}
+                  className={inputStyle}
+                />
+              </div>
 
               <input
                 name="address"
