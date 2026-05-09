@@ -17,7 +17,7 @@ export default function RiderAuthShell({
     <div className="rider-auth-shell">
       <div className="rider-auth-hero">
         <div className="rider-auth-badge">
-          <img src="/images/logo.png" alt="" className="w-24 h-24 object-contain" />
+          <img src="/images/logo_delivery.png" alt="Delivery ni Etelya" className="w-32 h-auto object-contain" />
         </div>
       </div>
 

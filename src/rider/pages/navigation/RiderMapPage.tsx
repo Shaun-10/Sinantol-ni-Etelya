@@ -135,6 +135,60 @@ export default function RiderMapPage() {
   const [stops, setStops] = useState<Stop[]>([]);
   const [stopsToRender, setStopsToRender] = useState<Stop[]>([]);
 
+  const requestRiderLocation = (): void => {
+    if (!navigator.geolocation) {
+      setGpsError('Location access is not supported on this device.');
+      setRiderLocation(manilaCenter);
+      return;
+    }
+
+    if (gpsWatchRef.current !== null) {
+      navigator.geolocation.clearWatch(gpsWatchRef.current);
+      gpsWatchRef.current = null;
+    }
+
+    const successCallback = (position: GeolocationPosition) => {
+      const { latitude, longitude } = position.coords;
+      const newLocation: LatLngTuple = [latitude, longitude];
+      setRiderLocation(newLocation);
+      setGpsError(null);
+
+      const accuracy = position.coords.accuracy;
+      setGpsAccuracy(accuracy);
+      if (accuracy < 10) {
+        setGpsSignalQuality('excellent');
+      } else if (accuracy < 25) {
+        setGpsSignalQuality('good');
+      } else if (accuracy < 100) {
+        setGpsSignalQuality('fair');
+      } else {
+        setGpsSignalQuality('acquiring');
+      }
+      // GPS acquired — stop showing the initial loading indicator
+      setIsLoading(false);
+    };
+
+    const errorCallback = (error: GeolocationPositionError) => {
+      console.warn('GPS Error:', error.message);
+
+      if (error.code === error.PERMISSION_DENIED) {
+        setGpsError('Please allow location access for the Rider app in your browser settings and reload the page.');
+      } else {
+        setGpsError(`GPS: ${error.message}`);
+      }
+
+      setRiderLocation(manilaCenter);
+      // Ensure loading is cleared when GPS fails and we fall back
+      setIsLoading(false);
+    };
+
+    gpsWatchRef.current = navigator.geolocation.watchPosition(successCallback, errorCallback, {
+      enableHighAccuracy: true,
+      timeout: 10000,
+      maximumAge: 0,
+    });
+  };
+
   // Recompute the nearest stop whenever rider location or stop list updates
   useEffect(() => {
     if (!riderLocation) {
@@ -228,31 +282,52 @@ export default function RiderMapPage() {
     };
   }, []);
 
-  // Load delivery data
+  // Load selected delivery in single-delivery mode
   useEffect(() => {
-    const loadDelivery = async () => {
-      setIsLoading(true);
-      setRoute(null);
-      setRouteGeoError(null);
+    let cancelled = false;
 
+    const loadSelectedDelivery = async () => {
       if (!deliveryId) {
         setDelivery(null);
-        setIsLoading(false);
         return;
       }
 
-      const data = await getRiderDeliveryById(deliveryId);
-      setDelivery(data);
-      setIsLoading(false);
+      setIsLoading(true);
+      try {
+        const selected = await getRiderDeliveryById(deliveryId);
+        if (cancelled) {
+          return;
+        }
+
+        setDelivery(selected);
+        if (!selected) {
+          setRouteGeoError('Delivery not found for this route.');
+        } else {
+          setRouteGeoError(null);
+        }
+      } catch (error) {
+        if (cancelled) {
+          return;
+        }
+        console.error('Error loading delivery details:', error);
+        setDelivery(null);
+        setRouteGeoError('Unable to load delivery details.');
+      } finally {
+        if (!cancelled) {
+          setIsLoading(false);
+        }
+      }
     };
 
-    loadDelivery();
+    void loadSelectedDelivery();
+
+    return () => {
+      cancelled = true;
+    };
   }, [deliveryId]);
 
-  // Load active deliveries (when not viewing a single delivery) and geocode stops
+  // Load delivery data
   useEffect(() => {
-    if (deliveryId) return; // single-delivery mode
-
     const loadStops = async () => {
       setIsLoadingStops(true);
       try {
@@ -346,6 +421,9 @@ export default function RiderMapPage() {
     const address = String(delivery?.address ?? "").trim();
     if (!address) {
       setDestinationCoords(null);
+      if (deliveryId && delivery && address === '-') {
+        setRouteGeoError('This delivery has no saved address.');
+      }
       return;
     }
 
@@ -461,6 +539,8 @@ export default function RiderMapPage() {
         );
         calculatedRoute.geometry.forEach((coord) => bounds.extend(coord));
         mapRef.current = bounds;
+        // Route calculated — hide initial loading indicator
+        setIsLoading(false);
       }
     };
 
