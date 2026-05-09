@@ -168,24 +168,9 @@ function buildSalesSummary(
       value: pesoFormatter.format(totalDeliveryFee),
     },
     {
-      icon: FiCheckSquare,
-      label: "Commission",
-      value: pesoFormatter.format(totalCommission),
-    },
-    {
       icon: FiBarChart2,
       label: "Total Collection",
       value: pesoFormatter.format(totalCollection),
-    },
-    {
-      icon: FiTruck,
-      label: "Rider's Fee",
-      value: pesoFormatter.format(totalRidersFee),
-    },
-    {
-      icon: FiMapPin,
-      label: "Amount to Remit",
-      value: pesoFormatter.format(totalAmountToRemit),
     },
   ];
 }
@@ -443,7 +428,7 @@ export default function DashboardPage(): JSX.Element {
 
       <section className="dashboard-section-block">
         <h3>Sales Summary</h3>
-        <div className="dashboard-sales-grid">
+        <div className="summary-grid">
           {sales.map((item) => (
             <SummaryCard key={item.label} {...item} />
           ))}

@@ -11,4 +11,5 @@ export interface AdminOrder {
   status: OrderStatus;
   paymentStatus: PaymentStatus;
   paymentMethod: PaymentMethod;
+  note?: string;
 }

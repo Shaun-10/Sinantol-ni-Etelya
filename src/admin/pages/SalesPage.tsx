@@ -1,6 +1,13 @@
 import { useMemo, useState, ChangeEvent, useEffect } from "react";
 import { supabase } from "@/lib/supabase";
-import { FiCalendar, FiShoppingCart } from "react-icons/fi";
+import {
+  FiBarChart2,
+  FiCheckSquare,
+  FiDollarSign,
+  FiMapPin,
+  FiPackage,
+  FiTruck,
+} from "react-icons/fi";
 import {
   Bar,
   CartesianGrid,
@@ -30,6 +37,7 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
+import type { IconType } from "react-icons";
 
 interface OrderByArea {
   id: number;
@@ -45,14 +53,6 @@ interface MonthlySalesData {
   month: string;
   sales: number;
   orders: number;
-}
-
-interface SalesSummaryCard {
-  id: string;
-  title: string;
-  subtitle: string;
-  amount: string;
-  icon: React.ComponentType<React.SVGProps<SVGSVGElement>>;
 }
 
 interface FlavorData {
@@ -142,42 +142,37 @@ const renderPercentageLabel = (props: any): JSX.Element => {
   );
 };
 
-interface SalesSummarySectionProps {
-  salesSummaryCards: SalesSummaryCard[];
+interface SummaryItem {
+  key?: React.Key;
+  icon: IconType;
+  value: string;
+  label: string;
 }
 
-function SalesSummarySection({
-  salesSummaryCards,
-}: SalesSummarySectionProps): JSX.Element {
+interface SummaryCardProps {
+  key?: React.Key;
+  icon: IconType;
+  value: string;
+  label: string;
+}
+
+function SummaryCard({
+  icon: Icon,
+  value,
+  label,
+}: SummaryCardProps): JSX.Element {
   return (
-    <section
-      className="grid grid-cols-2 gap-6"
-      aria-label="Sales summary cards"
-    >
-      {salesSummaryCards.map((card) => {
-        const CardIcon = card.icon;
-
-        return (
-          <article
-            key={card.id}
-            className="bg-white rounded-lg border border-gray-200 shadow-sm p-4"
-          >
-            <div className="flex items-center gap-3 mb-4">
-              <span className="text-3xl text-gray-600" aria-hidden="true">
-                <CardIcon />
-              </span>
-
-              <div>
-                <p className="font-semibold text-gray-700">{card.title}</p>
-                <p className="text-sm text-gray-500">{card.subtitle}</p>
-              </div>
-            </div>
-
-            <p className="text-2xl font-bold text-gray-900">{card.amount}</p>
-          </article>
-        );
-      })}
-    </section>
+    <article className="bg-white rounded-lg border border-gray-200 shadow-sm p-4">
+      <div className="flex items-center gap-3 mb-4">
+        <span className="text-3xl text-gray-600" aria-hidden="true">
+          <Icon />
+        </span>
+        <div>
+          <p className="text-2xl font-bold text-gray-900">{value}</p>
+          <p className="text-sm text-gray-500">{label}</p>
+        </div>
+      </div>
+    </article>
   );
 }
 
@@ -192,8 +187,13 @@ function OrdersByAreaSection({
   const [currentPage, setCurrentPage] = useState<number>(1);
 
   const uniqueAreas = useMemo(() => {
-    const areas = new Set(orders.map((order) => order.area).filter(Boolean));
-    return ["All Areas", ...Array.from(areas).sort()];
+    const areas = new Set(
+      orders.map((order) => order.area?.trim()).filter(Boolean),
+    );
+    return [
+      "All Areas",
+      ...Array.from(areas).sort((a, b) => a.localeCompare(b)),
+    ];
   }, [orders]);
 
   const filteredOrders = useMemo(() => {
@@ -201,7 +201,10 @@ function OrdersByAreaSection({
       return orders;
     }
 
-    return orders.filter((order) => order.area === selectedArea);
+    const normalizedSelectedArea = selectedArea.trim().toLowerCase();
+    return orders.filter(
+      (order) => order.area?.trim().toLowerCase() === normalizedSelectedArea,
+    );
   }, [orders, selectedArea]);
 
   const totalPages = Math.ceil(filteredOrders.length / 10);
@@ -229,16 +232,13 @@ function OrdersByAreaSection({
 
   return (
     <section
-      className="bg-white rounded-lg border border-gray-200 shadow-sm overflow-hidden"
+      className="bg-white rounded-lg border border-gray-200 shadow-sm overflow-hidden flex flex-col"
       aria-label="Orders by area"
     >
-      <div className="p-4 border-b border-gray-200">
+      <div className="p-4 border-b border-gray-200 flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
         <h3 className="text-lg font-semibold text-gray-900">Orders by Area</h3>
 
-        <label
-          className="mt-4 flex items-center gap-3"
-          htmlFor="sales-area-select"
-        >
+        <label className="flex items-center gap-3" htmlFor="sales-area-select">
           <span className="text-sm font-medium text-gray-700">Filter by:</span>
           <select
             id="sales-area-select"
@@ -257,33 +257,58 @@ function OrdersByAreaSection({
         </label>
       </div>
 
-      <div className="overflow-x-auto">
-        <Table>
-          <TableHeader>
-            <TableRow>
-              <TableHead>ID</TableHead>
-              <TableHead>Client Name</TableHead>
-              <TableHead>Contact No.</TableHead>
-              <TableHead>Area</TableHead>
-              <TableHead>Classic</TableHead>
-              <TableHead>Spicy</TableHead>
-              <TableHead>Amount</TableHead>
-            </TableRow>
-          </TableHeader>
-          <TableBody>
-            {paginatedOrders.map((order) => (
-              <TableRow key={order.id}>
-                <TableCell>{order.id}</TableCell>
-                <TableCell>{order.clientName}</TableCell>
-                <TableCell>{order.contactNo}</TableCell>
-                <TableCell>{order.area}</TableCell>
-                <TableCell>{order.classic}</TableCell>
-                <TableCell>{order.spicy}</TableCell>
-                <TableCell>{pesoFormatter.format(order.amount)}</TableCell>
+      <div className="flex-1 flex flex-col min-h-0">
+        <div className="flex-1 overflow-x-auto max-h-[320px]">
+          <Table className="w-full table-fixed">
+            <TableHeader>
+              <TableRow>
+                <TableHead className="w-[60px] text-left">ID</TableHead>
+                <TableHead className="w-[220px] text-left">
+                  Client Name
+                </TableHead>
+                <TableHead className="w-[160px] text-left">
+                  Contact No.
+                </TableHead>
+                <TableHead className="w-[140px] text-left">Area</TableHead>
+                <TableHead className="w-[80px] text-center">Classic</TableHead>
+                <TableHead className="w-[80px] text-center">Spicy</TableHead>
+                <TableHead className="w-[120px] text-right">Amount</TableHead>
               </TableRow>
-            ))}
-          </TableBody>
-        </Table>
+            </TableHeader>
+
+            <TableBody>
+              {paginatedOrders.map((order) => (
+                <TableRow key={order.id}>
+                  <TableCell className="w-[60px]">{order.id}</TableCell>
+
+                  <TableCell className="w-[220px] truncate whitespace-nowrap">
+                    {order.clientName}
+                  </TableCell>
+
+                  <TableCell className="w-[160px] truncate whitespace-nowrap">
+                    {order.contactNo}
+                  </TableCell>
+
+                  <TableCell className="w-[140px] truncate whitespace-nowrap">
+                    {order.area}
+                  </TableCell>
+
+                  <TableCell className="w-[80px] text-center">
+                    {order.classic}
+                  </TableCell>
+
+                  <TableCell className="w-[80px] text-center">
+                    {order.spicy}
+                  </TableCell>
+
+                  <TableCell className="w-[120px] text-right font-semibold">
+                    {pesoFormatter.format(order.amount)}
+                  </TableCell>
+                </TableRow>
+              ))}
+            </TableBody>
+          </Table>
+        </div>
       </div>
 
       {totalPages > 1 && (
@@ -529,12 +554,12 @@ function PriceListCard(): JSX.Element {
         </header>
 
         <div className="overflow-x-auto">
-          <Table>
+          <Table className="w-full text-sm table-fixed">
             <TableHeader>
               <TableRow>
-                <TableHead>Flavor</TableHead>
-                <TableHead>Sizes</TableHead>
-                <TableHead>Price</TableHead>
+                <TableHead className="w-[120px]">Flavor</TableHead>
+                <TableHead className="w-[120px]">Sizes</TableHead>
+                <TableHead className="w-[120px] text-right">Price</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
@@ -542,12 +567,19 @@ function PriceListCard(): JSX.Element {
                 group.prices.map((item, priceIndex) => (
                   <TableRow key={`${group.flavor}-${item.size}`}>
                     {priceIndex === 0 ? (
-                      <TableCell rowSpan={group.prices.length}>
+                      <TableCell
+                        rowSpan={group.prices.length}
+                        className="font-medium align-top"
+                      >
                         {group.flavor}
                       </TableCell>
                     ) : null}
-                    <TableCell>{item.size}</TableCell>
-                    <TableCell>{pesoFormatter.format(item.amount)}</TableCell>
+
+                    <TableCell className="w-[120px]">{item.size}</TableCell>
+
+                    <TableCell className="w-[120px] text-right">
+                      {pesoFormatter.format(item.amount)}
+                    </TableCell>
                   </TableRow>
                 )),
               )}
@@ -626,13 +658,14 @@ function PriceListCard(): JSX.Element {
   );
 }
 
+interface ProductVariant {
+  flavor: string;
+}
+
 interface OrderItem {
+  order_id: string;
   quantity: number;
-  product_variants:
-    | {
-        flavor: string;
-      }
-    | { flavor: string }[];
+  product_variants: ProductVariant | ProductVariant[];
 }
 
 interface Order {
@@ -641,16 +674,95 @@ interface Order {
   address: string;
   status: string;
   total: number;
+  delivery_fee: number;
   customer_name: string;
   contact: string;
   rider?: {
     area: string;
   };
-  order_items: OrderItem[];
+}
+
+function buildSalesSummary(
+  orders: Order[],
+  orderItems: OrderItem[],
+  now: Date,
+): SummaryItem[] {
+  const orderQuantityMap = new Map<string, number>();
+  for (const item of orderItems) {
+    const current = orderQuantityMap.get(item.order_id) || 0;
+    orderQuantityMap.set(item.order_id, current + item.quantity);
+  }
+
+  let totalSales = 0;
+  let totalDeliveryFee = 0;
+  let totalCommission = 0;
+  let totalCollection = 0;
+  let totalRidersFee = 0;
+  let totalAmountToRemit = 0;
+
+  for (const order of orders) {
+    if (!order.created_at) continue;
+
+    const orderDate = new Date(order.created_at);
+    const amount = Number(order.total || 0);
+    const deliveryFee = Number(order.delivery_fee ?? 0);
+    const quantity = orderQuantityMap.get(order.id.toString()) || 0;
+
+    const orderTotalSales = amount - deliveryFee;
+    // Commission = quantity × 20
+    const commission = quantity * 20;
+    // Total Collection = Total Sales + Delivery Fee
+    const collection = orderTotalSales + deliveryFee;
+    // Rider's Fee = Delivery Fee + Commission
+    const ridersFee = deliveryFee + commission;
+    // Amount to Remit = Total Collection - Rider's Fee
+    const amountToRemit = collection - ridersFee;
+
+    totalSales += orderTotalSales;
+    totalDeliveryFee += deliveryFee;
+    totalCommission += commission;
+    totalCollection += collection;
+    totalRidersFee += ridersFee;
+    totalAmountToRemit += amountToRemit;
+  }
+
+  return [
+    {
+      icon: FiPackage,
+      label: "Total Sales",
+      value: pesoFormatter.format(totalSales),
+    },
+    {
+      icon: FiDollarSign,
+      label: "Total Delivery Fee",
+      value: pesoFormatter.format(totalDeliveryFee),
+    },
+    {
+      icon: FiCheckSquare,
+      label: "Commission",
+      value: pesoFormatter.format(totalCommission),
+    },
+    {
+      icon: FiBarChart2,
+      label: "Total Collection",
+      value: pesoFormatter.format(totalCollection),
+    },
+    {
+      icon: FiTruck,
+      label: "Rider's Fee",
+      value: pesoFormatter.format(totalRidersFee),
+    },
+    {
+      icon: FiMapPin,
+      label: "Amount to Remit",
+      value: pesoFormatter.format(totalAmountToRemit),
+    },
+  ];
 }
 
 export default function SalesPage(): JSX.Element {
   const [orders, setOrders] = useState<Order[]>([]);
+  const [orderItems, setOrderItems] = useState<OrderItem[]>([]);
   const [flavorTotals, setFlavorTotals] = useState({ classic: 0, spicy: 0 });
   const [isLoading, setIsLoading] = useState(true);
 
@@ -659,33 +771,47 @@ export default function SalesPage(): JSX.Element {
     const fetchSalesData = async (): Promise<void> => {
       setIsLoading(true);
 
-      const { data, error } = await supabase.from("orders").select(`
+      const { data: ordersData, error: ordersError } = await supabase.from(
+        "orders",
+      ).select(`
           id,
           created_at,
           address,
           status,
           total,
+          delivery_fee,
           customer_name,
           contact,
 rider:riders (
     area
-    ),
-          order_items (
-            quantity,
-            product_variants:product_variants!order_items_product_variant_id_fkey (
-              flavor
-            )
-          )
+    )
         `);
 
-      if (error) {
-        console.error("Sales fetch error:", error);
+      if (ordersError) {
+        console.error("Orders fetch error:", ordersError);
         setIsLoading(false);
         return;
       }
 
-      setOrders((data as unknown as Order[]) ?? []);
-      console.log("ORDERS DEBUG:", JSON.stringify(data, null, 2));
+      const { data: itemsData, error: itemsError } = await supabase.from(
+        "order_items",
+      ).select(`
+          order_id,
+          quantity,
+          product_variants:product_variants!order_items_product_variant_id_fkey (
+            flavor
+          )
+        `);
+
+      if (itemsError) {
+        console.error("Order items fetch error:", itemsError);
+        setIsLoading(false);
+        return;
+      }
+
+      setOrders((ordersData as unknown as Order[]) ?? []);
+      setOrderItems((itemsData as unknown as OrderItem[]) ?? []);
+      console.log("ORDERS DEBUG:", JSON.stringify(ordersData, null, 2));
       setIsLoading(false);
     };
 
@@ -697,47 +823,27 @@ rider:riders (
     let classic = 0;
     let spicy = 0;
 
-    orders.forEach((order: Order) => {
-      order.order_items?.forEach((item: OrderItem) => {
-        const qty = Number(item.quantity ?? 0);
-        const variants = Array.isArray(item.product_variants)
-          ? item.product_variants
-          : [item.product_variants];
-        const flavor = variants[0]?.flavor;
+    orderItems.forEach((item) => {
+      const qty = Number(item.quantity ?? 0);
+      const variants = Array.isArray(item.product_variants)
+        ? item.product_variants
+        : [item.product_variants];
+      const flavor = variants[0]?.flavor;
 
-        const f = String(flavor || "").toLowerCase();
+      const f = String(flavor || "").toLowerCase();
 
-        if (f === "classic") classic += qty;
-        if (f === "spicy") spicy += qty;
-      });
+      if (f === "classic") classic += qty;
+      if (f === "spicy") spicy += qty;
     });
 
     setFlavorTotals({ classic, spicy });
-  }, [orders]);
+  }, [orderItems]);
 
-  // ✅ Total sales
-  const totalSales = useMemo(
-    () => orders.reduce((sum, o) => sum + Number(o.total || 0), 0),
-    [orders],
+  // ✅ Sales summary
+  const salesSummary = useMemo(
+    () => buildSalesSummary(orders, orderItems, new Date()),
+    [orders, orderItems],
   );
-
-  // ✅ Summary cards
-  const salesSummaryCards: SalesSummaryCard[] = [
-    {
-      id: "total-sales",
-      title: "Total Sales",
-      subtitle: "All Time",
-      amount: pesoFormatter.format(totalSales),
-      icon: FiShoppingCart,
-    },
-    {
-      id: "total-orders",
-      title: "Total Orders",
-      subtitle: "All Time",
-      amount: String(orders.length),
-      icon: FiCalendar,
-    },
-  ];
 
   // ✅ Orders by area (PER ORDER classic/spicy)
   const ordersByAreaData: OrderByArea[] = useMemo(() => {
@@ -745,7 +851,10 @@ rider:riders (
       let classic = 0;
       let spicy = 0;
 
-      order.order_items?.forEach((item: OrderItem) => {
+      const orderItemsForOrder = orderItems.filter(
+        (item) => item.order_id === order.id.toString(),
+      );
+      orderItemsForOrder.forEach((item) => {
         const qty = Number(item.quantity ?? 0);
         const variants = Array.isArray(item.product_variants)
           ? item.product_variants
@@ -763,30 +872,45 @@ rider:riders (
         }
       });
 
+      const riderArea = order.rider?.area?.trim();
+      const addressArea = extractArea(order.address)?.trim();
+
       return {
         id: index + 1,
         clientName: order.customer_name || "N/A",
         contactNo: order.contact || "N/A",
-        area: extractArea(order.address) || "Unknown",
+        area: riderArea || addressArea || "Unknown",
         classic,
         spicy,
         amount: Number(order.total || 0),
       };
     });
-  }, [orders]);
+  }, [orders, orderItems]);
 
   // ✅ Monthly sales
   const monthlySalesData: MonthlySalesData[] = useMemo(() => {
-    const map = new Map<string, MonthlySalesData>();
+    const map = new Map<
+      string,
+      {
+        monthIndex: number;
+        month: string;
+        sales: number;
+        orders: number;
+      }
+    >();
 
     orders.forEach((order: Order) => {
       if (!order.created_at) return;
 
       const date = new Date(order.created_at);
-      const key = `${date.getFullYear()}-${date.getMonth()}`;
+      const year = date.getFullYear();
+      const monthIndex = date.getMonth();
+
+      const key = `${year}-${monthIndex}`;
 
       if (!map.has(key)) {
         map.set(key, {
+          monthIndex,
           month: date.toLocaleString("en-US", { month: "short" }),
           sales: 0,
           orders: 0,
@@ -798,7 +922,13 @@ rider:riders (
       entry.orders += 1;
     });
 
-    return Array.from(map.values());
+    return Array.from(map.values())
+      .sort((a, b) => a.monthIndex - b.monthIndex)
+      .map(({ month, sales, orders }) => ({
+        month,
+        sales,
+        orders,
+      }));
   }, [orders]);
 
   // ✅ Pie chart data (RAW values, not %)
@@ -814,17 +944,29 @@ rider:riders (
   }
 
   return (
-    <section className="flex-1 space-y-6">
+    <section className="min-h-full flex flex-col space-y-6">
       <h2 className="text-3xl font-bold">Sales</h2>
 
-      <div className="grid grid-cols-3 gap-6">
-        <div className="col-span-2 space-y-6">
-          <SalesSummarySection salesSummaryCards={salesSummaryCards} />
+      <div className="grid grid-cols-3 gap-6 items-stretch min-h-full">
+        <div className="col-span-2 flex flex-col gap-6 h-full min-h-0">
+          <section
+            className="grid grid-cols-3 gap-6"
+            aria-label="Sales summary"
+          >
+            {salesSummary.map((item, index) => (
+              <SummaryCard
+                key={index}
+                icon={item.icon}
+                value={item.value}
+                label={item.label}
+              />
+            ))}
+          </section>
           <OrdersByAreaSection orders={ordersByAreaData} />
           <MonthlySalesSection data={monthlySalesData} />
         </div>
 
-        <div className="col-span-1 space-y-6">
+        <div className="col-span-1 flex flex-col gap-6 h-full min-h-0">
           <FlavorBreakdownCard flavorData={flavorData} />
           <PriceListCard />
         </div>
