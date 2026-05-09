@@ -7,7 +7,7 @@ export interface Rider {
   lastName: string;
   middleInitial: string;
   address: string;
-  location: string; 
+  location: string;
   contact: string;
   birthdate: string;
   plate_number: string;
@@ -18,11 +18,11 @@ export interface Rider {
 }
 
 export interface RiderFormData {
-  lastName: string;
   firstName: string;
+  lastName: string;
   middleInitial: string;
   address: string;
-  location: string; // ✅ ADD
+  location: string;
   contact: string;
   birthdate: string;
   plate_number: string;
@@ -37,11 +37,11 @@ export interface RiderFormErrors {
 }
 
 export const defaultRiderFormValues: RiderFormData = {
-  lastName: "",
   firstName: "",
+  lastName: "",
   middleInitial: "",
   address: "",
-  location: "", // ✅ ADD
+  location: "",
   contact: "",
   birthdate: "",
   plate_number: "",
@@ -86,17 +86,17 @@ export function toDateInputValue(value: string): string {
 
 export function buildRiderFormData(rider: Rider): RiderFormData {
   return {
-    lastName: rider.lastName || "",
     firstName: rider.firstName || "",
+    lastName: rider.lastName || "",
     middleInitial: rider.middleInitial || "",
     address: normalizeDbString(rider.address),
     location: normalizeDbString(rider.location),
     contact: normalizeDbString(rider.contact),
-    birthdate: toDateInputValue(rider.birthdate),
+    birthdate: rider.birthdate || "",
     plate_number: normalizeDbString(rider.plate_number),
     email: normalizeDbString(rider.email),
     password: "",
-    emergencyName: normalizeDbString(rider.emergencyName),
-    emergencyContact: normalizeDbString(rider.emergencyContact),
+    emergencyName: rider.emergencyName || "",
+    emergencyContact: rider.emergencyContact || "",
   };
 }

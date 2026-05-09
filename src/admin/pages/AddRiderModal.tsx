@@ -52,6 +52,7 @@ export default function AddRiderModal({
       "firstName",
       "lastName",
       "contact",
+      "plate_number",
       "email",
       "password",
     ];
@@ -96,39 +97,50 @@ export default function AddRiderModal({
             <section className="space-y-4">
               <h3 className="font-semibold text-lg">Rider Information</h3>
 
-              <div className="grid grid-cols-3 gap-4">
-                <label className="sr-only" htmlFor="firstName">
-                  First Name
+              <div className="flex flex-col gap-2">
+                <label className="text-sm font-semibold text-gray-700">
+                  First Name *
                 </label>
+
+                <p className="text-xs text-gray-500">
+                  Enter the first name of the rider
+                </p>
+
                 <input
-                  id="firstName"
                   name="firstName"
-                  placeholder="First Name"
-                  aria-label="First Name"
+                  placeholder="Enter first name"
                   value={form.firstName}
                   onChange={handleChange}
                   className={inputStyle}
                 />
-                <label className="sr-only" htmlFor="lastName">
-                  Last Name
+              </div>
+
+              <div className="flex flex-col gap-2">
+                <label className="text-sm font-semibold text-gray-700">
+                  Last Name *
                 </label>
+
+                <p className="text-xs text-gray-500">
+                  Enter the last name of the rider
+                </p>
+
                 <input
-                  id="lastName"
                   name="lastName"
-                  placeholder="Last Name"
-                  aria-label="Last Name"
+                  placeholder="Enter last name"
                   value={form.lastName}
                   onChange={handleChange}
                   className={inputStyle}
                 />
-                <label className="sr-only" htmlFor="middleInitial">
+              </div>
+
+              <div className="flex flex-col gap-2">
+                <label className="text-sm font-semibold text-gray-700">
                   Middle Initial
                 </label>
+
                 <input
-                  id="middleInitial"
                   name="middleInitial"
                   placeholder="Middle Initial"
-                  aria-label="Middle Initial"
                   value={form.middleInitial}
                   onChange={handleChange}
                   className={inputStyle}
@@ -180,6 +192,7 @@ export default function AddRiderModal({
                   onChange={handleChange}
                   className={inputStyle}
                 />
+
                 <label className="sr-only" htmlFor="birthdate">
                   Birthdate
                 </label>
@@ -187,6 +200,7 @@ export default function AddRiderModal({
                   id="birthdate"
                   type="date"
                   name="birthdate"
+                  placeholder="Birthdate"
                   aria-label="Birthdate"
                   value={form.birthdate}
                   onChange={handleChange}
@@ -234,38 +248,36 @@ export default function AddRiderModal({
                 onChange={handleChange}
                 className={inputStyle}
               />
+
+              <div className="grid grid-cols-2 gap-4">
+                <label className="sr-only" htmlFor="emergencyName">
+                  Emergency Name
+                </label>
+                <input
+                  id="emergencyName"
+                  name="emergencyName"
+                  placeholder="Emergency Name"
+                  aria-label="Emergency Name"
+                  value={form.emergencyName}
+                  onChange={handleChange}
+                  className={inputStyle}
+                />
+
+                <label className="sr-only" htmlFor="emergencyContact">
+                  Emergency Contact
+                </label>
+                <input
+                  id="emergencyContact"
+                  name="emergencyContact"
+                  placeholder="Emergency Contact"
+                  aria-label="Emergency Contact"
+                  value={form.emergencyContact}
+                  onChange={handleChange}
+                  className={inputStyle}
+                />
+              </div>
             </section>
 
-            {/* Emergency Contact */}
-            <section className="space-y-4">
-              <h3 className="font-semibold text-lg">Emergency Contact</h3>
-
-              <label className="sr-only" htmlFor="emergencyName">
-                Emergency Contact Name
-              </label>
-              <input
-                id="emergencyName"
-                name="emergencyName"
-                placeholder="Name"
-                aria-label="Emergency Contact Name"
-                value={form.emergencyName}
-                onChange={handleChange}
-                className={inputStyle}
-              />
-
-              <label className="sr-only" htmlFor="emergencyContact">
-                Emergency Contact Number
-              </label>
-              <input
-                id="emergencyContact"
-                name="emergencyContact"
-                placeholder="Contact"
-                aria-label="Emergency Contact Number"
-                value={form.emergencyContact}
-                onChange={handleChange}
-                className={inputStyle}
-              />
-            </section>
 
             {errorMessage && (
               <div className="text-red-600 text-sm">{errorMessage}</div>

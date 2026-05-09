@@ -122,6 +122,7 @@ export default function AddOrderModal({
   const [middleInitial, setMiddleInitial] = useState("");
   const [address, setAddress] = useState("");
   const [contact, setContact] = useState("");
+  const [note, setNote] = useState("");
   const [classic, setClassic] = useState<QuantityState>({
     small: 0,
     large: 0,
@@ -273,6 +274,7 @@ export default function AddOrderModal({
           status: "waiting",
           payment_status: paymentStatus,
           payment_method: paymentMethod,
+          note: note || "None",
         })
         .select()
         .single();
@@ -560,6 +562,24 @@ export default function AddOrderModal({
                     min={0}
                   />
                 </div>
+
+                <div className="col-span-2 flex flex-col gap-1">
+                  <label
+                    htmlFor="note"
+                    className="text-sm font-semibold text-gray-700"
+                  >
+                    Note (Optional)
+                  </label>
+                  <textarea
+                    id="note"
+                    placeholder="Add any special instructions..."
+                    value={note}
+                    onChange={(e: ChangeEvent<HTMLTextAreaElement>) =>
+                      setNote(e.target.value)
+                    }
+                    className={`${inputStyle} resize-none h-20`}
+                  />
+                </div>
               </div>
             </section>
 
@@ -571,8 +591,9 @@ export default function AddOrderModal({
                   <img
                     src="/images/ClassicOrder.png"
                     alt="Classic product"
-                    className="mx-auto h-40"
+                    className="mx-auto h-36 w-auto object-contain"
                   />
+
                   <p className="mt-2 text-center font-semibold">Classic</p>
 
                   {(["small", "large", "bottled"] as const).map((size) => (
@@ -592,7 +613,7 @@ export default function AddOrderModal({
                   <img
                     src="/images/SpicyOrder.png"
                     alt="Spicy product"
-                    className="mx-auto h-40"
+                    className="mx-auto h-36 w-auto object-contain"
                   />
                   <p className="mt-2 text-center font-semibold">Spicy</p>
 

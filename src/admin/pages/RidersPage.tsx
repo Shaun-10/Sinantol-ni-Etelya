@@ -420,7 +420,10 @@ function DeliveriesDialog({
         // Don't throw deliveries error - the table might not exist or be restricted by RLS
         // We can still show orders even if deliveries table is unavailable
         if (deliveriesError) {
-          console.warn("Deliveries table error (will show orders only):", deliveriesError);
+          console.warn(
+            "Deliveries table error (will show orders only):",
+            deliveriesError,
+          );
         }
 
         const orderRows: Delivery[] = (ordersResult.data ?? []).map(
@@ -507,10 +510,11 @@ function DeliveriesDialog({
             <p className="text-sm text-gray-500">Loading deliveries...</p>
           )}
 
-          {deliveriesError && deliveriesError.includes("Could not find the table") ? (
-            // Silently handle table not found error - it just means no deliveries data
-            null
-          ) : deliveriesError ? (
+          {deliveriesError &&
+          deliveriesError.includes(
+            "Could not find the table",
+          ) ? // Silently handle table not found error - it just means no deliveries data
+          null : deliveriesError ? (
             <div className="p-4 bg-red-50 border border-red-200 rounded text-red-700 text-sm font-semibold">
               {deliveriesError}
             </div>
@@ -612,74 +616,74 @@ export default function RidersPage(): JSX.Element {
   const [deliveriesRider, setDeliveriesRider] = useState<Rider | null>(null);
   const [isDeliveriesModalOpen, setIsDeliveriesModalOpen] = useState(false);
 
-  useEffect(() => {
-    const fetchRiders = async (): Promise<void> => {
-      setLoading(true);
+  const fetchRiders = async (): Promise<void> => {
+    setLoading(true);
 
-      const { data, error } = await supabase
-        .from("riders")
-        .select(
-          `
+    const { data, error } = await supabase
+      .from("riders")
+      .select(
+        `
+      id,
+      user_id,
+      first_name,
+      middle_initial,
+      last_name,
+      contact,
+      address,
+      area,
+      plate_number,
+      email,
+      emergency_name,
+      emergency_contact,
+      birthdate,
+      orders (
         id,
-        user_id,
-        first_name,
-        middle_initial,
-        last_name,
-        contact,
-        address,
-        area,
-        plate_number,
-        email,
-        emergency_name,
-        emergency_contact,
-        birthdate,
-        orders (
-          id,
-          status
-        )
-      `,
-        )
-        .order("created_at", { ascending: true });
+        status
+      )
+    `,
+      )
+      .order("created_at", { ascending: true });
 
-      if (error) {
-        console.error("Error fetching riders:", error);
-        setLoading(false);
-        return;
-      }
-
-      const transformed: Rider[] = (data ?? []).map(
-        (rider: any, index: number) => {
-          const activeOrders =
-            rider.orders?.filter((o: any) => o.status === "waiting") ?? [];
-
-          return {
-            orderId: index + 1,
-            id: rider.id,
-            userid: rider.user_id,
-
-            name: `${normalizeDbString(rider.first_name)} ${normalizeDbString(rider.last_name)}`.trim(),
-            firstName: normalizeDbString(rider.first_name),
-            lastName: normalizeDbString(rider.last_name),
-            middleInitial: normalizeDbString(rider.middle_initial),
-            address: normalizeDbString(rider.address),
-
-            contact: normalizeDbString(rider.contact),
-            location: normalizeDbString(rider.area),
-            plate_number: normalizeDbString(rider.plate_number),
-            email: normalizeDbString(rider.email),
-
-            birthdate: rider.birthdate ?? "",
-            emergencyName: normalizeDbString(rider.emergency_name),
-            emergencyContact: normalizeDbString(rider.emergency_contact),
-            isOnline: activeOrders.length > 0,
-          };
-        },
-      );
-
-      setRiders(transformed);
+    if (error) {
+      console.error("Error fetching riders:", error);
       setLoading(false);
-    };
+      return;
+    }
 
+    const transformed: Rider[] = (data ?? []).map(
+      (rider: any, index: number) => {
+        const activeOrders =
+          rider.orders?.filter((o: any) => o.status === "waiting") ?? [];
+
+        return {
+          orderId: index + 1,
+          id: rider.id,
+          userid: rider.user_id,
+
+          name: `${normalizeDbString(rider.first_name)} ${normalizeDbString(rider.last_name)}`.trim(),
+          firstName: normalizeDbString(rider.first_name),
+          lastName: normalizeDbString(rider.last_name),
+          middleInitial: normalizeDbString(rider.middle_initial),
+          address: normalizeDbString(rider.address),
+
+          contact: normalizeDbString(rider.contact),
+          location: normalizeDbString(rider.area),
+          plate_number: normalizeDbString(rider.plate_number),
+          email: normalizeDbString(rider.email),
+
+          birthdate: rider.birthdate ?? "",
+          emergencyName: normalizeDbString(rider.emergency_name),
+          emergencyContact: normalizeDbString(rider.emergency_contact),
+          isOnline: activeOrders.length > 0,
+        };
+      },
+    );
+
+    setRiders(transformed);
+    setLoading(false);
+  };
+
+  useEffect(() => {
     fetchRiders();
   }, []);
 
@@ -693,7 +697,11 @@ export default function RidersPage(): JSX.Element {
       return;
     }
 
-    console.log("Opening deliveries for rider:", selectedRider.id, selectedRider.name);
+    console.log(
+      "Opening deliveries for rider:",
+      selectedRider.id,
+      selectedRider.name,
+    );
     setDeliveriesRider(selectedRider);
     setSelectedRider(null);
     setIsDeliveriesModalOpen(true);
@@ -970,11 +978,13 @@ export default function RidersPage(): JSX.Element {
           }}
         />
       )}
-      
+
       {isDeliveriesModalOpen && !deliveriesRider && (
         <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
           <div className="bg-white rounded-lg shadow-2xl border border-gray-200 p-6">
-            <p className="text-red-600 font-semibold">Error: No rider data available for deliveries</p>
+            <p className="text-red-600 font-semibold">
+              Error: No rider data available for deliveries
+            </p>
           </div>
         </div>
       )}
