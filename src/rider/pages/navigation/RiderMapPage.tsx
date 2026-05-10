@@ -602,7 +602,7 @@ export default function RiderMapPage() {
           <MapContainer
             center={mapCenter}
             zoom={13}
-            style={{ width: "100%", height: "420px" }}
+            className="rider-route-map"
           >
             {mapRef.current && <MapBoundsFitter bounds={mapRef.current} />}
 
@@ -756,18 +756,6 @@ export default function RiderMapPage() {
         </button>
       </div>
 
-      {/* Styling for marker colors */}
-      <style>{`
-        .leaflet-marker-green .leaflet-marker-icon {
-          filter: hue-rotate(100deg) brightness(0.9);
-        }
-        .leaflet-marker-blue .leaflet-marker-icon {
-          filter: hue-rotate(200deg) brightness(0.9);
-        }
-        .leaflet-marker-red .leaflet-marker-icon {
-          filter: hue-rotate(-30deg) brightness(0.9);
-        }
-      `}</style>
     </RiderAppLayout>
   );
 }
