@@ -30,9 +30,14 @@ interface RouteOptimizerProps {
 }
 
 function NumberedIcon(num: number, color = "#2b8a3e") {
+  const markerClass =
+    color === "#2b8a3e"
+      ? "route-optimizer-marker route-optimizer-marker-default"
+      : "route-optimizer-marker";
+
   return divIcon({
-    html: `<div style="background:${color};color:white;border-radius:50%;width:28px;height:28px;display:flex;align-items:center;justify-content:center;font-weight:700;font-size:12px;border:2px solid white;box-shadow:0 1px 2px rgba(0,0,0,0.25)">${num}</div>`,
-    className: "",
+    html: `<div class="${markerClass}">${num}</div>`,
+    className: "route-optimizer-marker-wrapper",
     iconSize: [28, 28],
     iconAnchor: [14, 28],
   });
@@ -124,7 +129,7 @@ export default function RouteOptimizer({
       <MapContainer
         center={mapCenter}
         zoom={13}
-        style={{ height: 420, width: "100%" }}
+        className="rider-route-map"
       >
         <TileLayer
           attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
