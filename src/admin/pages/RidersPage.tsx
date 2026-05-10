@@ -140,7 +140,7 @@ function RidersListSection({
                     aria-label={`View details for ${rider.name}`}
                     onClick={() => onViewDetails(rider)}
                   >
-                    i
+                    Details
                   </button>
                 </td>
               </tr>

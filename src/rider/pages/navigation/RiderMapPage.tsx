@@ -30,12 +30,6 @@ import markerShadow from "leaflet/dist/images/marker-shadow.png";
 
 const manilaCenter: LatLngTuple = [14.5995, 120.9842];
 
-interface DirectionStep {
-  instruction: string;
-  distance: number;
-  duration: number;
-}
-
 // Custom marker icons for different waypoint types
 const createMarkerIcon = (color: string) =>
   new Icon({
@@ -66,38 +60,6 @@ function MapBoundsFitter({ bounds }: { bounds: LatLngBounds | null }) {
   return null;
 }
 
-// Turn-by-turn directions component
-function DirectionsList({ directions }: { directions: DirectionStep[] }) {
-  return (
-    <article className="bg-rider-details-card rounded-xl p-3 mb-3 max-h-64 overflow-y-auto border border-[#d4e4d5]">
-      <h3 className="m-0 text-[#0c631f] text-[1rem] font-bold mb-3">
-        Turn-by-Turn Directions
-      </h3>
-      <div className="space-y-2">
-        {directions.map((step, idx) => (
-          <div
-            key={idx}
-            className="flex gap-3 pb-2 border-b border-[#e9f0e9] last:border-b-0"
-          >
-            <div className="flex-shrink-0 w-7 h-7 rounded-full bg-[#0c631f] text-white text-xs font-bold flex items-center justify-center">
-              {idx + 1}
-            </div>
-            <div className="flex-1">
-              <p className="m-0 text-sm text-[#1a1e10] font-semibold leading-tight">
-                {step.instruction}
-              </p>
-              <p className="m-0 text-xs text-[#5b645c] mt-1">
-                {(step.distance / 1000).toFixed(1)} km •{" "}
-                {Math.round(step.duration / 60)} min
-              </p>
-            </div>
-          </div>
-        ))}
-      </div>
-    </article>
-  );
-}
-
 export default function RiderMapPage() {
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
@@ -113,9 +75,6 @@ export default function RiderMapPage() {
   const [gpsError, setGpsError] = useState<string | null>(null);
   const gpsWatchRef = useRef<number | null>(null);
 
-  // Directions state
-  const [directions, setDirections] = useState<DirectionStep[]>([]);
-  const [showDirections, setShowDirections] = useState(false);
   const [gpsAccuracy, setGpsAccuracy] = useState<number | null>(null);
   const [gpsSignalQuality, setGpsSignalQuality] = useState<
     "acquiring" | "fair" | "good" | "excellent"
@@ -223,7 +182,6 @@ export default function RiderMapPage() {
   useEffect(() => {
     if (!deliveryId) {
       setRoute(null);
-      setDirections([]);
     }
   }, [deliveryId, stopsToRender]);
   const [isLoadingStops, setIsLoadingStops] = useState(false);
@@ -499,7 +457,6 @@ export default function RiderMapPage() {
   useEffect(() => {
     if (waypoints.length < 2) {
       setRoute(null);
-      setDirections([]);
       return;
     }
 
@@ -507,27 +464,6 @@ export default function RiderMapPage() {
       setIsCalculatingRoute(true);
       const calculatedRoute = await calculateRoute(waypoints);
       setRoute(calculatedRoute);
-
-      // Extract turn-by-turn directions from route
-      if (calculatedRoute?.routes && calculatedRoute.routes.length > 0) {
-        const directionsList: DirectionStep[] = [];
-
-        calculatedRoute.routes[0].legs.forEach((leg) => {
-          if (leg.steps) {
-            leg.steps.forEach((step: any) => {
-              directionsList.push({
-                instruction:
-                  step.instruction ||
-                  `Continue for ${(step.distance / 1000).toFixed(1)} km`,
-                distance: step.distance || 0,
-                duration: step.duration || 0,
-              });
-            });
-          }
-        });
-
-        setDirections(directionsList);
-      }
 
       setIsCalculatingRoute(false);
 
@@ -624,11 +560,6 @@ export default function RiderMapPage() {
             </div>
           </div>
         </article>
-      )}
-
-      {/* Turn-by-turn Directions (toggled) */}
-      {showDirections && directions.length > 0 && (
-        <DirectionsList directions={directions} />
       )}
 
       {/* Error Messages */}
@@ -752,9 +683,7 @@ export default function RiderMapPage() {
               onRoute={(orderedStops, r) => {
                 // expose route data to current page state (distance/duration)
                 setRoute(r);
-                // optionally set directions/waypoints if needed
                 if (r && r.geometry && r.geometry.length > 0) {
-                  setDirections([]);
                   const pts = r.geometry as LatLngTuple[];
                   setMapCenter(pts[0]);
                 }
@@ -767,17 +696,6 @@ export default function RiderMapPage() {
       {/* Actions */}
       <div className="flex gap-2 flex-col">
         <div className="flex gap-2 md:flex-row flex-col">
-          <button
-            type="button"
-            className="flex-1 border-none rounded-[11px] bg-[#0c631f] text-white px-4 py-3.25 text-[1.05rem] font-bold cursor-pointer hover:opacity-90"
-            onClick={() => setShowDirections(!showDirections)}
-            disabled={!route || directions.length === 0}
-          >
-            {showDirections
-              ? "Hide Directions"
-              : `Directions (${directions.length})`}
-          </button>
-
           <button
             type="button"
             className="flex-1 border-none rounded-[11px] bg-[#707070] text-[#e9e9e9] px-4 py-3.25 text-[1.05rem] font-bold cursor-pointer hover:opacity-90"
