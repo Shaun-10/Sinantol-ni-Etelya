@@ -406,8 +406,7 @@ textarea {
 }
 
 .add-rider-btn,
-.sales-page-btn,
-.sales-price-edit-btn {
+.sales-page-btn {
   min-height: 38px;
   border: 1px solid #1d7d32;
   border-radius: 8px;
@@ -428,8 +427,7 @@ textarea {
 }
 
 .add-rider-btn:hover,
-.sales-page-btn:hover,
-.sales-price-edit-btn:hover {
+.sales-page-btn:hover {
   transform: translateY(-1px);
   background: #176f2b;
   box-shadow: 0 8px 16px rgba(31, 143, 56, 0.18);
@@ -560,14 +558,19 @@ textarea {
 }
 
 .riders-details-btn {
-  width: 28px;
-  height: 28px;
+  min-width: 68px;
+  min-height: 28px;
   border: 1px solid #b7c2ad;
-  border-radius: 999px;
+  border-radius: 8px;
   background: #ffffff;
   color: #263123;
-  font-weight: 900;
   cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 5px 10px;
+  font-size: 0.78rem;
+  font-weight: 800;
 }
 
 .riders-footer,
@@ -585,8 +588,7 @@ textarea {
 
 .riders-prev-btn,
 .riders-next-btn,
-.sales-page-btn.secondary,
-.sales-price-cancel-btn {
+.sales-page-btn.secondary {
   min-height: 34px;
   border: 1px solid #c7cfc2;
   border-radius: 8px;
@@ -715,28 +717,6 @@ textarea {
   border-radius: 999px;
 }
 
-.sales-price-edit-btn {
-  min-height: 32px;
-  padding: 6px 12px;
-  font-size: 0.82rem;
-}
-
-.sales-price-cancel-btn {
-  background: #ffffff;
-}
-
-.sales-price-input {
-  width: 92px;
-  height: 30px;
-  border: 1px solid #b8c4b2;
-  border-radius: 7px;
-  background: #ffffff;
-  color: #1f2b20;
-  padding: 0 8px;
-  font-size: 0.84rem;
-  font-weight: 700;
-}
-
 .rider-app-shell {
   min-height: 100vh;
   background:
@@ -748,10 +728,13 @@ textarea {
 .rider-frame {
   max-width: 430px;
   width: 100%;
+  height: 100vh;
+  height: 100dvh;
   min-height: 100vh;
   margin: 0 auto;
   display: flex;
   flex-direction: column;
+  overflow: hidden;
   background: rgba(255, 255, 255, 0.7);
   border-left: 1px solid rgba(36, 51, 31, 0.12);
   border-right: 1px solid rgba(36, 51, 31, 0.12);
@@ -761,17 +744,27 @@ textarea {
 }
 
 .rider-top-shell {
+  flex: 0 0 auto;
+  position: sticky;
+  top: 0;
+  z-index: 20;
   padding: 14px 16px 12px;
   border-bottom: 1px solid rgba(36, 51, 31, 0.1);
   background: rgba(255, 255, 255, 0.72);
+  -webkit-backdrop-filter: blur(10px);
+  backdrop-filter: blur(10px);
 }
 
 .rider-bottom-nav {
+  flex: 0 0 auto;
+  position: sticky;
+  bottom: 0;
+  z-index: 20;
   margin-top: auto;
   display: grid;
   grid-template-columns: repeat(4, minmax(0, 1fr));
   gap: 6px;
-  padding: 10px 10px 12px;
+  padding: 10px 10px calc(12px + env(safe-area-inset-bottom));
   border-top: 1px solid rgba(36, 51, 31, 0.12);
   background: rgba(255, 255, 255, 0.84);
   -webkit-backdrop-filter: blur(10px);

@@ -307,6 +307,7 @@ export default function AddOrderModal({
         customer: customerName,
         total,
         date: new Date(order.created_at).toLocaleDateString(),
+        createdAt: order.created_at,
         dateRange: "Today",
         status: "waiting",
         paymentStatus,

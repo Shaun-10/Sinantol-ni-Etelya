@@ -23,13 +23,6 @@ import {
   YAxis,
 } from "recharts";
 import {
-  Dialog,
-  DialogContent,
-  DialogHeader,
-  DialogTitle,
-  DialogFooter,
-} from "@/components/ui/dialog";
-import {
   Table,
   TableBody,
   TableCell,
@@ -162,16 +155,16 @@ function SummaryCard({
   label,
 }: SummaryCardProps): JSX.Element {
   return (
-    <article className="bg-white rounded-lg border border-gray-200 shadow-sm p-4">
-      <div className="flex items-center gap-3 mb-4">
-        <span className="text-3xl text-gray-600" aria-hidden="true">
+    <article className="sales-summary-card">
+      <div className="sales-summary-card-top">
+        <span className="sales-summary-icon" aria-hidden="true">
           <Icon />
         </span>
         <div>
-          <p className="text-2xl font-bold text-gray-900">{value}</p>
-          <p className="text-sm text-gray-500">{label}</p>
+          <p className="sales-summary-title">{label}</p>
         </div>
       </div>
+      <p className="sales-summary-amount">{value}</p>
     </article>
   );
 }
@@ -207,10 +200,10 @@ function OrdersByAreaSection({
     );
   }, [orders, selectedArea]);
 
-  const totalPages = Math.ceil(filteredOrders.length / 10);
+  const totalPages = Math.ceil(filteredOrders.length / 5);
   const paginatedOrders = filteredOrders.slice(
-    (currentPage - 1) * 10,
-    currentPage * 10,
+    (currentPage - 1) * 5,
+    currentPage * 5,
   );
 
   const handleNextPage = () => {
@@ -232,21 +225,20 @@ function OrdersByAreaSection({
 
   return (
     <section
-      className="bg-white rounded-lg border border-gray-200 shadow-sm overflow-hidden flex flex-col"
+      className="sales-panel"
       aria-label="Orders by area"
     >
-      <div className="p-4 border-b border-gray-200 flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
-        <h3 className="text-lg font-semibold text-gray-900">Orders by Area</h3>
+      <div className="sales-panel-header">
+        <h3>Orders by Area</h3>
 
-        <label className="flex items-center gap-3" htmlFor="sales-area-select">
-          <span className="text-sm font-medium text-gray-700">Filter by:</span>
+        <label className="sales-area-filter" htmlFor="sales-area-select">
+          <span>Filter by:</span>
           <select
             id="sales-area-select"
             value={selectedArea}
             onChange={(event: ChangeEvent<HTMLSelectElement>) =>
               setSelectedArea(event.target.value)
             }
-            className="px-3 py-2 border border-gray-300 rounded-lg text-sm"
           >
             {uniqueAreas.map((area) => (
               <option key={area} value={area}>
@@ -257,63 +249,39 @@ function OrdersByAreaSection({
         </label>
       </div>
 
-      <div className="flex-1 flex flex-col min-h-0">
-        <div className="flex-1 overflow-x-auto max-h-[320px]">
-          <Table className="w-full table-fixed">
-            <TableHeader>
-              <TableRow>
-                <TableHead className="w-[60px] text-left">ID</TableHead>
-                <TableHead className="w-[220px] text-left">
-                  Client Name
-                </TableHead>
-                <TableHead className="w-[160px] text-left">
-                  Contact No.
-                </TableHead>
-                <TableHead className="w-[140px] text-left">Area</TableHead>
-                <TableHead className="w-[80px] text-center">Classic</TableHead>
-                <TableHead className="w-[80px] text-center">Spicy</TableHead>
-                <TableHead className="w-[120px] text-right">Amount</TableHead>
+      <div className="sales-table-wrap">
+        <Table className="sales-table">
+          <TableHeader>
+            <TableRow>
+              <TableHead>ID</TableHead>
+              <TableHead>Client Name</TableHead>
+              <TableHead>Contact No.</TableHead>
+              <TableHead>Area</TableHead>
+              <TableHead>Classic</TableHead>
+              <TableHead>Spicy</TableHead>
+              <TableHead>Amount</TableHead>
+            </TableRow>
+          </TableHeader>
+
+          <TableBody>
+            {paginatedOrders.map((order) => (
+              <TableRow key={order.id}>
+                <TableCell>{order.id}</TableCell>
+                <TableCell>{order.clientName}</TableCell>
+                <TableCell>{order.contactNo}</TableCell>
+                <TableCell>{order.area}</TableCell>
+                <TableCell>{order.classic}</TableCell>
+                <TableCell>{order.spicy}</TableCell>
+                <TableCell>{pesoFormatter.format(order.amount)}</TableCell>
               </TableRow>
-            </TableHeader>
-
-            <TableBody>
-              {paginatedOrders.map((order) => (
-                <TableRow key={order.id}>
-                  <TableCell className="w-[60px]">{order.id}</TableCell>
-
-                  <TableCell className="w-[220px] truncate whitespace-nowrap">
-                    {order.clientName}
-                  </TableCell>
-
-                  <TableCell className="w-[160px] truncate whitespace-nowrap">
-                    {order.contactNo}
-                  </TableCell>
-
-                  <TableCell className="w-[140px] truncate whitespace-nowrap">
-                    {order.area}
-                  </TableCell>
-
-                  <TableCell className="w-[80px] text-center">
-                    {order.classic}
-                  </TableCell>
-
-                  <TableCell className="w-[80px] text-center">
-                    {order.spicy}
-                  </TableCell>
-
-                  <TableCell className="w-[120px] text-right font-semibold">
-                    {pesoFormatter.format(order.amount)}
-                  </TableCell>
-                </TableRow>
-              ))}
-            </TableBody>
-          </Table>
-        </div>
+            ))}
+          </TableBody>
+        </Table>
       </div>
 
       {totalPages > 1 && (
-        <div className="p-4 border-t border-gray-200 flex justify-between items-center">
-          <span className="text-sm text-gray-600">
+        <div className="sales-list-footer">
+          <span>
             Page {currentPage} of {totalPages}
           </span>
           <div className="flex gap-2">
@@ -321,18 +289,18 @@ function OrdersByAreaSection({
               <button
                 type="button"
                 onClick={handlePreviousPage}
-                className="px-3 py-1 bg-gray-200 text-gray-700 rounded text-sm hover:bg-gray-300 transition"
+                className="sales-page-btn secondary"
               >
-                Previous
+                &lt; Previous
               </button>
             )}
             {currentPage < totalPages && (
               <button
                 type="button"
                 onClick={handleNextPage}
-                className="px-3 py-1 bg-blue-500 text-white rounded text-sm hover:bg-blue-600 transition"
+                className="sales-page-btn"
               >
-                Next Page
+                Next &gt;
               </button>
             )}
           </div>
@@ -349,14 +317,14 @@ interface MonthlySalesSectionProps {
 function MonthlySalesSection({ data }: MonthlySalesSectionProps): JSX.Element {
   return (
     <section
-      className="bg-white rounded-lg border border-gray-200 shadow-sm overflow-hidden"
+      className="sales-panel"
       aria-label="Monthly sales chart"
     >
-      <div className="p-4 border-b border-gray-200">
-        <h3 className="text-lg font-semibold text-gray-900">Monthly Sales</h3>
+      <div className="sales-panel-header">
+        <h3>Monthly Sales</h3>
       </div>
 
-      <div className="p-4 h-80">
+      <div className="sales-chart-wrap">
         <ResponsiveContainer width="100%" height="100%">
           <ComposedChart
             data={data}
@@ -427,14 +395,14 @@ function FlavorBreakdownCard({
 }): JSX.Element {
   return (
     <article
-      className="bg-white rounded-lg border border-gray-200 shadow-sm overflow-hidden"
+      className="sales-pie-card"
       aria-label="Sales flavor breakdown"
     >
-      <div className="p-4 border-b border-gray-200">
-        <h3 className="text-lg font-semibold text-gray-900">Sales by Flavor</h3>
+      <div className="sales-panel-header">
+        <h3>Sales by Flavor</h3>
       </div>
 
-      <div className="p-4 h-80">
+      <div className="sales-pie-wrap">
         <ResponsiveContainer width="100%" height="100%">
           <PieChart>
             <Pie
@@ -458,21 +426,19 @@ function FlavorBreakdownCard({
         </ResponsiveContainer>
       </div>
 
-      <div className="p-4 space-y-2" role="list" aria-label="Flavor legend">
+      <div className="sales-pie-legend" role="list" aria-label="Flavor legend">
         {flavorData.map((item) => (
           <div
-            className="flex items-center gap-3 text-sm"
+            className="sales-pie-legend-item"
             key={item.name}
             role="listitem"
           >
             <span
-              className={`w-3 h-3 rounded-full inline-block ${flavorColorClass[item.name] ?? "bg-gray-300"}`}
+              className={`sales-pie-dot ${flavorColorClass[item.name] ?? "bg-gray-300"}`}
               aria-hidden="true"
             />
-            <span className="text-gray-700">{item.name}</span>
-            <span className="ml-auto font-semibold text-gray-900">
-              {item.value}
-            </span>
+            <span>{item.name}</span>
+            <span>{item.value}</span>
           </div>
         ))}
       </div>
@@ -481,173 +447,49 @@ function FlavorBreakdownCard({
 }
 
 function PriceListCard(): JSX.Element {
-  const [priceList, setPriceList] = useState<PriceGroup[]>(initialPriceList);
-  const [draftPriceList, setDraftPriceList] =
-    useState<PriceGroup[]>(initialPriceList);
-  const [isDialogOpen, setIsDialogOpen] = useState(false);
-
-  const handleStartEdit = (): void => {
-    setDraftPriceList(priceList);
-    setIsDialogOpen(true);
-  };
-
-  const handleCancelEdit = (): void => {
-    setIsDialogOpen(false);
-  };
-
-  const handleSaveEdit = (): void => {
-    setPriceList(draftPriceList);
-    setIsDialogOpen(false);
-  };
-
-  const handlePriceChange = (
-    flavorIndex: number,
-    priceIndex: number,
-    nextValue: string,
-  ): void => {
-    const numericValue = Number.parseInt(nextValue, 10);
-
-    if (Number.isNaN(numericValue) && nextValue !== "") {
-      return;
-    }
-
-    setDraftPriceList((current) =>
-      current.map((group, groupIndex) => {
-        if (groupIndex !== flavorIndex) {
-          return group;
-        }
-
-        return {
-          ...group,
-          prices: group.prices.map((price, itemIndex) => {
-            if (itemIndex !== priceIndex) {
-              return price;
-            }
-
-            return {
-              ...price,
-              amount: nextValue === "" ? 0 : Math.max(0, numericValue),
-            };
-          }),
-        };
-      }),
-    );
-  };
-
-  const displayedPriceList = isDialogOpen ? draftPriceList : priceList;
-
   return (
-    <>
-      <article
-        className="bg-white rounded-lg border border-gray-200 shadow-sm overflow-hidden"
-        aria-label="Product price list"
-      >
-        <header className="p-4 border-b border-gray-200 flex justify-between items-center">
-          <h3 className="text-lg font-semibold text-gray-900">Price List</h3>
-        </header>
+    <article
+      className="sales-price-card"
+      aria-label="Product price list"
+    >
+      <header className="sales-price-header">
+        <h3>Price List</h3>
+      </header>
 
-        <div className="overflow-x-auto">
-          <Table className="w-full text-sm table-fixed">
-            <TableHeader>
-              <TableRow>
-                <TableHead className="w-[120px]">Flavor</TableHead>
-                <TableHead className="w-[120px]">Sizes</TableHead>
-                <TableHead className="w-[120px] text-right">Price</TableHead>
-              </TableRow>
-            </TableHeader>
-            <TableBody>
-              {priceList.map((group) =>
-                group.prices.map((item, priceIndex) => (
-                  <TableRow key={`${group.flavor}-${item.size}`}>
-                    {priceIndex === 0 ? (
-                      <TableCell
-                        rowSpan={group.prices.length}
-                        className="font-medium align-top"
-                      >
-                        {group.flavor}
-                      </TableCell>
-                    ) : null}
-
-                    <TableCell className="w-[120px]">{item.size}</TableCell>
-
-                    <TableCell className="w-[120px] text-right">
-                      {pesoFormatter.format(item.amount)}
+      <div className="sales-price-table-wrap">
+        <Table className="sales-price-table">
+          <TableHeader>
+            <TableRow>
+              <TableHead>Flavor</TableHead>
+              <TableHead>Sizes</TableHead>
+              <TableHead>Price</TableHead>
+            </TableRow>
+          </TableHeader>
+          <TableBody>
+            {initialPriceList.map((group) =>
+              group.prices.map((item, priceIndex) => (
+                <TableRow key={`${group.flavor}-${item.size}`}>
+                  {priceIndex === 0 ? (
+                    <TableCell
+                      rowSpan={group.prices.length}
+                      className="font-semibold align-top"
+                    >
+                      {group.flavor}
                     </TableCell>
-                  </TableRow>
-                )),
-              )}
-            </TableBody>
-          </Table>
-        </div>
-      </article>
+                  ) : null}
 
-      <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
-        <DialogContent>
-          <DialogHeader>
-            <DialogTitle>Edit Price List</DialogTitle>
-          </DialogHeader>
+                  <TableCell>{item.size}</TableCell>
 
-          <div className="overflow-y-auto max-h-96">
-            <Table>
-              <TableHeader>
-                <TableRow>
-                  <TableHead>Flavor</TableHead>
-                  <TableHead>Sizes</TableHead>
-                  <TableHead>Price</TableHead>
+                  <TableCell>
+                    {pesoFormatter.format(item.amount)}
+                  </TableCell>
                 </TableRow>
-              </TableHeader>
-              <TableBody>
-                {displayedPriceList.map((group, flavorIndex) =>
-                  group.prices.map((item, priceIndex) => (
-                    <TableRow key={`${group.flavor}-${item.size}`}>
-                      {priceIndex === 0 ? (
-                        <TableCell rowSpan={group.prices.length}>
-                          {group.flavor}
-                        </TableCell>
-                      ) : null}
-                      <TableCell>{item.size}</TableCell>
-                      <TableCell>
-                        <input
-                          type="number"
-                          min="0"
-                          placeholder="0"
-                          className="px-2 py-1 border border-gray-300 rounded text-sm w-20 text-center"
-                          value={item.amount}
-                          onChange={(event: ChangeEvent<HTMLInputElement>) =>
-                            handlePriceChange(
-                              flavorIndex,
-                              priceIndex,
-                              event.target.value,
-                            )
-                          }
-                        />
-                      </TableCell>
-                    </TableRow>
-                  )),
-                )}
-              </TableBody>
-            </Table>
-          </div>
-
-          <DialogFooter>
-            <button
-              type="button"
-              className="px-3 py-2 bg-gray-300 text-gray-900 rounded text-sm hover:bg-gray-400 transition"
-              onClick={handleCancelEdit}
-            >
-              Cancel
-            </button>
-            <button
-              type="button"
-              className="px-3 py-2 bg-blue-500 text-white rounded text-sm hover:bg-blue-600 transition"
-              onClick={handleSaveEdit}
-            >
-              Save
-            </button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
-    </>
+              )),
+            )}
+          </TableBody>
+        </Table>
+      </div>
+    </article>
   );
 }
 
@@ -932,19 +774,27 @@ rider:riders (
   }, [flavorTotals]);
 
   if (isLoading) {
-    return <div className="p-6 text-gray-600">Loading sales data...</div>;
+    return (
+      <section className="sales-main-content">
+        <div className="rounded-lg border border-gray-200 bg-white px-4 py-3 text-sm text-gray-600">
+          Loading sales data...
+        </div>
+      </section>
+    );
   }
 
   return (
-    <section className="min-h-full flex flex-col space-y-6">
-      <h2 className="text-3xl font-bold">Sales</h2>
+    <section className="sales-main-content">
+      <header className="sales-header">
+        <h2>
+          <FiBarChart2 />
+          Sales
+        </h2>
+      </header>
 
-      <div className="grid grid-cols-3 gap-6 items-stretch min-h-full">
-        <div className="col-span-2 flex flex-col gap-6 h-full min-h-0">
-          <section
-            className="grid grid-cols-3 gap-6"
-            aria-label="Sales summary"
-          >
+      <div className="sales-layout-grid">
+        <div className="sales-left-column">
+          <section className="sales-summary-grid" aria-label="Sales summary">
             {salesSummary.map((item, index) => (
               <SummaryCard
                 key={index}
@@ -958,7 +808,7 @@ rider:riders (
           <MonthlySalesSection data={monthlySalesData} />
         </div>
 
-        <div className="col-span-1 flex flex-col gap-6 h-full min-h-0">
+        <div className="sales-right-column">
           <FlavorBreakdownCard flavorData={flavorData} />
           <PriceListCard />
         </div>
