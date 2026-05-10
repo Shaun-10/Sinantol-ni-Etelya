@@ -12,13 +12,13 @@ const areaOptions = [
   "Manila",
   "Marikina",
   "Taguig",
-  "Paranaque",
+  "Parañaque",
 ];
 
 const defaultRiderFormValues: RiderFormData = {
   name: "",
   address: "",
-  location: "",
+  area: "",
   contact: "",
   plate_number: "",
   email: "",
@@ -132,13 +132,13 @@ export default function AddRiderModal({
                 </div>
 
                 <div>
-                  <label className="sr-only" htmlFor="location">
+                  <label className="sr-only" htmlFor="area">
                     Area
                   </label>
                   <select
-                    id="location"
-                    name="location"
-                    value={form.location}
+                    id="area"
+                    name="area"
+                    value={form.area}
                     onChange={handleChange}
                     className={inputStyle}
                   >

@@ -48,7 +48,7 @@ export default function RiderAppLayout({
           )}
         </header>
 
-        <main className="flex-1 overflow-y-auto p-3 pb-5">{children}</main>
+        <main className="flex-1 min-h-0 overflow-y-auto p-3 pb-5">{children}</main>
 
         <RiderBottomNav />
       </div>

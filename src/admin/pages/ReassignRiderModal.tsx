@@ -22,6 +22,15 @@ function getErrorMessage(error: unknown, fallback: string): string {
   return fallback;
 }
 
+const AREA_OPTIONS = [
+  "Taguig",
+  "Manila",
+  "Quezon City",
+  "Makati",
+  "Marikina",
+  "Parañaque",
+];
+
 export default function ReassignRiderModal({
   riders,
   onClose,
@@ -29,6 +38,8 @@ export default function ReassignRiderModal({
 }: ReassignRiderModalProps): JSX.Element {
   const [sourceRiderId, setSourceRiderId] = useState("");
   const [targetArea, setTargetArea] = useState("");
+  const [firstSwapRiderId, setFirstSwapRiderId] = useState("");
+  const [secondSwapRiderId, setSecondSwapRiderId] = useState("");
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [errorMessage, setErrorMessage] = useState("");
 
@@ -36,21 +47,14 @@ export default function ReassignRiderModal({
     () => riders.find((rider) => rider.id === sourceRiderId) ?? null,
     [riders, sourceRiderId],
   );
-
-  const areaOptions = useMemo(() => {
-    const seen = new Set<string>();
-
-    return riders
-      .map((rider) => rider.location.trim())
-      .filter((location) => {
-        if (!location || seen.has(location.toLowerCase())) {
-          return false;
-        }
-
-        seen.add(location.toLowerCase());
-        return true;
-      });
-  }, [riders]);
+  const firstSwapRider = useMemo(
+    () => riders.find((rider) => rider.id === firstSwapRiderId) ?? null,
+    [riders, firstSwapRiderId],
+  );
+  const secondSwapRider = useMemo(
+    () => riders.find((rider) => rider.id === secondSwapRiderId) ?? null,
+    [riders, secondSwapRiderId],
+  );
 
   useEffect(() => {
     setTargetArea("");
@@ -60,6 +64,9 @@ export default function ReassignRiderModal({
     event: FormEvent<HTMLFormElement>,
   ): Promise<void> => {
     event.preventDefault();
+
+    if (isSubmitting) return;
+
     setErrorMessage("");
 
     if (!sourceRiderId) {
@@ -67,15 +74,16 @@ export default function ReassignRiderModal({
       return;
     }
 
-    if (!targetArea.trim()) {
-      setErrorMessage("Please select or enter a target area.");
+    const trimmedArea = targetArea.trim();
+
+    if (!trimmedArea) {
+      setErrorMessage("Please select a target area.");
       return;
     }
 
     if (
       sourceRider &&
-      sourceRider.location.trim().toLowerCase() ===
-        targetArea.trim().toLowerCase()
+      sourceRider.area?.trim().toLowerCase() === trimmedArea.toLowerCase()
     ) {
       setErrorMessage("Choose a different area from the current one.");
       return;
@@ -84,23 +92,103 @@ export default function ReassignRiderModal({
     setIsSubmitting(true);
 
     try {
-      const { error } = await supabase
+      const { data, error } = await supabase
         .from("riders")
-        .update({ location: targetArea.trim() })
-        .eq("id", sourceRiderId);
+        .update({ area: trimmedArea })
+        .eq("id", sourceRiderId)
+        .select();
 
-      if (error) {
-        throw error;
+      if (error) throw error;
+
+      if (!data || data.length === 0) {
+        throw new Error("Update failed. Rider not found.");
       }
 
       await onReassigned();
+
       window.alert(
-        `Updated ${sourceRider?.name || "the rider"} to ${targetArea.trim()}.`,
+        `Updated ${sourceRider?.name || "the rider"} to ${trimmedArea}.`,
       );
+
+      // ✅ reset
+      setSourceRiderId("");
+      setTargetArea("");
+
       onClose();
     } catch (error: unknown) {
       console.error("Error reassigning rider area:", error);
+
       setErrorMessage(getErrorMessage(error, "Failed to update rider area."));
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
+
+  const handleSwapAreas = async (): Promise<void> => {
+    if (isSubmitting) return;
+
+    setErrorMessage("");
+
+    if (!firstSwapRiderId || !secondSwapRiderId) {
+      setErrorMessage("Please select two riders to swap.");
+      return;
+    }
+
+    if (firstSwapRiderId === secondSwapRiderId) {
+      setErrorMessage("Choose two different riders to swap areas.");
+      return;
+    }
+
+    if (!firstSwapRider || !secondSwapRider) {
+      setErrorMessage("Unable to find one of the selected riders.");
+      return;
+    }
+
+    const firstArea = firstSwapRider.area?.trim() || null;
+    const secondArea = secondSwapRider.area?.trim() || null;
+
+    if ((firstArea || "").toLowerCase() === (secondArea || "").toLowerCase()) {
+      setErrorMessage("These riders already have the same area.");
+      return;
+    }
+
+    setIsSubmitting(true);
+
+    try {
+      const [firstUpdate, secondUpdate] = await Promise.all([
+        supabase
+          .from("riders")
+          .update({ area: secondArea })
+          .eq("id", firstSwapRiderId)
+          .select(),
+        supabase
+          .from("riders")
+          .update({ area: firstArea })
+          .eq("id", secondSwapRiderId)
+          .select(),
+      ]);
+
+      if (firstUpdate.error) throw firstUpdate.error;
+      if (secondUpdate.error) throw secondUpdate.error;
+
+      if (!firstUpdate.data?.length || !secondUpdate.data?.length) {
+        throw new Error("Swap failed. One of the selected riders was not found.");
+      }
+
+      await onReassigned();
+
+      window.alert(
+        `Swapped areas for ${firstSwapRider.name || "the first rider"} and ${secondSwapRider.name || "the second rider"}.`,
+      );
+
+      setFirstSwapRiderId("");
+      setSecondSwapRiderId("");
+
+      onClose();
+    } catch (error: unknown) {
+      console.error("Error swapping rider areas:", error);
+
+      setErrorMessage(getErrorMessage(error, "Failed to swap rider areas."));
     } finally {
       setIsSubmitting(false);
     }
@@ -123,7 +211,7 @@ export default function ReassignRiderModal({
               Reassign Rider Area
             </h3>
             <p className="text-sm text-gray-500">
-              Move a rider to a different area.
+              Move one rider or swap two riders between areas.
             </p>
           </div>
           <button
@@ -173,31 +261,110 @@ export default function ReassignRiderModal({
                 <span className="text-sm font-semibold text-gray-700">
                   New Area
                 </span>
-                <input
-                  list="rider-area-options"
-                  type="text"
+                <select
                   value={targetArea}
-                  onChange={(event: ChangeEvent<HTMLInputElement>) =>
+                  onChange={(event: ChangeEvent<HTMLSelectElement>) =>
                     setTargetArea(event.target.value)
                   }
                   className="rider-input"
-                  placeholder="Enter or choose area"
                   required
                   disabled={!sourceRiderId}
-                />
-                <datalist id="rider-area-options">
-                  {areaOptions.map((area) => (
-                    <option key={area} value={area} />
+                >
+                  <option value="">Select area</option>
+                  {AREA_OPTIONS.map((area) => (
+                    <option key={area} value={area}>
+                      {area}
+                    </option>
                   ))}
-                </datalist>
+                </select>
               </label>
             </div>
 
             <div className="rounded-lg border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-900">
               {sourceRider
-                ? `${sourceRider.name || "The selected rider"} is currently assigned to ${sourceRider.location || "no area"}. Choose a different area to update the rider's assignment.`
+                ? `${sourceRider.name || "The selected rider"} is currently assigned to ${sourceRider.area || "no area"}. Choose a different area to update the rider's assignment.`
                 : "Select a source rider to continue."}
             </div>
+
+            <section className="space-y-4 border-t border-gray-200 pt-5">
+              <div>
+                <h4 className="text-base font-bold text-gray-900">
+                  Swap Rider Areas
+                </h4>
+                <p className="text-sm text-gray-500">
+                  Select two riders to exchange their current areas.
+                </p>
+              </div>
+
+              <div className="grid gap-4 sm:grid-cols-2">
+                <label className="flex flex-col gap-2">
+                  <span className="text-sm font-semibold text-gray-700">
+                    First Rider
+                  </span>
+                  <select
+                    value={firstSwapRiderId}
+                    onChange={(event: ChangeEvent<HTMLSelectElement>) =>
+                      setFirstSwapRiderId(event.target.value)
+                    }
+                    className="rider-input"
+                    disabled={isSubmitting}
+                  >
+                    <option value="">Select rider</option>
+                    {riders.map((rider) => (
+                      <option
+                        key={rider.id}
+                        value={rider.id}
+                        disabled={rider.id === secondSwapRiderId}
+                      >
+                        {rider.name || "Unnamed rider"}
+                      </option>
+                    ))}
+                  </select>
+                </label>
+
+                <label className="flex flex-col gap-2">
+                  <span className="text-sm font-semibold text-gray-700">
+                    Second Rider
+                  </span>
+                  <select
+                    value={secondSwapRiderId}
+                    onChange={(event: ChangeEvent<HTMLSelectElement>) =>
+                      setSecondSwapRiderId(event.target.value)
+                    }
+                    className="rider-input"
+                    disabled={isSubmitting}
+                  >
+                    <option value="">Select rider</option>
+                    {riders.map((rider) => (
+                      <option
+                        key={rider.id}
+                        value={rider.id}
+                        disabled={rider.id === firstSwapRiderId}
+                      >
+                        {rider.name || "Unnamed rider"}
+                      </option>
+                    ))}
+                  </select>
+                </label>
+              </div>
+
+              <div className="rounded-lg border border-blue-200 bg-blue-50 px-4 py-3 text-sm text-blue-900">
+                {firstSwapRider && secondSwapRider
+                  ? `${firstSwapRider.name || "First rider"}: ${firstSwapRider.area || "no area"} -> ${secondSwapRider.area || "no area"} | ${secondSwapRider.name || "Second rider"}: ${secondSwapRider.area || "no area"} -> ${firstSwapRider.area || "no area"}`
+                  : "Select two riders to preview the area swap."}
+              </div>
+
+              <div className="flex justify-end">
+                <button
+                  type="button"
+                  className="rounded-lg bg-blue-600 px-4 py-2 text-sm font-semibold text-white hover:bg-blue-700 disabled:cursor-not-allowed disabled:opacity-70"
+                  onClick={handleSwapAreas}
+                  disabled={isSubmitting || riders.length < 2}
+                >
+                  {isSubmitting ? "Saving..." : "Swap Areas"}
+                </button>
+              </div>
+            </section>
           </div>
 
           <div className="flex items-center justify-end gap-3 border-t border-gray-200 px-6 py-4">

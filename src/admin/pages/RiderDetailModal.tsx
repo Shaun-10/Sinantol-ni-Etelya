@@ -144,7 +144,7 @@ export default function RiderDetailModal({
         .update({
           name: form.name.trim(),
           address: normalizeUpdateValue(form.address),
-          location: normalizeUpdateValue(form.location),
+          area: normalizeUpdateValue(form.area),
           contact: normalizeUpdateValue(form.contact),
           plate_number: normalizeUpdateValue(form.plate_number),
           email: normalizeUpdateValue(form.email),
@@ -162,7 +162,7 @@ export default function RiderDetailModal({
         ...rider,
         name: form.name.trim(),
         address: form.address.trim(),
-        location: form.location.trim(),
+        area: form.area.trim(),
         contact: form.contact.trim(),
         plate_number: form.plate_number.trim(),
         email: form.email.trim(),
@@ -321,24 +321,24 @@ export default function RiderDetailModal({
             </div>
 
             <div className="flex flex-col gap-2">
-              <p className="text-sm font-semibold text-gray-700">Location</p>
+              <p className="text-sm font-semibold text-gray-700">Area</p>
               {isEditing ? (
                 <>
-                  <label className="sr-only" htmlFor="detail-location">
-                    Location
+                  <label className="sr-only" htmlFor="detail-area">
+                    Area
                   </label>
                   <input
-                    id="detail-location"
+                    id="detail-area"
                     className="px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-green-500"
-                    name="location"
-                    placeholder="Enter location (City / Area / Barangay)"
-                    aria-label="Location"
-                    value={form.location}
+                    name="area"
+                    placeholder="Enter area (City / Area / Barangay)"
+                    aria-label="Area"
+                    value={form.area}
                     onChange={handleChange}
                   />
                 </>
               ) : (
-                <p className="text-gray-700">{rider.location}</p>
+                <p className="text-gray-700">{rider.area}</p>
               )}
             </div>
 

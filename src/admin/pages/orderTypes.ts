@@ -7,6 +7,7 @@ export interface AdminOrder {
   customer: string;
   total: number;
   date: string;
+  createdAt?: string;
   dateRange: string;
   status: OrderStatus;
   paymentStatus: PaymentStatus;

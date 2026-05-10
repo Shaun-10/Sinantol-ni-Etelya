@@ -68,22 +68,10 @@ function formatDeliveryDate(value: string): string {
   });
 }
 
-function buildRiderFilter(rider: Rider, includeRiderId: boolean): string {
-  const filters = [];
+function buildRiderFilter(rider: Rider): string {
+  if (!rider.id) return "";
 
-  if (includeRiderId && rider.id) {
-    filters.push(`rider_id.eq.${rider.id}`);
-  }
-
-  if (rider.userid) {
-    filters.push(`rider_auth_id.eq.${rider.userid}`);
-  }
-
-  if (rider.email) {
-    filters.push(`rider_email.eq.${rider.email}`);
-  }
-
-  return filters.join(",");
+  return `rider_id.eq.${rider.id}`;
 }
 
 function RidersListSection({
@@ -132,7 +120,7 @@ function RidersListSection({
               <tr key={rider.orderId}>
                 <td>{rider.name}</td>
                 <td>{rider.contact}</td>
-                <td>{rider.location}</td>
+                <td>{rider.area}</td>
                 <td>{rider.plate_number}</td>
                 <td>
                   <span
@@ -152,7 +140,7 @@ function RidersListSection({
                     aria-label={`View details for ${rider.name}`}
                     onClick={() => onViewDetails(rider)}
                   >
-                    i
+                    Details
                   </button>
                 </td>
               </tr>
@@ -208,8 +196,8 @@ function DeliveriesDialog({
   const [isLoadingDeliveries, setIsLoadingDeliveries] = useState(true);
   const [deliveriesError, setDeliveriesError] = useState("");
 
-  const orderFilter = buildRiderFilter(rider, true);
-  const deliveriesFilter = buildRiderFilter(rider, false);
+  const orderFilter = buildRiderFilter(rider);
+  const deliveriesFilter = buildRiderFilter(rider);
 
   // Live data subscriptions - simplified, client-side filter
   useEffect(() => {
@@ -219,7 +207,6 @@ function DeliveriesDialog({
     if (orderFilter) {
       orderChannel = supabase
         .channel("rider_orders")
-
         .on(
           "postgres_changes",
           {
@@ -231,30 +218,27 @@ function DeliveriesDialog({
           (payload: any) => {
             const newRow = payload.new;
 
-            if (newRow.status === "Delivered") {
-              const newDelivery: Delivery = {
-                id: String(newRow.id ?? ""),
-                status: normalizeDeliveryStatus(newRow.status),
-                customer:
-                  normalizeDbString(newRow.customer_name) || "No customer name",
-                createdAt: String(newRow.created_at ?? ""),
-                source: "orders",
-              };
+            const newDelivery: Delivery = {
+              id: String(newRow.id ?? ""),
+              status: normalizeDeliveryStatus(newRow.status),
+              customer:
+                normalizeDbString(newRow.customer_name) || "No customer name",
+              createdAt: String(newRow.created_at ?? ""),
+              source: "orders",
+            };
 
-              setDeliveries((prev) => {
-                const exists = prev.some((d) => d.id === newDelivery.id);
-                if (exists) return prev;
+            setDeliveries((prev) => {
+              const exists = prev.some((d) => d.id === newDelivery.id);
+              if (exists) return prev;
 
-                return [newDelivery, ...prev].sort(
-                  (a, b) =>
-                    new Date(b.createdAt).getTime() -
-                    new Date(a.createdAt).getTime(),
-                );
-              });
-            }
+              return [newDelivery, ...prev].sort(
+                (a, b) =>
+                  new Date(b.createdAt).getTime() -
+                  new Date(a.createdAt).getTime(),
+              );
+            });
           },
         )
-
         .on(
           "postgres_changes",
           {
@@ -291,7 +275,6 @@ function DeliveriesDialog({
             });
           },
         )
-
         .subscribe();
     }
 
@@ -400,15 +383,14 @@ function DeliveriesDialog({
             ? supabase
                 .from("orders")
                 .select("id, customer_name, status, created_at")
-                .eq("status", "Delivered")
-                .or(orderFilter)
+                .eq("rider_id", rider.id)
                 .order("created_at", { ascending: false })
             : Promise.resolve({ data: [], error: null }),
           deliveriesFilter
             ? supabase
                 .from("deliveries")
                 .select("id, customer_name, status, created_at")
-                .or(deliveriesFilter)
+                .eq("rider_id", rider.id)
                 .order("created_at", { ascending: false })
             : Promise.resolve({ data: [], error: null }),
         ]);
@@ -658,7 +640,7 @@ export default function RidersPage(): JSX.Element {
           address: normalizeDbString(rider.address),
 
           contact: normalizeDbString(rider.contact),
-          location: normalizeDbString(rider.area),
+          area: normalizeDbString(rider.area),
           plate_number: normalizeDbString(rider.plate_number),
           email: normalizeDbString(rider.email),
 
@@ -772,7 +754,7 @@ export default function RidersPage(): JSX.Element {
           name: formValues.name.trim(),
           contact: formValues.contact.trim() || null,
           address: formValues.address.trim() || null,
-          area: formValues.location.trim() || null,
+          area: formValues.area.trim() || null,
           plate_number: formValues.plate_number.trim() || null,
           email: formValues.email.trim() || null,
         })
@@ -800,9 +782,8 @@ export default function RidersPage(): JSX.Element {
             normalizeDbString(formValues.address),
 
           contact: normalizeDbString(data.contact),
-          location:
-            normalizeDbString(data.location) ||
-            normalizeDbString(formValues.location),
+          area:
+            normalizeDbString(data.area) || normalizeDbString(formValues.area),
           plate_number:
             normalizeDbString(data.plate_number) ||
             normalizeDbString(formValues.plate_number),

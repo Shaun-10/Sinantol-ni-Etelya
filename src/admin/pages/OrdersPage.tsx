@@ -1,5 +1,5 @@
-import { useEffect, useState } from "react";
-import { FiBox } from "react-icons/fi";
+import { useEffect, useMemo, useState, type ChangeEvent } from "react";
+import { FiBox, FiSearch } from "react-icons/fi";
 import { supabase } from "@lib/supabase";
 
 import ReceiptModal from "./ReceiptModal";
@@ -63,6 +63,10 @@ function OrdersListSection({
     currentPage * 10,
   );
 
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [orders]);
+
   const handleNextPage = () => {
     if (currentPage < totalPages) {
       setCurrentPage(currentPage + 1);
@@ -109,21 +113,22 @@ function OrdersListSection({
                 <StatusBadge status={order.status} />
               </td>
 
-              <td className="px-4 py-2 flex gap-2">
-                <button
-                  onClick={() => onEdit(order.id)}
-                  className="riders-details-btn"
-                  title="Edit Order"
-                >
-                  ✏
-                </button>
-                <button
-                  onClick={() => onViewReceipt(order.id)}
-                  className="riders-details-btn"
-                  title="View Receipt"
-                >
-                  👁
-                </button>
+              <td className="px-4 py-2">
+                <div className="flex gap-2">
+                  <button
+                    onClick={() => onEdit(order.id)}
+                    className="px-3 py-1 text-xs font-semibold bg-blue-100 text-blue-700 rounded hover:bg-blue-200 transition"
+                  >
+                    Edit
+                  </button>
+
+                  <button
+                    onClick={() => onViewReceipt(order.id)}
+                    className="px-3 py-1 text-xs font-semibold bg-gray-100 text-gray-700 rounded hover:bg-gray-200 transition"
+                  >
+                    View
+                  </button>
+                </div>
               </td>
             </tr>
           ))}
@@ -171,6 +176,7 @@ function OrdersListSection({
 
 export default function OrdersPage(): JSX.Element {
   const [orders, setOrders] = useState<AdminOrder[]>([]);
+  const [searchTerm, setSearchTerm] = useState("");
   const [isAddOrderOpen, setIsAddOrderOpen] = useState(false);
   const [isEditOrderOpen, setIsEditOrderOpen] = useState(false);
   const [isReceiptOpen, setIsReceiptOpen] = useState(false);
@@ -201,6 +207,7 @@ export default function OrdersPage(): JSX.Element {
         customer: order.customer_name ?? "N/A",
         total: order.total ?? 0,
         date: new Date(order.created_at).toLocaleDateString(),
+        createdAt: order.created_at,
         dateRange: "Today",
         status: normalizeStatus(order.status),
         paymentStatus: order.payment_status ?? "unpaid",
@@ -212,6 +219,43 @@ export default function OrdersPage(): JSX.Element {
 
     void fetchOrders();
   }, []);
+
+  const newestOrders = useMemo(() => {
+    return [...orders].sort((a, b) => {
+      const aTime = a.createdAt ? new Date(a.createdAt).getTime() : 0;
+      const bTime = b.createdAt ? new Date(b.createdAt).getTime() : 0;
+      return (
+        (Number.isNaN(bTime) ? 0 : bTime) -
+        (Number.isNaN(aTime) ? 0 : aTime)
+      );
+    });
+  }, [orders]);
+
+  const filteredOrders = useMemo(() => {
+    const normalizedSearchTerm = searchTerm.trim().toLowerCase();
+
+    if (!normalizedSearchTerm) {
+      return newestOrders;
+    }
+
+    return newestOrders.filter((order) => {
+      const searchableText = [
+        order.id,
+        order.customer,
+        order.date,
+        order.total.toFixed(2),
+        order.status,
+        order.paymentStatus,
+        order.paymentMethod,
+        order.note,
+      ]
+        .filter(Boolean)
+        .join(" ")
+        .toLowerCase();
+
+      return searchableText.includes(normalizedSearchTerm);
+    });
+  }, [newestOrders, searchTerm]);
 
   const handleViewReceipt = (orderId: string) => {
     setSelectedOrderId(orderId);
@@ -231,7 +275,15 @@ export default function OrdersPage(): JSX.Element {
   const handleUpdateOrder = (updatedOrder: AdminOrder) => {
     setOrders((previous) =>
       previous.map((order) =>
-        order.id === updatedOrder.id ? updatedOrder : order,
+        order.id === updatedOrder.id
+          ? {
+              ...order,
+              ...updatedOrder,
+              date: order.date,
+              dateRange: order.dateRange,
+              createdAt: order.createdAt,
+            }
+          : order,
       ),
     );
     setIsEditOrderOpen(false);
@@ -240,35 +292,68 @@ export default function OrdersPage(): JSX.Element {
 
   return (
     <div className="orders-main-content">
-      <div className="orders-header">
-        <div className="orders-header-top">
-          <div className="orders-header-icon">
+      <div className="flex items-center justify-between mb-6">
+        {/* LEFT SIDE */}
+        <div className="flex items-center gap-3">
+          <div className="text-gray-600 text-2xl">
             <FiBox />
           </div>
-          <h2>ORDERS</h2>
+          <h2 className="text-2xl font-bold text-gray-900">Orders</h2>
         </div>
 
+        {/* RIGHT SIDE */}
         <button
           onClick={() => setIsAddOrderOpen(true)}
-          className="orders-add-btn"
+          className="px-4 py-2 bg-green-600 text-white rounded-lg font-semibold hover:bg-green-700 transition"
         >
           + Add Order
         </button>
       </div>
 
+      <section className="mb-4 rounded-lg border border-gray-200 bg-white px-4 py-3 shadow-sm">
+        <div className="flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
+          <label htmlFor="orders-search" className="flex-1">
+            <span className="mb-1 block text-sm font-semibold text-gray-700">
+              Search orders
+            </span>
+            <div className="relative">
+              <FiSearch
+                className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-gray-400"
+                aria-hidden="true"
+              />
+              <input
+                id="orders-search"
+                type="search"
+                value={searchTerm}
+                onChange={(event: ChangeEvent<HTMLInputElement>) =>
+                  setSearchTerm(event.target.value)
+                }
+                placeholder="Search by customer, order ID, date, payment, or status"
+                className="w-full rounded-lg border border-gray-300 bg-gray-50 py-2 pl-10 pr-3 text-sm text-gray-900 outline-none transition focus:border-green-600 focus:bg-white focus:ring-2 focus:ring-green-100"
+              />
+            </div>
+          </label>
+
+          <div className="text-sm font-semibold text-gray-600">
+            {filteredOrders.length} of {orders.length} orders
+            <span className="block text-xs font-medium text-gray-500">
+              
+            </span>
+          </div>
+        </div>
+      </section>
+
       <OrdersListSection
-        orders={orders}
+        orders={filteredOrders}
         onViewReceipt={handleViewReceipt}
         onEdit={handleEditOrder}
       />
-
       {isAddOrderOpen && (
         <AddOrderModal
           onClose={() => setIsAddOrderOpen(false)}
           onAdd={handleAddOrder}
         />
       )}
-
       {isEditOrderOpen && selectedOrderId && (
         <EditOrderModal
           orderId={selectedOrderId}
@@ -279,7 +364,6 @@ export default function OrdersPage(): JSX.Element {
           onUpdate={handleUpdateOrder}
         />
       )}
-
       {isReceiptOpen && selectedOrderId && (
         <ReceiptModal
           orderId={selectedOrderId}
