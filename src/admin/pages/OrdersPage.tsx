@@ -109,21 +109,22 @@ function OrdersListSection({
                 <StatusBadge status={order.status} />
               </td>
 
-              <td className="px-4 py-2 flex gap-2">
-                <button
-                  onClick={() => onEdit(order.id)}
-                  className="riders-details-btn"
-                  title="Edit Order"
-                >
-                  ✏
-                </button>
-                <button
-                  onClick={() => onViewReceipt(order.id)}
-                  className="riders-details-btn"
-                  title="View Receipt"
-                >
-                  👁
-                </button>
+              <td className="px-4 py-2">
+                <div className="flex gap-2">
+                  <button
+                    onClick={() => onEdit(order.id)}
+                    className="px-3 py-1 text-xs font-semibold bg-blue-100 text-blue-700 rounded hover:bg-blue-200 transition"
+                  >
+                    Edit
+                  </button>
+
+                  <button
+                    onClick={() => onViewReceipt(order.id)}
+                    className="px-3 py-1 text-xs font-semibold bg-gray-100 text-gray-700 rounded hover:bg-gray-200 transition"
+                  >
+                    View
+                  </button>
+                </div>
               </td>
             </tr>
           ))}
@@ -240,17 +241,19 @@ export default function OrdersPage(): JSX.Element {
 
   return (
     <div className="orders-main-content">
-      <div className="orders-header">
-        <div className="orders-header-top">
-          <div className="orders-header-icon">
+      <div className="flex items-center justify-between mb-6">
+        {/* LEFT SIDE */}
+        <div className="flex items-center gap-3">
+          <div className="text-gray-600 text-2xl">
             <FiBox />
           </div>
-          <h2>ORDERS</h2>
+          <h2 className="text-2xl font-bold text-gray-900">Orders</h2>
         </div>
 
+        {/* RIGHT SIDE */}
         <button
           onClick={() => setIsAddOrderOpen(true)}
-          className="orders-add-btn"
+          className="px-4 py-2 bg-green-600 text-white rounded-lg font-semibold hover:bg-green-700 transition"
         >
           + Add Order
         </button>
@@ -261,14 +264,12 @@ export default function OrdersPage(): JSX.Element {
         onViewReceipt={handleViewReceipt}
         onEdit={handleEditOrder}
       />
-
       {isAddOrderOpen && (
         <AddOrderModal
           onClose={() => setIsAddOrderOpen(false)}
           onAdd={handleAddOrder}
         />
       )}
-
       {isEditOrderOpen && selectedOrderId && (
         <EditOrderModal
           orderId={selectedOrderId}
@@ -279,7 +280,6 @@ export default function OrdersPage(): JSX.Element {
           onUpdate={handleUpdateOrder}
         />
       )}
-
       {isReceiptOpen && selectedOrderId && (
         <ReceiptModal
           orderId={selectedOrderId}

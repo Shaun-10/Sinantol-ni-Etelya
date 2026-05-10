@@ -179,44 +179,52 @@ function buildPerformanceData(
   orders: OrderRow[],
   now: Date,
 ): PerformanceData[] {
-  const months: Array<{
-    key: string;
-    label: string;
-    orders: number;
-    revenue: number;
-  }> = [];
+  const map = new Map<
+    string,
+    {
+      monthIndex: number;
+      month: string;
+      revenue: number;
+      orders: number;
+    }
+  >();
 
-  for (let index = 0; index < 12; index += 1) {
-    const current = new Date(now.getFullYear(), index, 1);
-    months.push({
-      key: `${current.getFullYear()}-${current.getMonth()}`,
-      label: current.toLocaleString("en-US", { month: "short" }),
-      orders: 0,
-      revenue: 0,
-    });
-  }
+  orders.forEach((order) => {
+    if (!order.created_at) return;
 
-  const monthMap = new Map(months.map((month) => [month.key, month]));
+    const date = new Date(order.created_at);
+    const year = date.getFullYear();
+    const monthIndex = date.getMonth();
 
-  for (const order of orders) {
-    if (!order.created_at) continue;
+    const key = `${year}-${monthIndex}`;
 
-    const orderDate = new Date(order.created_at);
-    const key = `${orderDate.getFullYear()}-${orderDate.getMonth()}`;
-    const month = monthMap.get(key);
+    if (!map.has(key)) {
+      map.set(key, {
+        monthIndex,
+        month: date.toLocaleString("en-US", { month: "short" }),
+        revenue: 0,
+        orders: 0,
+      });
+    }
 
-    if (!month) continue;
+    const entry = map.get(key)!;
 
-    month.orders += 1;
-    month.revenue += toAmount(order.total);
-  }
+    const amount = toAmount(order.total);
+    const deliveryFee = Number(order.delivery_fee ?? 0);
+    const orderTotalSales = amount - deliveryFee;
 
-  return months.map((month) => ({
-    month: month.label,
-    orders: month.orders,
-    revenue: month.revenue,
-    growth: 0,
-  }));
+    entry.revenue += orderTotalSales;
+    entry.orders += 1;
+  });
+
+  return Array.from(map.values())
+    .sort((a, b) => a.monthIndex - b.monthIndex)
+    .map(({ month, revenue, orders }) => ({
+      month,
+      revenue,
+      orders,
+      growth: 0,
+    }));
 }
 
 interface SummaryCardProps extends SummaryItem {
@@ -266,10 +274,10 @@ function DashboardChartsSection({
               stroke="#57674f"
               tickLine={false}
               axisLine={false}
-              tickFormatter={(value: number) =>
-                pesoFormatter.format(Number(value))
-              }
+              domain={[0, (dataMax: number) => dataMax * 1.2]}
+              tickFormatter={(value: number) => String(value)}
             />
+
             <YAxis
               yAxisId="right"
               orientation="right"
@@ -280,13 +288,10 @@ function DashboardChartsSection({
             <Tooltip
               formatter={(value, name) => {
                 if (name === "revenue") {
-                  return [
-                    pesoFormatter.format(Number(value ?? 0)),
-                    "Sales",
-                  ] as const;
+                  return [pesoFormatter.format(Number(value ?? 0)), "Sales"];
                 }
 
-                return [Number(value ?? 0), "Orders"] as const;
+                return [value, "Orders"];
               }}
               contentStyle={{
                 borderRadius: 10,
