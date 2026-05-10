@@ -15,8 +15,7 @@ interface ProductVariant {
 }
 
 interface RiderInfo {
-  first_name: string;
-  last_name: string;
+  name: string;
 }
 
 interface OrderItemRow {
@@ -46,7 +45,7 @@ function getRiderName(rider: RiderInfo | RiderInfo[] | null): string {
   const riderInfo = Array.isArray(rider) ? rider[0] : rider;
   if (!riderInfo) return "Unassigned";
 
-  return `${riderInfo.first_name} ${riderInfo.last_name}`.trim() || "Unassigned";
+  return riderInfo.name?.trim() || "Unassigned";
 }
 
 function formatCurrency(value: number): string {
@@ -70,17 +69,21 @@ export default function ReceiptModal({
       if (itemError) {
         console.error("Error fetching order items:", itemError);
       } else {
-        const baseItems = ((itemData as OrderItemResponse[]) ?? []).map((item) => ({
-          product_variant_id: item.product_variant_id,
-          quantity: item.quantity,
-          subtotal: item.subtotal,
-          product_variant: null,
-        }));
+        const baseItems = ((itemData as OrderItemResponse[]) ?? []).map(
+          (item) => ({
+            product_variant_id: item.product_variant_id,
+            quantity: item.quantity,
+            subtotal: item.subtotal,
+            product_variant: null,
+          }),
+        );
 
         if (baseItems.length === 0) {
           setItems([]);
         } else {
-          const variantIds = [...new Set(baseItems.map((item) => item.product_variant_id))];
+          const variantIds = [
+            ...new Set(baseItems.map((item) => item.product_variant_id)),
+          ];
           const { data: variantData, error: variantError } = await supabase
             .from("product_variants")
             .select("id, flavor, size, price")
@@ -91,14 +94,18 @@ export default function ReceiptModal({
             setItems(baseItems);
           } else {
             const variantsById = new Map(
-              ((variantData as ProductVariant[]) ?? []).map((variant) => [variant.id, variant])
+              ((variantData as ProductVariant[]) ?? []).map((variant) => [
+                variant.id,
+                variant,
+              ]),
             );
 
             setItems(
               baseItems.map((item) => ({
                 ...item,
-                product_variant: variantsById.get(item.product_variant_id) ?? null,
-              }))
+                product_variant:
+                  variantsById.get(item.product_variant_id) ?? null,
+              })),
             );
           }
         }
@@ -106,16 +113,17 @@ export default function ReceiptModal({
 
       const { data: orderData, error: orderError } = await supabase
         .from("orders")
-        .select(`
+        .select(
+          `
           customer_name,
           address,
           contact,
           total,
           rider:riders!orders_rider_id_fkey (
-            first_name,
-            last_name
+            name
           )
-        `)
+        `,
+        )
         .eq("id", orderId)
         .single();
 
@@ -182,11 +190,17 @@ export default function ReceiptModal({
                   const variant = item.product_variant;
 
                   return (
-                    <tr key={`${variant?.flavor ?? "item"}-${variant?.size ?? index}`}>
-                      <td className="p-2 font-semibold">{variant?.flavor ?? "-"}</td>
+                    <tr
+                      key={`${variant?.flavor ?? "item"}-${variant?.size ?? index}`}
+                    >
+                      <td className="p-2 font-semibold">
+                        {variant?.flavor ?? "-"}
+                      </td>
                       <td className="p-2">{variant?.size ?? "-"}</td>
                       <td className="p-2 text-right">{item.quantity}</td>
-                      <td className="p-2 text-right">{formatCurrency(item.subtotal)}</td>
+                      <td className="p-2 text-right">
+                        {formatCurrency(item.subtotal)}
+                      </td>
                     </tr>
                   );
                 })

@@ -3,33 +3,22 @@ export interface Rider {
   id: string;
   userid: string;
   name: string;
-  firstName: string;
-  lastName: string;
-  middleInitial: string;
   address: string;
   location: string;
   contact: string;
-  birthdate: string;
   plate_number: string;
   email: string;
-  emergencyName: string;
-  emergencyContact: string;
   isOnline: boolean;
 }
 
 export interface RiderFormData {
-  firstName: string;
-  lastName: string;
-  middleInitial: string;
+  name: string;
   address: string;
   location: string;
   contact: string;
-  birthdate: string;
   plate_number: string;
   email: string;
   password: string;
-  emergencyName: string;
-  emergencyContact: string;
 }
 
 export interface RiderFormErrors {
@@ -37,18 +26,13 @@ export interface RiderFormErrors {
 }
 
 export const defaultRiderFormValues: RiderFormData = {
-  firstName: "",
-  lastName: "",
-  middleInitial: "",
+  name: "",
   address: "",
   location: "",
   contact: "",
-  birthdate: "",
   plate_number: "",
   email: "",
   password: "",
-  emergencyName: "",
-  emergencyContact: "",
 };
 
 export function toDisplayDate(value: string): string {
@@ -86,17 +70,12 @@ export function toDateInputValue(value: string): string {
 
 export function buildRiderFormData(rider: Rider): RiderFormData {
   return {
-    firstName: rider.firstName || "",
-    lastName: rider.lastName || "",
-    middleInitial: rider.middleInitial || "",
+    name: rider.name || "",
     address: normalizeDbString(rider.address),
     location: normalizeDbString(rider.location),
     contact: normalizeDbString(rider.contact),
-    birthdate: rider.birthdate || "",
     plate_number: normalizeDbString(rider.plate_number),
     email: normalizeDbString(rider.email),
     password: "",
-    emergencyName: rider.emergencyName || "",
-    emergencyContact: rider.emergencyContact || "",
   };
 }

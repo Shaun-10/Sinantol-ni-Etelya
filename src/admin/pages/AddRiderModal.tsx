@@ -16,18 +16,13 @@ const areaOptions = [
 ];
 
 const defaultRiderFormValues: RiderFormData = {
-  lastName: "",
-  firstName: "",
-  middleInitial: "",
+  name: "",
   address: "",
   location: "",
   contact: "",
-  birthdate: "",
   plate_number: "",
   email: "",
   password: "",
-  emergencyName: "",
-  emergencyContact: "",
 };
 
 export default function AddRiderModal({
@@ -49,8 +44,7 @@ export default function AddRiderModal({
     e.preventDefault();
 
     const requiredFields: (keyof RiderFormData)[] = [
-      "firstName",
-      "lastName",
+      "name",
       "contact",
       "plate_number",
       "email",
@@ -93,191 +87,118 @@ export default function AddRiderModal({
 
         <form onSubmit={handleSubmit}>
           <div className="p-6 space-y-6 max-h-[75vh] overflow-y-auto">
-            {/* Rider Information */}
             <section className="space-y-4">
               <h3 className="font-semibold text-lg">Rider Information</h3>
 
-              <div className="flex flex-col gap-2">
-                <label className="text-sm font-semibold text-gray-700">
-                  First Name *
-                </label>
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div>
+                  <input
+                    name="name"
+                    placeholder="Enter rider name"
+                    value={form.name}
+                    onChange={handleChange}
+                    className={inputStyle}
+                  />
+                </div>
 
-                <p className="text-xs text-gray-500">
-                  Enter the first name of the rider
-                </p>
+                <div>
+                  <label className="sr-only" htmlFor="contact">
+                    Contact
+                  </label>
+                  <input
+                    id="contact"
+                    name="contact"
+                    placeholder="Contact"
+                    aria-label="Contact"
+                    value={form.contact}
+                    onChange={handleChange}
+                    className={inputStyle}
+                  />
+                </div>
 
-                <input
-                  name="firstName"
-                  placeholder="Enter first name"
-                  value={form.firstName}
-                  onChange={handleChange}
-                  className={inputStyle}
-                />
-              </div>
+                <div className="md:col-span-2">
+                  <label className="sr-only" htmlFor="address">
+                    Address
+                  </label>
+                  <input
+                    id="address"
+                    name="address"
+                    placeholder="Address"
+                    aria-label="Address"
+                    value={form.address}
+                    onChange={handleChange}
+                    className={inputStyle}
+                  />
+                </div>
 
-              <div className="flex flex-col gap-2">
-                <label className="text-sm font-semibold text-gray-700">
-                  Last Name *
-                </label>
+                <div>
+                  <label className="sr-only" htmlFor="location">
+                    Area
+                  </label>
+                  <select
+                    id="location"
+                    name="location"
+                    value={form.location}
+                    onChange={handleChange}
+                    className={inputStyle}
+                  >
+                    <option value="">Select area</option>
+                    {areaOptions.map((area) => (
+                      <option key={area} value={area}>
+                        {area}
+                      </option>
+                    ))}
+                  </select>
+                </div>
 
-                <p className="text-xs text-gray-500">
-                  Enter the last name of the rider
-                </p>
+                <div>
+                  <label className="sr-only" htmlFor="plate_number">
+                    Plate Number
+                  </label>
+                  <input
+                    id="plate_number"
+                    name="plate_number"
+                    placeholder="Plate No."
+                    aria-label="Plate Number"
+                    value={form.plate_number}
+                    onChange={handleChange}
+                    className={inputStyle}
+                  />
+                </div>
 
-                <input
-                  name="lastName"
-                  placeholder="Enter last name"
-                  value={form.lastName}
-                  onChange={handleChange}
-                  className={inputStyle}
-                />
-              </div>
+                <div>
+                  <label className="sr-only" htmlFor="email">
+                    Email
+                  </label>
+                  <input
+                    id="email"
+                    type="email"
+                    name="email"
+                    placeholder="Email"
+                    aria-label="Email"
+                    value={form.email}
+                    onChange={handleChange}
+                    className={inputStyle}
+                  />
+                </div>
 
-              <div className="flex flex-col gap-2">
-                <label className="text-sm font-semibold text-gray-700">
-                  Middle Initial
-                </label>
-
-                <input
-                  name="middleInitial"
-                  placeholder="Middle Initial"
-                  value={form.middleInitial}
-                  onChange={handleChange}
-                  className={inputStyle}
-                />
-              </div>
-
-              <label className="sr-only" htmlFor="address">
-                Address
-              </label>
-              <input
-                id="address"
-                name="address"
-                placeholder="Address"
-                aria-label="Address"
-                value={form.address}
-                onChange={handleChange}
-                className={inputStyle}
-              />
-
-              <label className="flex flex-col gap-2">
-                <span className="text-sm font-semibold text-gray-700">
-                  Area
-                </span>
-                <select
-                  name="location"
-                  value={form.location}
-                  onChange={handleChange}
-                  className={inputStyle}
-                >
-                  <option value="">Select area</option>
-                  {areaOptions.map((area) => (
-                    <option key={area} value={area}>
-                      {area}
-                    </option>
-                  ))}
-                </select>
-              </label>
-
-              <div className="grid grid-cols-2 gap-4">
-                <label className="sr-only" htmlFor="contact">
-                  Contact
-                </label>
-                <input
-                  id="contact"
-                  name="contact"
-                  placeholder="Contact"
-                  aria-label="Contact"
-                  value={form.contact}
-                  onChange={handleChange}
-                  className={inputStyle}
-                />
-
-                <label className="sr-only" htmlFor="birthdate">
-                  Birthdate
-                </label>
-                <input
-                  id="birthdate"
-                  type="date"
-                  name="birthdate"
-                  placeholder="Birthdate"
-                  aria-label="Birthdate"
-                  value={form.birthdate}
-                  onChange={handleChange}
-                  className={inputStyle}
-                />
-              </div>
-
-              <label className="sr-only" htmlFor="plate_number">
-                Plate Number
-              </label>
-              <input
-                id="plate_number"
-                name="plate_number"
-                placeholder="Plate No."
-                aria-label="Plate Number"
-                value={form.plate_number}
-                onChange={handleChange}
-                className={inputStyle}
-              />
-
-              <label className="sr-only" htmlFor="email">
-                Email
-              </label>
-              <input
-                id="email"
-                type="email"
-                name="email"
-                placeholder="Email"
-                aria-label="Email"
-                value={form.email}
-                onChange={handleChange}
-                className={inputStyle}
-              />
-
-              <label className="sr-only" htmlFor="password">
-                Password
-              </label>
-              <input
-                id="password"
-                type="password"
-                name="password"
-                placeholder="Password"
-                aria-label="Password"
-                value={form.password}
-                onChange={handleChange}
-                className={inputStyle}
-              />
-
-              <div className="grid grid-cols-2 gap-4">
-                <label className="sr-only" htmlFor="emergencyName">
-                  Emergency Name
-                </label>
-                <input
-                  id="emergencyName"
-                  name="emergencyName"
-                  placeholder="Emergency Name"
-                  aria-label="Emergency Name"
-                  value={form.emergencyName}
-                  onChange={handleChange}
-                  className={inputStyle}
-                />
-
-                <label className="sr-only" htmlFor="emergencyContact">
-                  Emergency Contact
-                </label>
-                <input
-                  id="emergencyContact"
-                  name="emergencyContact"
-                  placeholder="Emergency Contact"
-                  aria-label="Emergency Contact"
-                  value={form.emergencyContact}
-                  onChange={handleChange}
-                  className={inputStyle}
-                />
+                <div>
+                  <label className="sr-only" htmlFor="password">
+                    Password
+                  </label>
+                  <input
+                    id="password"
+                    type="password"
+                    name="password"
+                    placeholder="Password"
+                    aria-label="Password"
+                    value={form.password}
+                    onChange={handleChange}
+                    className={inputStyle}
+                  />
+                </div>
               </div>
             </section>
-
 
             {errorMessage && (
               <div className="text-red-600 text-sm">{errorMessage}</div>

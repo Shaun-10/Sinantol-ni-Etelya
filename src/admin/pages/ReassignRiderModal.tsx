@@ -1,4 +1,10 @@
-import { FormEvent, useEffect, useMemo, useState } from "react";
+import {
+  FormEvent,
+  useEffect,
+  useMemo,
+  useState,
+  type ChangeEvent,
+} from "react";
 import { supabase } from "@lib/supabase";
 import { Rider } from "./riderModalShared";
 
@@ -47,18 +53,12 @@ export default function ReassignRiderModal({
   }, [riders]);
 
   useEffect(() => {
-    if (!sourceRiderId && riders.length > 0) {
-      setSourceRiderId(riders[0].id);
-    }
-  }, [riders, sourceRiderId]);
-
-  useEffect(() => {
-    if (sourceRider) {
-      setTargetArea(sourceRider.location || "");
-    }
+    setTargetArea("");
   }, [sourceRider]);
 
-  const handleSubmit = async (event: FormEvent<HTMLFormElement>): Promise<void> => {
+  const handleSubmit = async (
+    event: FormEvent<HTMLFormElement>,
+  ): Promise<void> => {
     event.preventDefault();
     setErrorMessage("");
 
@@ -74,7 +74,8 @@ export default function ReassignRiderModal({
 
     if (
       sourceRider &&
-      sourceRider.location.trim().toLowerCase() === targetArea.trim().toLowerCase()
+      sourceRider.location.trim().toLowerCase() ===
+        targetArea.trim().toLowerCase()
     ) {
       setErrorMessage("Choose a different area from the current one.");
       return;
@@ -99,9 +100,7 @@ export default function ReassignRiderModal({
       onClose();
     } catch (error: unknown) {
       console.error("Error reassigning rider area:", error);
-      setErrorMessage(
-        getErrorMessage(error, "Failed to update rider area."),
-      );
+      setErrorMessage(getErrorMessage(error, "Failed to update rider area."));
     } finally {
       setIsSubmitting(false);
     }
@@ -117,7 +116,10 @@ export default function ReassignRiderModal({
       <div className="flex max-h-[90vh] w-11/12 max-w-xl flex-col overflow-hidden rounded-lg border border-gray-200 bg-white shadow-2xl">
         <header className="flex items-center justify-between border-b border-gray-200 px-6 py-4">
           <div>
-            <h3 id="reassign-rider-title" className="text-xl font-bold text-gray-900">
+            <h3
+              id="reassign-rider-title"
+              className="text-xl font-bold text-gray-900"
+            >
               Reassign Rider Area
             </h3>
             <p className="text-sm text-gray-500">
@@ -134,7 +136,10 @@ export default function ReassignRiderModal({
           </button>
         </header>
 
-        <form onSubmit={handleSubmit} className="flex flex-1 flex-col overflow-hidden">
+        <form
+          onSubmit={handleSubmit}
+          className="flex flex-1 flex-col overflow-hidden"
+        >
           <div className="space-y-5 overflow-y-auto px-6 py-6">
             {errorMessage && (
               <div className="rounded border border-red-200 bg-red-50 p-4 text-sm font-semibold text-red-700">
@@ -144,10 +149,14 @@ export default function ReassignRiderModal({
 
             <div className="grid gap-4 sm:grid-cols-2">
               <label className="flex flex-col gap-2">
-                <span className="text-sm font-semibold text-gray-700">Rider</span>
+                <span className="text-sm font-semibold text-gray-700">
+                  Rider
+                </span>
                 <select
                   value={sourceRiderId}
-                  onChange={(event) => setSourceRiderId(event.target.value)}
+                  onChange={(event: ChangeEvent<HTMLSelectElement>) =>
+                    setSourceRiderId(event.target.value)
+                  }
                   className="rider-input"
                   required
                 >
@@ -161,12 +170,16 @@ export default function ReassignRiderModal({
               </label>
 
               <label className="flex flex-col gap-2">
-                <span className="text-sm font-semibold text-gray-700">New Area</span>
+                <span className="text-sm font-semibold text-gray-700">
+                  New Area
+                </span>
                 <input
                   list="rider-area-options"
                   type="text"
                   value={targetArea}
-                  onChange={(event) => setTargetArea(event.target.value)}
+                  onChange={(event: ChangeEvent<HTMLInputElement>) =>
+                    setTargetArea(event.target.value)
+                  }
                   className="rider-input"
                   placeholder="Enter or choose area"
                   required
