@@ -122,6 +122,17 @@ function parseItems(value: unknown): string[] {
   return [];
 }
 
+function noteTextFromRow(...values: unknown[]): string {
+  for (const value of values) {
+    const note = String(value ?? '').trim();
+    if (note && note.toLowerCase() !== 'none') {
+      return note;
+    }
+  }
+
+  return 'Notes';
+}
+
 function mapDeliveryRow(row: Record<string, unknown>): RiderDelivery {
   const amount = toNumber(row.amount ?? row.total_amount ?? row.cod_amount);
   const distanceValue = row.distance_km ?? row.distance ?? row.next_stop_distance;
@@ -138,7 +149,7 @@ function mapDeliveryRow(row: Record<string, unknown>): RiderDelivery {
     status: statusFromRow(row.status),
     distance,
     eta: String(row.eta_text ?? row.eta ?? '-'),
-    navigationText: String(row.navigation_text ?? row.pin_location ?? 'No navigation notes yet'),
+    navigationText: noteTextFromRow(row.navigation_text, row.pin_location),
     items: parseItems(row.items ?? row.order_items),
     deliveredAt: row.delivered_at ? String(row.delivered_at) : undefined,
     failedAt: row.failed_at ? String(row.failed_at) : undefined,
@@ -186,7 +197,7 @@ function mapOrderRow(row: Record<string, unknown>, items: string[]): RiderDelive
     status: statusFromRow(row.status),
     distance: String(row.distance_km ?? row.distance ?? '-').trim() || '-',
     eta: String(row.eta_text ?? row.eta ?? '-'),
-    navigationText: String(row.navigation_text ?? row.notes ?? 'No navigation notes yet'),
+    navigationText: noteTextFromRow(row.note, row.notes, row.navigation_text),
     items,
     deliveredAt: row.delivered_at ? String(row.delivered_at) : undefined,
     failedAt: row.failed_at ? String(row.failed_at) : undefined,
