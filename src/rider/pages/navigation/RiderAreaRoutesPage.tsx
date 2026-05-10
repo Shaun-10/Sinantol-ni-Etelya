@@ -19,6 +19,7 @@ import {
   formatDuration,
   type RouteResponse,
 } from "../../lib/routingService";
+import { geocodeAddress } from "../../lib/geocodingService";
 import { getRiderDeliveries, type RiderDelivery } from "../../lib/riderData";
 import { getRiderSupabaseClient } from "../../lib/supabaseClient";
 
@@ -59,35 +60,6 @@ function deriveAreaName(address: string): string {
     return parts[parts.length - 2];
   }
   return parts[0] || "Unknown Area";
-}
-
-async function geocodeAddress(address: string): Promise<LatLngTuple | null> {
-  const endpoint = `https://nominatim.openstreetmap.org/search?format=json&limit=1&q=${encodeURIComponent(address)}`;
-  const response = await fetch(endpoint, {
-    headers: {
-      Accept: "application/json",
-    },
-  });
-
-  if (!response.ok) {
-    return null;
-  }
-
-  const payload = (await response.json()) as Array<{
-    lat: string;
-    lon: string;
-  }>;
-  if (!payload.length) {
-    return null;
-  }
-
-  const lat = Number(payload[0].lat);
-  const lon = Number(payload[0].lon);
-  if (!Number.isFinite(lat) || !Number.isFinite(lon)) {
-    return null;
-  }
-
-  return [lat, lon];
 }
 
 function MapBoundsFitter({ bounds }: { bounds: LatLngBounds | null }) {

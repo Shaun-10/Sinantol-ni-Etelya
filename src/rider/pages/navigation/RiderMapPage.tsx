@@ -24,6 +24,7 @@ import {
   formatDuration,
   type RouteResponse,
 } from "../../lib/routingService";
+import { geocodeAddress } from "../../lib/geocodingService";
 import markerIcon2x from "leaflet/dist/images/marker-icon-2x.png";
 import markerIcon from "leaflet/dist/images/marker-icon.png";
 import markerShadow from "leaflet/dist/images/marker-shadow.png";
@@ -293,26 +294,6 @@ export default function RiderMapPage() {
         const active = (data || []).filter((d) => d.status === "In Progress");
         setDeliveriesList(active);
 
-        // geocode addresses for stops (fallback to navigation text if coords embedded)
-        const geocodeOne = async (address: string) => {
-          if (!address) return null;
-          try {
-            const endpoint = `https://nominatim.openstreetmap.org/search?format=json&limit=1&q=${encodeURIComponent(address)}`;
-            const resp = await fetch(endpoint, {
-              headers: { Accept: "application/json" },
-            });
-            if (!resp.ok) return null;
-            const payload = await resp.json();
-            if (!Array.isArray(payload) || payload.length === 0) return null;
-            const lat = Number(payload[0].lat);
-            const lon = Number(payload[0].lon);
-            if (!Number.isFinite(lat) || !Number.isFinite(lon)) return null;
-            return [lat, lon] as LatLngTuple;
-          } catch (err) {
-            return null;
-          }
-        };
-
         const resolvedStops: Stop[] = [];
         for (const d of active) {
           // try to detect coords in navigationText or navigation_text
@@ -330,7 +311,7 @@ export default function RiderMapPage() {
           }
 
           if (!coords) {
-            coords = await geocodeOne(String(d.address ?? ""));
+            coords = await geocodeAddress(String(d.address ?? ""));
           }
 
           if (coords) {
@@ -387,37 +368,16 @@ export default function RiderMapPage() {
 
     const controller = new AbortController();
 
-    const geocodeAddress = async () => {
+    const geocodeDestinationAddress = async () => {
       try {
-        const endpoint = `https://nominatim.openstreetmap.org/search?format=json&limit=1&q=${encodeURIComponent(address)}`;
-        const response = await fetch(endpoint, {
-          signal: controller.signal,
-          headers: {
-            Accept: "application/json",
-          },
-        });
-
-        if (!response.ok) {
-          setRouteGeoError("Could not geocode destination address");
-          return;
-        }
-
-        const payload = (await response.json()) as Array<{
-          lat: string;
-          lon: string;
-        }>;
-        if (!payload.length) {
+        const coords = await geocodeAddress(address, controller.signal);
+        if (!coords) {
           setRouteGeoError("Address not found");
           return;
         }
 
-        const lat = Number(payload[0].lat);
-        const lon = Number(payload[0].lon);
-
-        if (Number.isFinite(lat) && Number.isFinite(lon)) {
-          setDestinationCoords([lat, lon]);
-          setRouteGeoError(null);
-        }
+        setDestinationCoords(coords);
+        setRouteGeoError(null);
       } catch (error) {
         if (error instanceof DOMException && error.name === "AbortError") {
           return; // Request cancelled
@@ -426,7 +386,7 @@ export default function RiderMapPage() {
       }
     };
 
-    geocodeAddress();
+    geocodeDestinationAddress();
 
     return () => {
       controller.abort();
