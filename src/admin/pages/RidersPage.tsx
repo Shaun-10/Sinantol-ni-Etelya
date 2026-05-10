@@ -513,8 +513,7 @@ function DeliveriesDialog({
           {deliveriesError &&
           deliveriesError.includes(
             "Could not find the table",
-          ) ? // Silently handle table not found error - it just means no deliveries data
-          null : deliveriesError ? (
+          ) ? null : deliveriesError ? ( // Silently handle table not found error - it just means no deliveries data
             <div className="p-4 bg-red-50 border border-red-200 rounded text-red-700 text-sm font-semibold">
               {deliveriesError}
             </div>
@@ -625,17 +624,12 @@ export default function RidersPage(): JSX.Element {
         `
       id,
       user_id,
-      first_name,
-      middle_initial,
-      last_name,
+      name,
       contact,
       address,
       area,
       plate_number,
       email,
-      emergency_name,
-      emergency_contact,
-      birthdate,
       orders (
         id,
         status
@@ -660,10 +654,7 @@ export default function RidersPage(): JSX.Element {
           id: rider.id,
           userid: rider.user_id,
 
-          name: `${normalizeDbString(rider.first_name)} ${normalizeDbString(rider.last_name)}`.trim(),
-          firstName: normalizeDbString(rider.first_name),
-          lastName: normalizeDbString(rider.last_name),
-          middleInitial: normalizeDbString(rider.middle_initial),
+          name: normalizeDbString(rider.name),
           address: normalizeDbString(rider.address),
 
           contact: normalizeDbString(rider.contact),
@@ -671,9 +662,6 @@ export default function RidersPage(): JSX.Element {
           plate_number: normalizeDbString(rider.plate_number),
           email: normalizeDbString(rider.email),
 
-          birthdate: rider.birthdate ?? "",
-          emergencyName: normalizeDbString(rider.emergency_name),
-          emergencyContact: normalizeDbString(rider.emergency_contact),
           isOnline: activeOrders.length > 0,
         };
       },
@@ -781,16 +769,12 @@ export default function RidersPage(): JSX.Element {
         .from("riders")
         .insert({
           user_id: userId,
-          first_name: formValues.firstName.trim(),
-          last_name: formValues.lastName.trim(),
+          name: formValues.name.trim(),
           contact: formValues.contact.trim() || null,
           address: formValues.address.trim() || null,
           area: formValues.location.trim() || null,
           plate_number: formValues.plate_number.trim() || null,
           email: formValues.email.trim() || null,
-          birthdate: formValues.birthdate || null,
-          emergency_name: formValues.emergencyName.trim() || null,
-          emergency_contact: formValues.emergencyContact.trim() || null,
         })
         .select()
         .single();
@@ -810,10 +794,7 @@ export default function RidersPage(): JSX.Element {
           id: data.id,
           userid: userId,
 
-          name: `${normalizeDbString(data.first_name)} ${normalizeDbString(data.last_name)}`.trim(),
-          firstName: normalizeDbString(data.first_name),
-          lastName: normalizeDbString(data.last_name),
-          middleInitial: normalizeDbString(formValues.middleInitial),
+          name: normalizeDbString(data.name),
           address:
             normalizeDbString(data.address) ||
             normalizeDbString(formValues.address),
@@ -828,16 +809,6 @@ export default function RidersPage(): JSX.Element {
           email:
             normalizeDbString(data.email) ||
             normalizeDbString(formValues.email),
-
-          birthdate:
-            normalizeDbString(data.birthdate) ||
-            normalizeDbString(formValues.birthdate),
-          emergencyName:
-            normalizeDbString(data.emergency_name) ||
-            normalizeDbString(formValues.emergencyName),
-          emergencyContact:
-            normalizeDbString(data.emergency_contact) ||
-            normalizeDbString(formValues.emergencyContact),
 
           isOnline: false,
         },
@@ -866,8 +837,7 @@ export default function RidersPage(): JSX.Element {
       const { error } = await supabase
         .from("riders")
         .update({
-          first_name: updatedRider.firstName.trim(),
-          last_name: updatedRider.lastName.trim(),
+          name: updatedRider.name.trim(),
           contact: updatedRider.contact.trim() || null,
         })
         .eq("id", updatedRider.id);

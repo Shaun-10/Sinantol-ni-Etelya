@@ -1,12 +1,11 @@
 import { ChangeEvent, useEffect, useState } from "react";
-import { FiCalendar, FiEdit2, FiTrash2 } from "react-icons/fi";
+import { FiEdit2, FiTrash2, FiCalendar } from "react-icons/fi";
 import { supabase } from "@lib/supabase";
 import {
   Rider,
   RiderFormData,
   RiderFormErrors,
   buildRiderFormData,
-  toDisplayDate,
 } from "./riderModalShared";
 
 function normalizeUpdateValue(value: string): string | null {
@@ -63,45 +62,17 @@ export default function RiderDetailModal({
     }
   };
 
-  const lastNameInvalid = errors.lastName ? "true" : undefined;
-  const firstNameInvalid = errors.firstName ? "true" : undefined;
-  const middleInitialInvalid = errors.middleInitial ? "true" : undefined;
+  const nameInvalid = errors.name ? "true" : undefined;
   const contactInvalid = errors.contact ? "true" : undefined;
-  const birthdateInvalid = errors.birthdate ? "true" : undefined;
-  const emergencyContactInvalid = errors.emergencyContact ? "true" : undefined;
 
   const validateForm = (): RiderFormErrors => {
     const nextErrors: RiderFormErrors = {};
 
-    if (!form.lastName.trim()) nextErrors.lastName = "Last name is required.";
-    if (!form.firstName.trim()) {
-      nextErrors.firstName = "First name is required.";
-    }
-
-    const middleInitial = form.middleInitial.trim();
-    if (middleInitial && !/^[A-Za-z]$/.test(middleInitial)) {
-      nextErrors.middleInitial = "Middle initial must be one letter only.";
-    }
+    if (!form.name.trim()) nextErrors.name = "Name is required.";
 
     const contact = form.contact.trim();
     if (contact && !/^\d{11}$/.test(contact)) {
       nextErrors.contact = "Contact must be an 11-digit number.";
-    }
-
-    const emergencyContact = form.emergencyContact.trim();
-    if (emergencyContact && !/^\d{11}$/.test(emergencyContact)) {
-      nextErrors.emergencyContact =
-        "Emergency contact must be an 11-digit number.";
-    }
-
-    if (form.birthdate) {
-      const selectedDate = new Date(`${form.birthdate}T00:00:00`);
-      const today = new Date();
-      today.setHours(0, 0, 0, 0);
-
-      if (selectedDate > today) {
-        nextErrors.birthdate = "Birthdate cannot be in the future.";
-      }
     }
 
     if (newPassword.trim() && newPassword.length < 8) {
@@ -171,17 +142,12 @@ export default function RiderDetailModal({
       const { error: updateError } = await supabase
         .from("riders")
         .update({
-          first_name: form.firstName.trim(),
-          last_name: form.lastName.trim(),
-          middle_initial: form.middleInitial.trim() || null,
+          name: form.name.trim(),
           address: normalizeUpdateValue(form.address),
           location: normalizeUpdateValue(form.location),
           contact: normalizeUpdateValue(form.contact),
-          birthdate: form.birthdate || null,
           plate_number: normalizeUpdateValue(form.plate_number),
           email: normalizeUpdateValue(form.email),
-          emergency_name: normalizeUpdateValue(form.emergencyName),
-          emergency_contact: normalizeUpdateValue(form.emergencyContact),
         })
         .eq("id", rider.id);
 
@@ -194,18 +160,12 @@ export default function RiderDetailModal({
 
       const updatedRider: Rider = {
         ...rider,
-        ...form,
-        name: `${form.firstName.trim()} ${form.lastName.trim()}`.trim(),
-        firstName: form.firstName.trim(),
-        lastName: form.lastName.trim(),
-        middleInitial: form.middleInitial.trim(),
+        name: form.name.trim(),
         address: form.address.trim(),
         location: form.location.trim(),
         contact: form.contact.trim(),
-        birthdate: toDisplayDate(form.birthdate),
         plate_number: form.plate_number.trim(),
-        emergencyName: form.emergencyName.trim(),
-        emergencyContact: form.emergencyContact.trim(),
+        email: form.email.trim(),
       };
 
       onSaveRider(updatedRider);
@@ -225,10 +185,7 @@ export default function RiderDetailModal({
   };
 
   const handleDelete = async (): Promise<void> => {
-    const riderName =
-      `${rider.firstName || ""} ${rider.lastName || ""}`.trim() ||
-      rider.name ||
-      "this rider";
+    const riderName = rider.name || "this rider";
     const isConfirmed = window.confirm(
       `Are you sure you want to delete ${riderName}?`,
     );
@@ -308,97 +265,37 @@ export default function RiderDetailModal({
               </div>
             )}
 
-            <div className="grid grid-cols-3 gap-4">
-              <div className="flex flex-col gap-2">
-                <p className="text-sm font-semibold text-gray-700">
-                  Last Name:
-                </p>
-                {isEditing ? (
-                  <>
-                    <input
-                      className={`px-3 py-2 border rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-green-500 ${
-                        errors.lastName
-                          ? "border-red-500 bg-red-50"
-                          : "border-gray-300 bg-white"
-                      }`}
-                      name="lastName"
-                      placeholder="Enter last name"
-                      value={form.lastName}
-                      onChange={handleChange}
-                      {...(lastNameInvalid && {
-                        "aria-invalid": lastNameInvalid,
-                      })}
-                    />
-                    {errors.lastName && (
-                      <p className="text-xs text-red-600 font-semibold">
-                        {errors.lastName}
-                      </p>
-                    )}
-                  </>
-                ) : (
-                  <p className="text-gray-700">{rider.lastName}</p>
-                )}
-              </div>
-              <div className="flex flex-col gap-2">
-                <p className="text-sm font-semibold text-gray-700">
-                  First Name:
-                </p>
-                {isEditing ? (
-                  <>
-                    <input
-                      className={`px-3 py-2 border rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-green-500 ${
-                        errors.firstName
-                          ? "border-red-500 bg-red-50"
-                          : "border-gray-300 bg-white"
-                      }`}
-                      name="firstName"
-                      placeholder="Enter first name"
-                      value={form.firstName}
-                      onChange={handleChange}
-                      {...(firstNameInvalid && {
-                        "aria-invalid": firstNameInvalid,
-                      })}
-                    />
-                    {errors.firstName && (
-                      <p className="text-xs text-red-600 font-semibold">
-                        {errors.firstName}
-                      </p>
-                    )}
-                  </>
-                ) : (
-                  <p className="text-gray-700">{rider.firstName}</p>
-                )}
-              </div>
-              <div className="flex flex-col gap-2">
-                <p className="text-sm font-semibold text-gray-700">
-                  Middle Initial:
-                </p>
-                {isEditing ? (
-                  <>
-                    <input
-                      className={`px-3 py-2 border rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-green-500 ${
-                        errors.middleInitial
-                          ? "border-red-500 bg-red-50"
-                          : "border-gray-300 bg-white"
-                      }`}
-                      name="middleInitial"
-                      placeholder="Enter middle initial"
-                      value={form.middleInitial}
-                      onChange={handleChange}
-                      {...(middleInitialInvalid && {
-                        "aria-invalid": middleInitialInvalid,
-                      })}
-                    />
-                    {errors.middleInitial && (
-                      <p className="text-xs text-red-600 font-semibold">
-                        {errors.middleInitial}
-                      </p>
-                    )}
-                  </>
-                ) : (
-                  <p className="text-gray-700">{rider.middleInitial}</p>
-                )}
-              </div>
+            <div className="flex flex-col gap-2">
+              <p className="text-sm font-semibold text-gray-700">Name</p>
+              {isEditing ? (
+                <>
+                  <label className="sr-only" htmlFor="detail-name">
+                    Name
+                  </label>
+                  <input
+                    id="detail-name"
+                    className={`px-3 py-2 border rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-green-500 ${
+                      errors.name
+                        ? "border-red-500 bg-red-50"
+                        : "border-gray-300 bg-white"
+                    }`}
+                    name="name"
+                    placeholder="Enter rider name"
+                    value={form.name}
+                    onChange={handleChange}
+                    {...(nameInvalid && {
+                      "aria-invalid": nameInvalid,
+                    })}
+                  />
+                  {errors.name && (
+                    <p className="text-xs text-red-600 font-semibold">
+                      {errors.name}
+                    </p>
+                  )}
+                </>
+              ) : (
+                <p className="text-gray-700">{rider.name}</p>
+              )}
             </div>
 
             <div className="flex flex-col gap-2">
@@ -445,74 +342,38 @@ export default function RiderDetailModal({
               )}
             </div>
 
-            <div className="grid grid-cols-2 gap-4">
-              <div className="flex flex-col gap-2">
-                <p className="text-sm font-semibold text-gray-700">Contact</p>
-                {isEditing ? (
-                  <>
-                    <label className="sr-only" htmlFor="detail-contact">
-                      Contact
-                    </label>
-                    <input
-                      id="detail-contact"
-                      className={`px-3 py-2 border rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-green-500 ${
-                        errors.contact
-                          ? "border-red-500 bg-red-50"
-                          : "border-gray-300 bg-white"
-                      }`}
-                      name="contact"
-                      placeholder="Enter contact number"
-                      aria-label="Contact number"
-                      value={form.contact}
-                      onChange={handleChange}
-                      {...(contactInvalid && {
-                        "aria-invalid": contactInvalid,
-                      })}
-                    />
-                    {errors.contact && (
-                      <p className="text-xs text-red-600 font-semibold">
-                        {errors.contact}
-                      </p>
-                    )}
-                  </>
-                ) : (
-                  <p className="text-gray-700">{rider.contact}</p>
-                )}
-              </div>
-              <div className="flex flex-col gap-2">
-                <p className="text-sm font-semibold text-gray-700">Birthdate</p>
-                {isEditing ? (
-                  <>
-                    <>
-                      <label className="sr-only" htmlFor="detail-birthdate">
-                        Birthdate
-                      </label>
-                      <input
-                        id="detail-birthdate"
-                        className={`px-3 py-2 border rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-green-500 ${
-                          errors.birthdate
-                            ? "border-red-500 bg-red-50"
-                            : "border-gray-300 bg-white"
-                        }`}
-                        type="date"
-                        name="birthdate"
-                        value={form.birthdate}
-                        onChange={handleChange}
-                        {...(birthdateInvalid && {
-                          "aria-invalid": birthdateInvalid,
-                        })}
-                      />
-                    </>
-                    {errors.birthdate && (
-                      <p className="text-xs text-red-600 font-semibold">
-                        {errors.birthdate}
-                      </p>
-                    )}
-                  </>
-                ) : (
-                  <p className="text-gray-700">{rider.birthdate}</p>
-                )}
-              </div>
+            <div className="flex flex-col gap-2">
+              <p className="text-sm font-semibold text-gray-700">Contact</p>
+              {isEditing ? (
+                <>
+                  <label className="sr-only" htmlFor="detail-contact">
+                    Contact
+                  </label>
+                  <input
+                    id="detail-contact"
+                    className={`px-3 py-2 border rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-green-500 ${
+                      errors.contact
+                        ? "border-red-500 bg-red-50"
+                        : "border-gray-300 bg-white"
+                    }`}
+                    name="contact"
+                    placeholder="Enter contact number"
+                    aria-label="Contact number"
+                    value={form.contact}
+                    onChange={handleChange}
+                    {...(contactInvalid && {
+                      "aria-invalid": contactInvalid,
+                    })}
+                  />
+                  {errors.contact && (
+                    <p className="text-xs text-red-600 font-semibold">
+                      {errors.contact}
+                    </p>
+                  )}
+                </>
+              ) : (
+                <p className="text-gray-700">{rider.contact}</p>
+              )}
             </div>
 
             <div className="flex flex-col gap-2">
@@ -590,61 +451,6 @@ export default function RiderDetailModal({
               )}
             </div>
           )}
-
-          <section className="space-y-4">
-            <h4 className="text-lg font-semibold text-gray-900">
-              Emergency Contact
-            </h4>
-            <div className="flex flex-col gap-2">
-              <p className="text-sm font-semibold text-gray-700">Name:</p>
-              {isEditing ? (
-                <>
-                  <label className="sr-only" htmlFor="detail-emergencyName">
-                    Emergency Contact Name
-                  </label>
-                  <input
-                    id="detail-emergencyName"
-                    className="px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-green-500"
-                    name="emergencyName"
-                    placeholder="Enter emergency contact name"
-                    aria-label="Emergency contact name"
-                    value={form.emergencyName}
-                    onChange={handleChange}
-                  />
-                </>
-              ) : (
-                <p className="text-gray-700">{rider.emergencyName}</p>
-              )}
-            </div>
-            <div className="flex flex-col gap-2">
-              <p className="text-sm font-semibold text-gray-700">Contact:</p>
-              {isEditing ? (
-                <>
-                  <input
-                    className={`px-3 py-2 border rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-green-500 ${
-                      errors.emergencyContact
-                        ? "border-red-500 bg-red-50"
-                        : "border-gray-300 bg-white"
-                    }`}
-                    name="emergencyContact"
-                    placeholder="Enter emergency contact number"
-                    value={form.emergencyContact}
-                    onChange={handleChange}
-                    {...(emergencyContactInvalid && {
-                      "aria-invalid": emergencyContactInvalid,
-                    })}
-                  />
-                  {errors.emergencyContact && (
-                    <p className="text-xs text-red-600 font-semibold">
-                      {errors.emergencyContact}
-                    </p>
-                  )}
-                </>
-              ) : (
-                <p className="text-gray-700">{rider.emergencyContact}</p>
-              )}
-            </div>
-          </section>
         </div>
 
         <div className="p-4 border-t border-gray-200 flex gap-3 justify-end">

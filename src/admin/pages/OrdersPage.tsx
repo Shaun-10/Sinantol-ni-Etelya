@@ -4,6 +4,7 @@ import { supabase } from "@lib/supabase";
 
 import ReceiptModal from "./ReceiptModal";
 import AddOrderModal from "./AddOrderModal";
+import EditOrderModal from "./EditOrderModal";
 import type { AdminOrder, OrderStatus } from "./orderTypes";
 
 function StatusBadge({ status }: { status: OrderStatus }): JSX.Element {
@@ -13,11 +14,7 @@ function StatusBadge({ status }: { status: OrderStatus }): JSX.Element {
     cancelled: "status-badge status-cancelled",
   };
 
-  return (
-    <span className={styles[status]}>
-      {status.toUpperCase()}
-    </span>
-  );
+  return <span className={styles[status]}>{status.toUpperCase()}</span>;
 }
 
 function PaymentStatusBadge({ status }: { status: "paid" | "unpaid" }) {
@@ -53,9 +50,11 @@ function PaymentMethodBadge({ method }: { method: "online" | "cod" }) {
 function OrdersListSection({
   orders,
   onViewReceipt,
+  onEdit,
 }: {
   orders: AdminOrder[];
   onViewReceipt: (orderId: string) => void;
+  onEdit: (orderId: string) => void;
 }): JSX.Element {
   const [currentPage, setCurrentPage] = useState<number>(1);
   const totalPages = Math.ceil(orders.length / 10);
@@ -87,7 +86,7 @@ function OrdersListSection({
             <th className="px-4 py-2">Payment Status</th>
             <th className="px-4 py-2">Payment Method</th>
             <th className="px-4 py-2">Status</th>
-            <th className="px-4 py-2">Receipt</th>
+            <th className="px-4 py-2">Actions</th>
           </tr>
         </thead>
 
@@ -110,7 +109,14 @@ function OrdersListSection({
                 <StatusBadge status={order.status} />
               </td>
 
-              <td>
+              <td className="px-4 py-2 flex gap-2">
+                <button
+                  onClick={() => onEdit(order.id)}
+                  className="riders-details-btn"
+                  title="Edit Order"
+                >
+                  ✏
+                </button>
                 <button
                   onClick={() => onViewReceipt(order.id)}
                   className="riders-details-btn"
@@ -137,7 +143,7 @@ function OrdersListSection({
           <span>
             Page {currentPage} of {totalPages}
           </span>
-          <div style={{ display: "flex", gap: "8px" }}>
+          <div className="flex gap-2">
             {currentPage > 1 && (
               <button
                 type="button"
@@ -166,6 +172,7 @@ function OrdersListSection({
 export default function OrdersPage(): JSX.Element {
   const [orders, setOrders] = useState<AdminOrder[]>([]);
   const [isAddOrderOpen, setIsAddOrderOpen] = useState(false);
+  const [isEditOrderOpen, setIsEditOrderOpen] = useState(false);
   const [isReceiptOpen, setIsReceiptOpen] = useState(false);
   const [selectedOrderId, setSelectedOrderId] = useState<string | null>(null);
 
@@ -211,9 +218,24 @@ export default function OrdersPage(): JSX.Element {
     setIsReceiptOpen(true);
   };
 
+  const handleEditOrder = (orderId: string) => {
+    setSelectedOrderId(orderId);
+    setIsEditOrderOpen(true);
+  };
+
   const handleAddOrder = (newOrder: AdminOrder) => {
     setOrders((previous) => [newOrder, ...previous]);
     setIsAddOrderOpen(false);
+  };
+
+  const handleUpdateOrder = (updatedOrder: AdminOrder) => {
+    setOrders((previous) =>
+      previous.map((order) =>
+        order.id === updatedOrder.id ? updatedOrder : order,
+      ),
+    );
+    setIsEditOrderOpen(false);
+    setSelectedOrderId(null);
   };
 
   return (
@@ -234,12 +256,27 @@ export default function OrdersPage(): JSX.Element {
         </button>
       </div>
 
-      <OrdersListSection orders={orders} onViewReceipt={handleViewReceipt} />
+      <OrdersListSection
+        orders={orders}
+        onViewReceipt={handleViewReceipt}
+        onEdit={handleEditOrder}
+      />
 
       {isAddOrderOpen && (
         <AddOrderModal
           onClose={() => setIsAddOrderOpen(false)}
           onAdd={handleAddOrder}
+        />
+      )}
+
+      {isEditOrderOpen && selectedOrderId && (
+        <EditOrderModal
+          orderId={selectedOrderId}
+          onClose={() => {
+            setIsEditOrderOpen(false);
+            setSelectedOrderId(null);
+          }}
+          onUpdate={handleUpdateOrder}
         />
       )}
 

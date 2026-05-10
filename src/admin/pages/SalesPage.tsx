@@ -665,7 +665,7 @@ interface ProductVariant {
 interface OrderItem {
   order_id: string;
   quantity: number;
-  product_variants: ProductVariant | ProductVariant[];
+  product_variants: ProductVariant | null;
 }
 
 interface Order {
@@ -796,12 +796,12 @@ rider:riders (
       const { data: itemsData, error: itemsError } = await supabase.from(
         "order_items",
       ).select(`
-          order_id,
-          quantity,
-          product_variants:product_variants!order_items_product_variant_id_fkey (
-            flavor
-          )
-        `);
+    order_id,
+    quantity,
+    product_variants (
+      flavor
+    )
+  `);
 
       if (itemsError) {
         console.error("Order items fetch error:", itemsError);
@@ -811,32 +811,33 @@ rider:riders (
 
       setOrders((ordersData as unknown as Order[]) ?? []);
       setOrderItems((itemsData as unknown as OrderItem[]) ?? []);
-      console.log("ORDERS DEBUG:", JSON.stringify(ordersData, null, 2));
+      console.log("ITEMS DEBUG:", itemsData);
       setIsLoading(false);
     };
 
     fetchSalesData();
   }, []);
 
-  // ✅ Compute Classic & Spicy totals (GLOBAL)
+  // ✅ Compute Classic & Spicy totals (GLOBAL - number of orders with each flavor)
   useEffect(() => {
-    let classic = 0;
-    let spicy = 0;
+    const classicOrders = new Set<string>();
+    const spicyOrders = new Set<string>();
 
     orderItems.forEach((item) => {
-      const qty = Number(item.quantity ?? 0);
-      const variants = Array.isArray(item.product_variants)
-        ? item.product_variants
-        : [item.product_variants];
-      const flavor = variants[0]?.flavor;
+      const flavor = item.product_variants?.flavor ?? "";
+      const f = String(flavor ?? "")
+        .toLowerCase()
+        .trim();
 
-      const f = String(flavor || "").toLowerCase();
-
-      if (f === "classic") classic += qty;
-      if (f === "spicy") spicy += qty;
+      if (f === "classic") {
+        classicOrders.add(item.order_id);
+      }
+      if (f === "spicy") {
+        spicyOrders.add(item.order_id);
+      }
     });
 
-    setFlavorTotals({ classic, spicy });
+    setFlavorTotals({ classic: classicOrders.size, spicy: spicyOrders.size });
   }, [orderItems]);
 
   // ✅ Sales summary
@@ -852,16 +853,14 @@ rider:riders (
       let spicy = 0;
 
       const orderItemsForOrder = orderItems.filter(
-        (item) => item.order_id === order.id.toString(),
+        (item) => String(item.order_id) === String(order.id),
       );
       orderItemsForOrder.forEach((item) => {
+        const flavor = item.product_variants?.flavor;
+        const f = String(flavor ?? "")
+          .toLowerCase()
+          .trim();
         const qty = Number(item.quantity ?? 0);
-        const variants = Array.isArray(item.product_variants)
-          ? item.product_variants
-          : [item.product_variants];
-        const flavor = variants[0]?.flavor;
-
-        const f = String(flavor || "").toLowerCase();
 
         if (f === "classic") {
           classic += qty;

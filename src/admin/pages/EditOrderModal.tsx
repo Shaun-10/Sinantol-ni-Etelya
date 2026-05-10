@@ -15,9 +15,10 @@ interface ProductVariant {
   price: number;
 }
 
-interface AddOrderModalProps {
+interface EditOrderModalProps {
+  orderId: string;
   onClose: () => void;
-  onAdd: (order: AdminOrder) => void;
+  onUpdate: (order: AdminOrder) => void;
 }
 
 type SizeKey = "small" | "large" | "bottled";
@@ -101,6 +102,28 @@ function formatCustomerName(
     .join(" ");
 }
 
+function parseCustomerName(fullName: string): {
+  firstName: string;
+  lastName: string;
+  middleInitial: string;
+} {
+  const parts = fullName.trim().split(/\s+/);
+  if (parts.length === 0) {
+    return { firstName: "", lastName: "", middleInitial: "" };
+  }
+  if (parts.length === 1) {
+    return { firstName: parts[0], lastName: "", middleInitial: "" };
+  }
+  if (parts.length === 2) {
+    return { firstName: parts[0], lastName: parts[1], middleInitial: "" };
+  }
+  return {
+    firstName: parts[0],
+    middleInitial: parts[1],
+    lastName: parts.slice(2).join(" "),
+  };
+}
+
 function getVariantKey(flavor: string, size: string): string {
   return `${flavor.trim().toLowerCase()}::${size.trim().toLowerCase()}`;
 }
@@ -109,14 +132,14 @@ function getErrorMessage(error: unknown, fallback: string): string {
   if (error && typeof error === "object" && "message" in error) {
     return String(error.message);
   }
-
   return fallback;
 }
 
-export default function AddOrderModal({
+export default function EditOrderModal({
+  orderId,
   onClose,
-  onAdd,
-}: AddOrderModalProps): JSX.Element {
+  onUpdate,
+}: EditOrderModalProps): JSX.Element {
   const [firstName, setFirstName] = useState("");
   const [lastName, setLastName] = useState("");
   const [middleInitial, setMiddleInitial] = useState("");
@@ -136,6 +159,7 @@ export default function AddOrderModal({
   const [riders, setRiders] = useState<Rider[]>([]);
   const [selectedRiderId, setSelectedRiderId] = useState("");
   const [loadingRiders, setLoadingRiders] = useState(true);
+  const [isLoading, setIsLoading] = useState(true);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [area, setArea] = useState("");
   const [paymentStatus, setPaymentStatus] = useState<"paid" | "unpaid">(
@@ -143,6 +167,10 @@ export default function AddOrderModal({
   );
   const [paymentMethod, setPaymentMethod] = useState<"cod" | "online">("cod");
   const [deliveryFee, setDeliveryFee] = useState(0);
+  const [status, setStatus] = useState<"waiting" | "delivered" | "cancelled">(
+    "waiting",
+  );
+  const [customerName, setCustomerName] = useState("");
 
   const itemTotal =
     classic.small * PRICES.small +
@@ -162,40 +190,131 @@ export default function AddOrderModal({
 
   const total = itemTotal + deliveryFee * totalQuantity;
 
+  // Fetch order details and riders
   useEffect(() => {
-    const fetchRiders = async () => {
-      setLoadingRiders(true);
+    const fetchData = async () => {
+      try {
+        setIsLoading(true);
 
-      const { data, error } = await supabase
-        .from("riders")
-        .select("id, name, area")
-        .order("name", { ascending: true });
+        // Fetch riders
+        const { data: ridersData, error: ridersError } = await supabase
+          .from("riders")
+          .select("id, name, area")
+          .order("name", { ascending: true });
 
-      if (error) {
-        console.error("Error fetching riders:", error);
-      } else {
-        setRiders(
-          (data ?? []).map((rider) => ({
-            id: rider.id,
-            name: rider.name ?? "",
-            area: rider.area ?? "",
-          })),
-        );
+        if (ridersError) {
+          console.error("Error fetching riders:", ridersError);
+        } else {
+          setRiders(
+            (ridersData ?? []).map((rider) => ({
+              id: rider.id,
+              name: rider.name ?? "",
+              area: rider.area ?? "",
+            })),
+          );
+        }
+
+        // Fetch order details
+        const { data: orderData, error: orderError } = await supabase
+          .from("orders")
+          .select("*")
+          .eq("id", orderId)
+          .single();
+
+        if (orderError || !orderData) {
+          console.error("Error fetching order:", orderError);
+          alert("Failed to load order details");
+          onClose();
+          return;
+        }
+
+        // Fetch order items
+        const { data: itemsData, error: itemsError } = await supabase
+          .from("order_items")
+          .select("*, product_variants:product_variant_id(*)")
+          .eq("order_id", orderId);
+
+        if (itemsError) {
+          console.error("Error fetching order items:", itemsError);
+        }
+
+        // Parse customer name
+        const {
+          firstName: fn,
+          lastName: ln,
+          middleInitial: mi,
+        } = parseCustomerName(orderData.customer_name || "");
+
+        setFirstName(fn);
+        setLastName(ln);
+        setMiddleInitial(mi);
+        setCustomerName(orderData.customer_name || "");
+        setAddress(orderData.address || "");
+        setContact(orderData.contact || "");
+        setNote(orderData.note || "");
+        setSelectedRiderId(orderData.rider_id || "");
+        setPaymentStatus(orderData.payment_status || "unpaid");
+        setPaymentMethod(orderData.payment_method || "cod");
+        setDeliveryFee(orderData.delivery_fee || 0);
+        setStatus(orderData.status || "waiting");
+
+        // Set area if rider is selected
+        if (orderData.rider_id) {
+          const selected = (ridersData ?? []).find(
+            (r) => r.id === orderData.rider_id,
+          );
+          setArea(selected?.area ?? "");
+        }
+
+        // Process order items to populate quantities
+        if (itemsData && itemsData.length > 0) {
+          const classicQuantities = { small: 0, large: 0, bottled: 0 };
+          const spicyQuantities = { small: 0, large: 0, bottled: 0 };
+
+          for (const item of itemsData) {
+            const variant = item.product_variants;
+            if (!variant) continue;
+
+            const flavor = variant.flavor?.toLowerCase() || "";
+            const size = variant.size?.toLowerCase() || "";
+
+            if (flavor === "classic") {
+              if (size === "small") classicQuantities.small = item.quantity;
+              else if (size === "large")
+                classicQuantities.large = item.quantity;
+              else if (size === "bottled")
+                classicQuantities.bottled = item.quantity;
+            } else if (flavor === "spicy") {
+              if (size === "small") spicyQuantities.small = item.quantity;
+              else if (size === "large") spicyQuantities.large = item.quantity;
+              else if (size === "bottled")
+                spicyQuantities.bottled = item.quantity;
+            }
+          }
+
+          setClassic(classicQuantities);
+          setSpicy(spicyQuantities);
+        }
+      } finally {
+        setIsLoading(false);
+        setLoadingRiders(false);
       }
-
-      setLoadingRiders(false);
     };
 
-    void fetchRiders();
-  }, []);
+    void fetchData();
+  }, [orderId, onClose]);
 
   const handleSubmit = async (event: FormEvent) => {
     event.preventDefault();
 
-    const customerName = formatCustomerName(firstName, lastName, middleInitial);
+    const formattedCustomerName = formatCustomerName(
+      firstName,
+      lastName,
+      middleInitial,
+    );
     const hasItems = itemTotal > 0;
 
-    if (!customerName || !address.trim() || !contact.trim()) {
+    if (!formattedCustomerName || !address.trim() || !contact.trim()) {
       alert("Please complete the customer details.");
       return;
     }
@@ -213,11 +332,7 @@ export default function AddOrderModal({
     setIsSubmitting(true);
 
     try {
-      const orderItems = [
-        { flavor: "classic", sizes: classic },
-        { flavor: "spicy", sizes: spicy },
-      ] satisfies Array<{ flavor: string; sizes: QuantityState }>;
-
+      // Fetch product variants
       const { data: variants, error: variantsError } = await supabase
         .from("product_variants")
         .select("id, flavor, size, price");
@@ -235,11 +350,17 @@ export default function AddOrderModal({
         ]),
       );
 
+      // Prepare order items
       const orderItemRows: Array<{
         product_variant_id: string;
         quantity: number;
         subtotal: number;
       }> = [];
+
+      const orderItems = [
+        { flavor: "classic", sizes: classic },
+        { flavor: "spicy", sizes: spicy },
+      ] satisfies Array<{ flavor: string; sizes: QuantityState }>;
 
       for (const item of orderItems) {
         for (const [size, quantity] of Object.entries(item.sizes) as Array<
@@ -262,34 +383,49 @@ export default function AddOrderModal({
         }
       }
 
-      const { data: order, error: orderError } = await supabase
+      // Update order
+      const { error: orderError } = await supabase
         .from("orders")
-        .insert({
-          customer_name: customerName,
+        .update({
+          customer_name: formattedCustomerName,
           address: address.trim(),
           contact: contact.trim(),
           rider_id: selectedRiderId,
           total,
           delivery_fee: deliveryFee,
-          status: "waiting",
+          status,
           payment_status: paymentStatus,
           payment_method: paymentMethod,
           note: note || "None",
         })
-        .select()
-        .single();
+        .eq("id", orderId);
 
-      if (orderError || !order) {
-        console.error("Order insert failed:", orderError);
+      if (orderError) {
+        console.error("Order update failed:", orderError);
         alert(
-          `Failed to create order: ${getErrorMessage(orderError, "Unknown error")}`,
+          `Failed to update order: ${getErrorMessage(orderError, "Unknown error")}`,
         );
         return;
       }
 
+      // Delete old order items
+      const { error: deleteError } = await supabase
+        .from("order_items")
+        .delete()
+        .eq("order_id", orderId);
+
+      if (deleteError) {
+        console.error("Order item delete failed:", deleteError);
+        alert(
+          `Failed to delete old items: ${getErrorMessage(deleteError, "Unknown error")}`,
+        );
+        return;
+      }
+
+      // Insert new order items
       const { error: itemError } = await supabase.from("order_items").insert(
         orderItemRows.map((item) => ({
-          order_id: order.id,
+          order_id: orderId,
           ...item,
         })),
       );
@@ -302,13 +438,13 @@ export default function AddOrderModal({
         return;
       }
 
-      onAdd({
-        id: order.id,
-        customer: customerName,
+      onUpdate({
+        id: orderId,
+        customer: formattedCustomerName,
         total,
-        date: new Date(order.created_at).toLocaleDateString(),
+        date: new Date().toLocaleDateString(),
         dateRange: "Today",
-        status: "waiting",
+        status,
         paymentStatus,
         paymentMethod,
       });
@@ -319,11 +455,21 @@ export default function AddOrderModal({
     }
   };
 
+  if (isLoading) {
+    return (
+      <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40">
+        <div className="rounded-lg bg-white p-8">
+          <p className="text-gray-700">Loading order details...</p>
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40">
       <div className="flex max-h-[90vh] w-11/12 max-w-3xl flex-col overflow-hidden rounded-lg border border-gray-200 bg-white shadow-2xl">
         <div className="flex flex-shrink-0 items-center justify-between border-b px-6 py-4">
-          <h2 className="text-xl font-bold">Add New Order</h2>
+          <h2 className="text-xl font-bold">Edit Order</h2>
           <button
             onClick={onClose}
             aria-label="Close modal"
@@ -501,6 +647,31 @@ export default function AddOrderModal({
 
                 <div className="flex flex-col gap-1">
                   <label
+                    htmlFor="status"
+                    className="text-sm font-semibold text-gray-700"
+                  >
+                    Order Status *
+                  </label>
+
+                  <select
+                    id="status"
+                    name="status"
+                    value={status}
+                    onChange={(e: ChangeEvent<HTMLSelectElement>) =>
+                      setStatus(
+                        e.target.value as "waiting" | "delivered" | "cancelled",
+                      )
+                    }
+                    className={inputStyle}
+                  >
+                    <option value="waiting">Waiting</option>
+                    <option value="delivered">Delivered</option>
+                    <option value="cancelled">Cancelled</option>
+                  </select>
+                </div>
+
+                <div className="flex flex-col gap-1">
+                  <label
                     htmlFor="paymentStatus"
                     className="text-sm font-semibold text-gray-700"
                   >
@@ -653,7 +824,7 @@ export default function AddOrderModal({
                 className={btnPrimary}
                 disabled={isSubmitting}
               >
-                {isSubmitting ? "Saving..." : "Submit"}
+                {isSubmitting ? "Saving..." : "Update"}
               </button>
             </div>
           </div>
