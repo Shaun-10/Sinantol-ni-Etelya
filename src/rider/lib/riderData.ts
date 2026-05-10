@@ -141,6 +141,17 @@ function parseItems(value: unknown): string[] {
   return [];
 }
 
+function noteTextFromRow(...values: unknown[]): string {
+  for (const value of values) {
+    const note = String(value ?? '').trim();
+    if (note && note.toLowerCase() !== 'none') {
+      return note;
+    }
+  }
+
+  return 'Notes';
+}
+
 function mapDeliveryRow(row: Record<string, unknown>): RiderDelivery {
   const amount = toNumber(row.amount ?? row.total_amount ?? row.cod_amount);
   const distanceValue =
