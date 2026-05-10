@@ -41,13 +41,13 @@ export default function ReassignRiderModal({
     const seen = new Set<string>();
 
     return riders
-      .map((rider) => rider.location.trim())
-      .filter((location) => {
-        if (!location || seen.has(location.toLowerCase())) {
+      .map((rider) => rider.area.trim())
+      .filter((area) => {
+        if (!area || seen.has(area.toLowerCase())) {
           return false;
         }
 
-        seen.add(location.toLowerCase());
+        seen.add(area.toLowerCase());
         return true;
       });
   }, [riders]);
@@ -60,6 +60,9 @@ export default function ReassignRiderModal({
     event: FormEvent<HTMLFormElement>,
   ): Promise<void> => {
     event.preventDefault();
+
+    if (isSubmitting) return;
+
     setErrorMessage("");
 
     if (!sourceRiderId) {
@@ -67,15 +70,16 @@ export default function ReassignRiderModal({
       return;
     }
 
-    if (!targetArea.trim()) {
+    const trimmedArea = targetArea.trim();
+
+    if (!trimmedArea) {
       setErrorMessage("Please select or enter a target area.");
       return;
     }
 
     if (
       sourceRider &&
-      sourceRider.location.trim().toLowerCase() ===
-        targetArea.trim().toLowerCase()
+      sourceRider.area?.trim().toLowerCase() === trimmedArea.toLowerCase()
     ) {
       setErrorMessage("Choose a different area from the current one.");
       return;
@@ -84,22 +88,32 @@ export default function ReassignRiderModal({
     setIsSubmitting(true);
 
     try {
-      const { error } = await supabase
+      const { data, error } = await supabase
         .from("riders")
-        .update({ location: targetArea.trim() })
-        .eq("id", sourceRiderId);
+        .update({ area: trimmedArea })
+        .eq("id", sourceRiderId)
+        .select();
 
-      if (error) {
-        throw error;
+      if (error) throw error;
+
+      if (!data || data.length === 0) {
+        throw new Error("Update failed. Rider not found.");
       }
 
       await onReassigned();
+
       window.alert(
-        `Updated ${sourceRider?.name || "the rider"} to ${targetArea.trim()}.`,
+        `Updated ${sourceRider?.name || "the rider"} to ${trimmedArea}.`,
       );
+
+      // ✅ reset
+      setSourceRiderId("");
+      setTargetArea("");
+
       onClose();
     } catch (error: unknown) {
       console.error("Error reassigning rider area:", error);
+
       setErrorMessage(getErrorMessage(error, "Failed to update rider area."));
     } finally {
       setIsSubmitting(false);
@@ -195,7 +209,7 @@ export default function ReassignRiderModal({
 
             <div className="rounded-lg border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-900">
               {sourceRider
-                ? `${sourceRider.name || "The selected rider"} is currently assigned to ${sourceRider.location || "no area"}. Choose a different area to update the rider's assignment.`
+                ? `${sourceRider.name || "The selected rider"} is currently assigned to ${sourceRider.area || "no area"}. Choose a different area to update the rider's assignment.`
                 : "Select a source rider to continue."}
             </div>
           </div>

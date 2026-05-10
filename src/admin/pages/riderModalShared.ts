@@ -4,7 +4,7 @@ export interface Rider {
   userid: string;
   name: string;
   address: string;
-  location: string;
+  area: string;
   contact: string;
   plate_number: string;
   email: string;
@@ -14,7 +14,7 @@ export interface Rider {
 export interface RiderFormData {
   name: string;
   address: string;
-  location: string;
+  area: string;
   contact: string;
   plate_number: string;
   email: string;
@@ -28,7 +28,7 @@ export interface RiderFormErrors {
 export const defaultRiderFormValues: RiderFormData = {
   name: "",
   address: "",
-  location: "",
+  area: "",
   contact: "",
   plate_number: "",
   email: "",
@@ -72,7 +72,7 @@ export function buildRiderFormData(rider: Rider): RiderFormData {
   return {
     name: rider.name || "",
     address: normalizeDbString(rider.address),
-    location: normalizeDbString(rider.location),
+    area: normalizeDbString(rider.area),
     contact: normalizeDbString(rider.contact),
     plate_number: normalizeDbString(rider.plate_number),
     email: normalizeDbString(rider.email),
