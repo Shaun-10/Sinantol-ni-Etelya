@@ -207,7 +207,6 @@ function DeliveriesDialog({
     if (orderFilter) {
       orderChannel = supabase
         .channel("rider_orders")
-
         .on(
           "postgres_changes",
           {
@@ -219,30 +218,27 @@ function DeliveriesDialog({
           (payload: any) => {
             const newRow = payload.new;
 
-            if (newRow.status === "Delivered") {
-              const newDelivery: Delivery = {
-                id: String(newRow.id ?? ""),
-                status: normalizeDeliveryStatus(newRow.status),
-                customer:
-                  normalizeDbString(newRow.customer_name) || "No customer name",
-                createdAt: String(newRow.created_at ?? ""),
-                source: "orders",
-              };
+            const newDelivery: Delivery = {
+              id: String(newRow.id ?? ""),
+              status: normalizeDeliveryStatus(newRow.status),
+              customer:
+                normalizeDbString(newRow.customer_name) || "No customer name",
+              createdAt: String(newRow.created_at ?? ""),
+              source: "orders",
+            };
 
-              setDeliveries((prev) => {
-                const exists = prev.some((d) => d.id === newDelivery.id);
-                if (exists) return prev;
+            setDeliveries((prev) => {
+              const exists = prev.some((d) => d.id === newDelivery.id);
+              if (exists) return prev;
 
-                return [newDelivery, ...prev].sort(
-                  (a, b) =>
-                    new Date(b.createdAt).getTime() -
-                    new Date(a.createdAt).getTime(),
-                );
-              });
-            }
+              return [newDelivery, ...prev].sort(
+                (a, b) =>
+                  new Date(b.createdAt).getTime() -
+                  new Date(a.createdAt).getTime(),
+              );
+            });
           },
         )
-
         .on(
           "postgres_changes",
           {
@@ -279,7 +275,6 @@ function DeliveriesDialog({
             });
           },
         )
-
         .subscribe();
     }
 
@@ -388,15 +383,14 @@ function DeliveriesDialog({
             ? supabase
                 .from("orders")
                 .select("id, customer_name, status, created_at")
-                .eq("status", "Delivered")
-                .or(orderFilter)
+                .eq("rider_id", rider.id)
                 .order("created_at", { ascending: false })
             : Promise.resolve({ data: [], error: null }),
           deliveriesFilter
             ? supabase
                 .from("deliveries")
                 .select("id, customer_name, status, created_at")
-                .or(deliveriesFilter)
+                .eq("rider_id", rider.id)
                 .order("created_at", { ascending: false })
             : Promise.resolve({ data: [], error: null }),
         ]);

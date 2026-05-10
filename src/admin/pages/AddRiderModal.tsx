@@ -12,7 +12,7 @@ const areaOptions = [
   "Manila",
   "Marikina",
   "Taguig",
-  "Paranaque",
+  "Parañaque",
 ];
 
 const defaultRiderFormValues: RiderFormData = {

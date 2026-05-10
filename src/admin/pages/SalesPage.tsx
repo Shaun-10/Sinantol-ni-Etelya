@@ -544,13 +544,6 @@ function PriceListCard(): JSX.Element {
       >
         <header className="p-4 border-b border-gray-200 flex justify-between items-center">
           <h3 className="text-lg font-semibold text-gray-900">Price List</h3>
-          <button
-            type="button"
-            className="px-3 py-1 bg-blue-500 text-white rounded text-sm hover:bg-blue-600 transition font-semibold"
-            onClick={handleStartEdit}
-          >
-            Edit
-          </button>
         </header>
 
         <div className="overflow-x-auto">
