@@ -352,8 +352,9 @@ function MonthlySalesSection({ data }: MonthlySalesSectionProps): JSX.Element {
               axisLine={false}
             />
             <Tooltip
-              formatter={(value: unknown) => {
-                return [String(value), "Orders"] as const;
+              formatter={(value: unknown, name: unknown) => {
+                const label = name === "sales" || name === "Sales" ? "Sales" : "Orders";
+                return [String(value), label] as const;
               }}
               contentStyle={{
                 borderRadius: 10,
