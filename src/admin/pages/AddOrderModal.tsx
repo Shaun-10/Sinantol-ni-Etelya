@@ -38,6 +38,8 @@ const btnPrimary =
 const btnOutline =
   "px-4 py-2 border border-gray-300 text-gray-700 rounded-md hover:bg-gray-100 disabled:opacity-50";
 
+const CONTACT_NUMBER_REGEX = /^\d{10,11}$/;
+
 interface QuantityRowProps {
   key?: React.Key;
   label: string;
@@ -197,6 +199,11 @@ export default function AddOrderModal({
 
     if (!customerName || !address.trim() || !contact.trim()) {
       alert("Please complete the customer details.");
+      return;
+    }
+
+    if (!CONTACT_NUMBER_REGEX.test(contact.trim())) {
+      alert("Contact number must be 10-11 digits.");
       return;
     }
 
@@ -418,6 +425,10 @@ export default function AddOrderModal({
                     onChange={(event: ChangeEvent<HTMLInputElement>) =>
                       setContact(event.target.value)
                     }
+                    inputMode="numeric"
+                    maxLength={11}
+                    pattern="\d{10,11}"
+                    title="Contact number must be 10-11 digits."
                     className={inputStyle}
                     required
                   />
