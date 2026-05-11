@@ -287,7 +287,7 @@ function DashboardChartsSection({
             />
             <Tooltip
               formatter={(value, name) => {
-                if (name === "revenue") {
+                if (name === "revenue" || name === "Sales") {
                   return [pesoFormatter.format(Number(value ?? 0)), "Sales"];
                 }
 
