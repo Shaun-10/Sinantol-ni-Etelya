@@ -20,14 +20,11 @@ export default function ResetPassword() {
       try {
         const currentUrl = window.location.href;
         const parsedUrl = new URL(currentUrl);
-        const hasRecoveryCode =
-          parsedUrl.searchParams.has("code") ||
-          currentUrl.includes("access_token=") ||
-          currentUrl.includes("type=recovery");
+        const recoveryCode = parsedUrl.searchParams.get("code");
 
-        if (hasRecoveryCode) {
+        if (recoveryCode) {
           const { error } = await supabase.auth.exchangeCodeForSession(
-            currentUrl,
+            recoveryCode,
           );
 
           if (error) {
