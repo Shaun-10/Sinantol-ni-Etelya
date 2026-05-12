@@ -188,7 +188,7 @@ export default function EditOrderModal({
     spicy.large +
     spicy.bottled;
 
-  const total = itemTotal + deliveryFee * totalQuantity;
+  const total = itemTotal + deliveryFee;
 
   // Fetch order details and riders
   useEffect(() => {

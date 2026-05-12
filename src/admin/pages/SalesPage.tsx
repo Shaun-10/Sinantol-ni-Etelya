@@ -75,17 +75,17 @@ const initialPriceList: PriceGroup[] = [
   {
     flavor: "Classic",
     prices: [
-      { size: "Small", amount: 120 },
-      { size: "Large", amount: 180 },
-      { size: "Bottled", amount: 240 },
+      { size: "Small", amount: 110 },
+      { size: "Large", amount: 150 },
+      { size: "Bottled", amount: 170 },
     ],
   },
   {
     flavor: "Spicy",
     prices: [
-      { size: "Small", amount: 130 },
-      { size: "Large", amount: 190 },
-      { size: "Bottled", amount: 250 },
+      { size: "Small", amount: 110 },
+      { size: "Large", amount: 150 },
+      { size: "Bottled", amount: 170 },
     ],
   },
 ];
@@ -619,12 +619,10 @@ function buildSalesSummary(
 
 export default function SalesPage(): JSX.Element {
   const [orders, setOrders] = useState<Order[]>([]);
-  const [salesRange, setSalesRange] = useState<"weekly" | "monthly" | "yearly">(
-    "monthly",
-  );
   const [orderItems, setOrderItems] = useState<OrderItem[]>([]);
   const [flavorTotals, setFlavorTotals] = useState({ classic: 0, spicy: 0 });
   const [isLoading, setIsLoading] = useState(true);
+  const [period, setPeriod] = useState<"weekly" | "monthly" | "yearly">("monthly");
   const [isReceiptOpen, setIsReceiptOpen] = useState(false);
   const [selectedOrderId, setSelectedOrderId] = useState<string | null>(null);
 
@@ -680,41 +678,58 @@ rider:riders (
     fetchSalesData();
   }, []);
 
-  // ✅ Compute Classic & Spicy totals (GLOBAL - number of orders with each flavor)
-  useEffect(() => {
-    const classicOrders = new Set<string>();
-    const spicyOrders = new Set<string>();
+  // Period start date and filtered data
+  const startDate = useMemo(() => {
+    const now = new Date();
+    const d = new Date(now);
+    if (period === "weekly") {
+      d.setDate(now.getDate() - 6);
+      d.setHours(0, 0, 0, 0);
+      return d;
+    }
 
-    orderItems.forEach((item) => {
-      const flavor = item.product_variants?.flavor ?? "";
-      const f = String(flavor ?? "")
-        .toLowerCase()
-        .trim();
+    if (period === "monthly") {
+      const monthsRange = 6; // last 6 months
+      d.setMonth(now.getMonth() - (monthsRange - 1));
+      d.setDate(1);
+      d.setHours(0, 0, 0, 0);
+      return d;
+    }
 
-      if (f === "classic") {
-        classicOrders.add(item.order_id);
-      }
-      if (f === "spicy") {
-        spicyOrders.add(item.order_id);
-      }
+    const yearsRange = 3; // last 3 years
+    d.setFullYear(now.getFullYear() - (yearsRange - 1));
+    d.setMonth(0);
+    d.setDate(1);
+    d.setHours(0, 0, 0, 0);
+    return d;
+  }, [period]);
+
+  const filteredOrders = useMemo(() => {
+    return orders.filter((o) => {
+      if (!o.created_at) return false;
+      const d = new Date(o.created_at);
+      return d >= startDate;
     });
+  }, [orders, startDate]);
 
-    setFlavorTotals({ classic: classicOrders.size, spicy: spicyOrders.size });
-  }, [orderItems]);
+  const filteredOrderItems = useMemo(() => {
+    const orderIds = new Set(filteredOrders.map((o) => String(o.id)));
+    return orderItems.filter((it) => orderIds.has(String(it.order_id)));
+  }, [orderItems, filteredOrders]);
 
-  // ✅ Sales summary
+  // ✅ Sales summary (based on selected period)
   const salesSummary = useMemo(
-    () => buildSalesSummary(orders, orderItems, new Date()),
-    [orders, orderItems],
+    () => buildSalesSummary(filteredOrders, filteredOrderItems, new Date()),
+    [filteredOrders, filteredOrderItems],
   );
 
   // ✅ Orders by area (PER ORDER classic/spicy)
   const ordersByAreaData: OrderByArea[] = useMemo(() => {
-    return orders.map((order: Order, index: number) => {
+    return filteredOrders.map((order: Order, index: number) => {
       let classic = 0;
       let spicy = 0;
 
-      const orderItemsForOrder = orderItems.filter(
+      const orderItemsForOrder = filteredOrderItems.filter(
         (item) => String(item.order_id) === String(order.id),
       );
       orderItemsForOrder.forEach((item) => {
@@ -749,86 +764,115 @@ rider:riders (
     });
   }, [orders, orderItems]);
 
-  // ✅ Sales aggregation (weekly / monthly / yearly)
-  function getStartOfWeek(d: Date): Date {
-    const date = new Date(d);
-    const day = date.getDay();
-    const diff = date.getDate() - day; // week starts on Sunday
-    return new Date(date.getFullYear(), date.getMonth(), diff);
-  }
-
+  // ✅ Sales aggregation (depends on selected period)
   const aggregatedSalesData: MonthlySalesData[] = useMemo(() => {
     const map = new Map<string, { keyOrder: number; month: string; sales: number; orders: number }>();
 
-    if (salesRange === "weekly") {
-      orders.forEach((order) => {
-        if (!order.created_at) return;
-        const date = new Date(order.created_at);
-        const weekStart = getStartOfWeek(date);
-        const key = `${weekStart.getFullYear()}-${weekStart.getMonth()}-${weekStart.getDate()}`;
+    const pushToMap = (key: string, keyOrder: number, label: string, amount: number) => {
+      if (!map.has(key)) {
+        map.set(key, { keyOrder, month: label, sales: 0, orders: 0 });
+      }
+      const entry = map.get(key)!;
+      entry.sales += amount;
+      entry.orders += 1;
+    };
 
+    if (period === "weekly") {
+      // ensure map has entries for the last 7 days (Day 1..Day 7)
+      const days: string[] = [];
+      for (let i = 0; i < 7; i++) {
+        const d = new Date(startDate);
+        d.setDate(startDate.getDate() + i);
+        const key = d.toISOString().slice(0, 10);
+        days.push(key);
+        const keyOrder = +new Date(key);
+        const label = `Day ${i + 1}`;
         if (!map.has(key)) {
-          map.set(key, {
-            keyOrder: weekStart.getTime(),
-            month: `Week of ${weekStart.toLocaleDateString("en-US", { month: "short", day: "numeric" })}`,
-            sales: 0,
-            orders: 0,
-          });
+          map.set(key, { keyOrder, month: label, sales: 0, orders: 0 });
         }
+      }
 
-        const entry = map.get(key)!;
-        entry.sales += Number(order.total || 0);
-        entry.orders += 1;
+      filteredOrders.forEach((order) => {
+        if (!order.created_at) return;
+        const d = new Date(order.created_at);
+        const key = d.toISOString().slice(0, 10);
+        const keyOrder = +new Date(key);
+        // if key isn't in days range, ignore
+        if (!days.includes(key)) return;
+        const dayIndex = days.indexOf(key);
+        const label = `Day ${dayIndex + 1}`;
+        pushToMap(key, keyOrder, label, Number(order.total || 0));
       });
-    } else if (salesRange === "yearly") {
-      orders.forEach((order) => {
+    } else if (period === "monthly") {
+      const monthsRange = 6; // same as startDate range
+      const months: string[] = [];
+      for (let i = 0; i < monthsRange; i++) {
+        const d = new Date(startDate);
+        d.setMonth(startDate.getMonth() + i);
+        const year = d.getFullYear();
+        const monthIndex = d.getMonth();
+        const key = `${year}-${monthIndex}`;
+        months.push(key);
+        const keyOrder = year * 12 + monthIndex;
+        const label = d.toLocaleString("en-US", { month: "short" });
+        if (!map.has(key)) map.set(key, { keyOrder, month: label, sales: 0, orders: 0 });
+      }
+
+      filteredOrders.forEach((order) => {
         if (!order.created_at) return;
-        const date = new Date(order.created_at);
-        const year = date.getFullYear();
-        const key = String(year);
-
-        if (!map.has(key)) {
-          map.set(key, {
-            keyOrder: year,
-            month: String(year),
-            sales: 0,
-            orders: 0,
-          });
-        }
-
-        const entry = map.get(key)!;
-        entry.sales += Number(order.total || 0);
-        entry.orders += 1;
+        const d = new Date(order.created_at);
+        const year = d.getFullYear();
+        const monthIndex = d.getMonth();
+        const key = `${year}-${monthIndex}`;
+        if (!months.includes(key)) return;
+        const keyOrder = year * 12 + monthIndex;
+        const label = d.toLocaleString("en-US", { month: "short" });
+        pushToMap(key, keyOrder, label, Number(order.total || 0));
       });
     } else {
-      // monthly
-      orders.forEach((order) => {
+      const yearsRange = 3; // same as startDate range
+      const years: string[] = [];
+      for (let i = 0; i < yearsRange; i++) {
+        const d = new Date(startDate);
+        d.setFullYear(startDate.getFullYear() + i);
+        const year = d.getFullYear();
+        const key = `${year}`;
+        years.push(key);
+        const keyOrder = year;
+        const label = String(year);
+        if (!map.has(key)) map.set(key, { keyOrder, month: label, sales: 0, orders: 0 });
+      }
+
+      filteredOrders.forEach((order) => {
         if (!order.created_at) return;
-
-        const date = new Date(order.created_at);
-        const year = date.getFullYear();
-        const monthIndex = date.getMonth();
-        const key = `${year}-${monthIndex}`;
-
-        if (!map.has(key)) {
-          map.set(key, {
-            keyOrder: year * 12 + monthIndex,
-            month: date.toLocaleString("en-US", { month: "short" }),
-            sales: 0,
-            orders: 0,
-          });
-        }
-
-        const entry = map.get(key)!;
-        entry.sales += Number(order.total || 0);
-        entry.orders += 1;
+        const d = new Date(order.created_at);
+        const year = d.getFullYear();
+        const key = `${year}`;
+        if (!years.includes(key)) return;
+        const keyOrder = year;
+        const label = String(year);
+        pushToMap(key, keyOrder, label, Number(order.total || 0));
       });
     }
 
-    return Array.from(map.values())
-      .sort((a, b) => a.keyOrder - b.keyOrder)
-      .map(({ month, sales, orders }) => ({ month, sales, orders }));
-  }, [orders, salesRange]);
+    return Array.from(map.values()).sort((a, b) => a.keyOrder - b.keyOrder).map(({ month, sales, orders }) => ({ month, sales, orders }));
+  }, [filteredOrders, period]);
+
+  // compute flavor totals from filtered items
+  useEffect(() => {
+    const classicOrders = new Set<string>();
+    const spicyOrders = new Set<string>();
+
+    filteredOrderItems.forEach((item) => {
+      const flavor = item.product_variants?.flavor ?? "";
+      const f = String(flavor ?? "").toLowerCase().trim();
+
+      if (f === "classic") classicOrders.add(String(item.order_id));
+      if (f === "spicy") spicyOrders.add(String(item.order_id));
+    });
+
+    setFlavorTotals({ classic: classicOrders.size, spicy: spicyOrders.size });
+  }, [filteredOrderItems]);
 
   // ✅ Pie chart data (RAW values, not %)
   const flavorData: FlavorData[] = useMemo(() => {
@@ -855,6 +899,29 @@ rider:riders (
           <FiBarChart2 />
           Sales
         </h2>
+        <div className="sales-period-controls" aria-label="Filter period">
+          <button
+            type="button"
+            onClick={() => setPeriod("weekly")}
+            className={"sales-period-btn " + (period === "weekly" ? "active" : "")}
+          >
+            Weekly
+          </button>
+          <button
+            type="button"
+            onClick={() => setPeriod("monthly")}
+            className={"sales-period-btn " + (period === "monthly" ? "active" : "")}
+          >
+            Monthly
+          </button>
+          <button
+            type="button"
+            onClick={() => setPeriod("yearly")}
+            className={"sales-period-btn " + (period === "yearly" ? "active" : "")}
+          >
+            Yearly
+          </button>
+        </div>
       </header>
 
       <div className="sales-layout-grid">
@@ -879,19 +946,6 @@ rider:riders (
           <section className="sales-panel" aria-label="Sales chart">
             <div className="sales-panel-header">
               <h3>Sales</h3>
-
-              <label className="sales-range-filter" htmlFor="sales-range-select">
-                <span>Range:</span>
-                <select
-                  id="sales-range-select"
-                  value={salesRange}
-                  onChange={(e: ChangeEvent<HTMLSelectElement>) => setSalesRange(e.target.value as "weekly" | "monthly" | "yearly")}
-                >
-                  <option value="weekly">Weekly</option>
-                  <option value="monthly">Monthly</option>
-                  <option value="yearly">Yearly</option>
-                </select>
-              </label>
             </div>
 
             <div className="sales-chart-wrap">
