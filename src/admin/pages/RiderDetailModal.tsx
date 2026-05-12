@@ -68,9 +68,10 @@ export default function RiderDetailModal({
     setIsSendingResetEmail(true);
 
     try {
-      // Use environment variable for redirect URL, fallback to window.location.origin
+      // Use the deployed app URL by default so locally sent reset emails still open the Vercel app.
       const redirectBaseUrl =
-        import.meta.env.VITE_AUTH_REDIRECT_URL || window.location.origin;
+        import.meta.env.VITE_AUTH_REDIRECT_URL ||
+        "https://sinantol-ni-etalya.vercel.app";
       const redirectTo = `${redirectBaseUrl}/reset-password`;
 
       const { error: resetError } = await supabase.auth.resetPasswordForEmail(
