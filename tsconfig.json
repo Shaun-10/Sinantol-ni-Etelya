@@ -25,7 +25,7 @@
 
     /* Linting */
     "strict": true,
-    "types": ["react", "react-dom"],
+    "types": ["node", "react", "react-dom"],
     "noUnusedLocals": false,
     "noUnusedParameters": false,
     "noFallthroughCasesInSwitch": true

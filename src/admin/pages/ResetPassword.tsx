@@ -14,30 +14,33 @@ export default function ResetPassword() {
   const [hasToken, setHasToken] = useState(false);
 
   useEffect(() => {
-    const checkSession = async () => {
-      try {
-        const { data, error } = await supabase.auth.getSession();
+    let timeoutId: NodeJS.Timeout;
 
-        if (error) {
-          setErrorMessage("Session error. Please try again.");
-          setHasToken(false);
-        } else if (data.session) {
-          setHasToken(true);
-        } else {
+    // Subscribe to auth state changes to catch recovery token
+    const {
+      data: { subscription },
+    } = supabase.auth.onAuthStateChange((_event, session) => {
+      if (session) {
+        // Session established from recovery token
+        setHasToken(true);
+        setLoading(false);
+      } else {
+        // No session found, set timeout to show error after a brief delay
+        // to ensure we've given Supabase time to process the recovery token
+        timeoutId = setTimeout(() => {
           setErrorMessage(
             "Invalid or expired reset link. Please request a new password reset.",
           );
           setHasToken(false);
-        }
-      } catch (err) {
-        setErrorMessage("Failed to verify session.");
-        setHasToken(false);
-      } finally {
-        setLoading(false);
+          setLoading(false);
+        }, 1500);
       }
-    };
+    });
 
-    checkSession();
+    return () => {
+      subscription?.unsubscribe();
+      if (timeoutId) clearTimeout(timeoutId);
+    };
   }, []);
 
   const handleSubmit = async (e: FormEvent) => {
