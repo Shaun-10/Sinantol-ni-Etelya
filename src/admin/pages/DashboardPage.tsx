@@ -1,4 +1,4 @@
-import { useEffect, useState, type Key } from "react";
+import { useEffect, useState, useMemo, type Key } from "react";
 import {
   Bar,
   CartesianGrid,
@@ -176,50 +176,91 @@ function buildSalesSummary(
   ];
 }
 
-function buildPerformanceData(
-  orders: OrderRow[],
-  now: Date,
-): PerformanceData[] {
-  const map = new Map<
-    string,
-    {
-      monthIndex: number;
-      month: string;
-      revenue: number;
-      orders: number;
-    }
-  >();
+function buildPerformanceData(orders: OrderRow[], now: Date, range: "weekly" | "monthly" | "yearly" = "monthly"): PerformanceData[] {
+  const map = new Map<string, { keyOrder: number; month: string; revenue: number; orders: number }>();
 
-  orders.forEach((order) => {
-    if (!order.created_at) return;
+  function getStartOfWeek(d: Date): Date {
+    const date = new Date(d);
+    const day = date.getDay();
+    const diff = date.getDate() - day; // week starts on Sunday
+    return new Date(date.getFullYear(), date.getMonth(), diff);
+  }
 
-    const date = new Date(order.created_at);
-    const year = date.getFullYear();
-    const monthIndex = date.getMonth();
+  if (range === "weekly") {
+    orders.forEach((order) => {
+      if (!order.created_at) return;
+      const date = new Date(order.created_at);
+      const weekStart = getStartOfWeek(date);
+      const key = `${weekStart.getFullYear()}-${weekStart.getMonth()}-${weekStart.getDate()}`;
 
-    const key = `${year}-${monthIndex}`;
+      if (!map.has(key)) {
+        map.set(key, {
+          keyOrder: weekStart.getTime(),
+          month: `Week of ${weekStart.toLocaleDateString("en-US", { month: "short", day: "numeric" })}`,
+          revenue: 0,
+          orders: 0,
+        });
+      }
 
-    if (!map.has(key)) {
-      map.set(key, {
-        monthIndex,
-        month: date.toLocaleString("en-US", { month: "short" }),
-        revenue: 0,
-        orders: 0,
-      });
-    }
+      const entry = map.get(key)!;
+      const amount = toAmount(order.total);
+      const deliveryFee = Number(order.delivery_fee ?? 0);
+      const orderTotalSales = amount - deliveryFee;
+      entry.revenue += orderTotalSales;
+      entry.orders += 1;
+    });
+  } else if (range === "yearly") {
+    orders.forEach((order) => {
+      if (!order.created_at) return;
+      const date = new Date(order.created_at);
+      const year = date.getFullYear();
+      const key = String(year);
 
-    const entry = map.get(key)!;
+      if (!map.has(key)) {
+        map.set(key, {
+          keyOrder: year,
+          month: String(year),
+          revenue: 0,
+          orders: 0,
+        });
+      }
 
-    const amount = toAmount(order.total);
-    const deliveryFee = Number(order.delivery_fee ?? 0);
-    const orderTotalSales = amount - deliveryFee;
+      const entry = map.get(key)!;
+      const amount = toAmount(order.total);
+      const deliveryFee = Number(order.delivery_fee ?? 0);
+      const orderTotalSales = amount - deliveryFee;
+      entry.revenue += orderTotalSales;
+      entry.orders += 1;
+    });
+  } else {
+    // monthly
+    orders.forEach((order) => {
+      if (!order.created_at) return;
+      const date = new Date(order.created_at);
+      const year = date.getFullYear();
+      const monthIndex = date.getMonth();
+      const key = `${year}-${monthIndex}`;
 
-    entry.revenue += orderTotalSales;
-    entry.orders += 1;
-  });
+      if (!map.has(key)) {
+        map.set(key, {
+          keyOrder: year * 12 + monthIndex,
+          month: date.toLocaleString("en-US", { month: "short" }),
+          revenue: 0,
+          orders: 0,
+        });
+      }
+
+      const entry = map.get(key)!;
+      const amount = toAmount(order.total);
+      const deliveryFee = Number(order.delivery_fee ?? 0);
+      const orderTotalSales = amount - deliveryFee;
+      entry.revenue += orderTotalSales;
+      entry.orders += 1;
+    });
+  }
 
   return Array.from(map.values())
-    .sort((a, b) => a.monthIndex - b.monthIndex)
+    .sort((a, b) => a.keyOrder - b.keyOrder)
     .map(({ month, revenue, orders }) => ({
       month,
       revenue,
@@ -302,13 +343,15 @@ function DashboardChartsSection({
               }}
             />
             <Legend />
-            <Bar
+            <Line
               yAxisId="left"
+              type="monotone"
               dataKey="revenue"
               name="Sales"
-              fill="#1f8f38"
-              barSize={26}
-              radius={[8, 8, 0, 0]}
+              stroke="#1f8f38"
+              strokeWidth={2.5}
+              dot={{ r: 4, fill: "#1f8f38" }}
+              activeDot={{ r: 6 }}
             />
             <Line
               yAxisId="right"
@@ -331,8 +374,14 @@ export default function DashboardPage(): JSX.Element {
   const [summary, setSummary] = useState<SummaryItem[]>([]);
   const [sales, setSales] = useState<SummaryItem[]>([]);
   const [performance, setPerformance] = useState<PerformanceData[]>([]);
+  const [ordersState, setOrdersState] = useState<OrderRow[]>([]);
+  const [performanceRange, setPerformanceRange] = useState<"weekly" | "monthly" | "yearly">("monthly");
   const [isLoading, setIsLoading] = useState(true);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
+
+  const performanceAggregated = useMemo(() => {
+    return buildPerformanceData(ordersState, new Date(), performanceRange);
+  }, [ordersState, performanceRange]);
 
   useEffect(() => {
     const fetchDashboardData = async (): Promise<void> => {
@@ -402,7 +451,7 @@ export default function DashboardPage(): JSX.Element {
       // ✅ use activeRiders AFTER it is calculated
       setSummary(buildTodaySummary(orders, now, activeRiders));
       setSales(buildSalesSummary(orders, orderItems, now));
-      setPerformance(buildPerformanceData(orders, now));
+      setOrdersState(orders);
       setIsLoading(false);
     };
 
@@ -442,8 +491,20 @@ export default function DashboardPage(): JSX.Element {
       </section>
 
       <section className="dashboard-section-block">
-        <h3>Monthly Sales</h3>
-        <DashboardChartsSection performanceData={performance} />
+        <h3>Sales</h3>
+        <div style={{ display: "flex", gap: 12, alignItems: "center", marginBottom: 8 }}>
+          <label htmlFor="dashboard-range-select">Range:</label>
+          <select
+            id="dashboard-range-select"
+            value={performanceRange}
+            onChange={(e) => setPerformanceRange(e.target.value as "weekly" | "monthly" | "yearly")}
+          >
+            <option value="weekly">Weekly</option>
+            <option value="monthly">Monthly</option>
+            <option value="yearly">Yearly</option>
+          </select>
+        </div>
+        <DashboardChartsSection performanceData={performanceAggregated} />
       </section>
     </section>
   );

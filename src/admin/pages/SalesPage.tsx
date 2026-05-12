@@ -74,16 +74,16 @@ const initialPriceList: PriceGroup[] = [
     flavor: "Classic",
     prices: [
       { size: "Small", amount: 120 },
-      { size: "Medium", amount: 180 },
-      { size: "Large", amount: 240 },
+      { size: "Large", amount: 180 },
+      { size: "Bottled", amount: 240 },
     ],
   },
   {
     flavor: "Spicy",
     prices: [
       { size: "Small", amount: 130 },
-      { size: "Medium", amount: 190 },
-      { size: "Large", amount: 250 },
+      { size: "Large", amount: 190 },
+      { size: "Bottled", amount: 250 },
     ],
   },
 ];
@@ -368,13 +368,15 @@ function MonthlySalesSection({ data }: MonthlySalesSectionProps): JSX.Element {
               }}
             />
             <Legend />
-            <Bar
+            <Line
               yAxisId="left"
+              type="monotone"
               dataKey="sales"
               name="Sales"
-              fill="#1f8f38"
-              barSize={26}
-              radius={[8, 8, 0, 0]}
+              stroke="#1f8f38"
+              strokeWidth={2.5}
+              dot={{ r: 4, fill: "#1f8f38" }}
+              activeDot={{ r: 6 }}
             />
             <Line
               yAxisId="right"
@@ -603,6 +605,9 @@ function buildSalesSummary(
 
 export default function SalesPage(): JSX.Element {
   const [orders, setOrders] = useState<Order[]>([]);
+  const [salesRange, setSalesRange] = useState<"weekly" | "monthly" | "yearly">(
+    "monthly",
+  );
   const [orderItems, setOrderItems] = useState<OrderItem[]>([]);
   const [flavorTotals, setFlavorTotals] = useState({ classic: 0, spicy: 0 });
   const [isLoading, setIsLoading] = useState(true);
@@ -727,49 +732,86 @@ rider:riders (
     });
   }, [orders, orderItems]);
 
-  // ✅ Monthly sales
-  const monthlySalesData: MonthlySalesData[] = useMemo(() => {
-    const map = new Map<
-      string,
-      {
-        monthIndex: number;
-        month: string;
-        sales: number;
-        orders: number;
-      }
-    >();
+  // ✅ Sales aggregation (weekly / monthly / yearly)
+  function getStartOfWeek(d: Date): Date {
+    const date = new Date(d);
+    const day = date.getDay();
+    const diff = date.getDate() - day; // week starts on Sunday
+    return new Date(date.getFullYear(), date.getMonth(), diff);
+  }
 
-    orders.forEach((order: Order) => {
-      if (!order.created_at) return;
+  const aggregatedSalesData: MonthlySalesData[] = useMemo(() => {
+    const map = new Map<string, { keyOrder: number; month: string; sales: number; orders: number }>();
 
-      const date = new Date(order.created_at);
-      const year = date.getFullYear();
-      const monthIndex = date.getMonth();
+    if (salesRange === "weekly") {
+      orders.forEach((order) => {
+        if (!order.created_at) return;
+        const date = new Date(order.created_at);
+        const weekStart = getStartOfWeek(date);
+        const key = `${weekStart.getFullYear()}-${weekStart.getMonth()}-${weekStart.getDate()}`;
 
-      const key = `${year}-${monthIndex}`;
+        if (!map.has(key)) {
+          map.set(key, {
+            keyOrder: weekStart.getTime(),
+            month: `Week of ${weekStart.toLocaleDateString("en-US", { month: "short", day: "numeric" })}`,
+            sales: 0,
+            orders: 0,
+          });
+        }
 
-      if (!map.has(key)) {
-        map.set(key, {
-          monthIndex,
-          month: date.toLocaleString("en-US", { month: "short" }),
-          sales: 0,
-          orders: 0,
-        });
-      }
+        const entry = map.get(key)!;
+        entry.sales += Number(order.total || 0);
+        entry.orders += 1;
+      });
+    } else if (salesRange === "yearly") {
+      orders.forEach((order) => {
+        if (!order.created_at) return;
+        const date = new Date(order.created_at);
+        const year = date.getFullYear();
+        const key = String(year);
 
-      const entry = map.get(key)!;
-      entry.sales += Number(order.total || 0);
-      entry.orders += 1;
-    });
+        if (!map.has(key)) {
+          map.set(key, {
+            keyOrder: year,
+            month: String(year),
+            sales: 0,
+            orders: 0,
+          });
+        }
+
+        const entry = map.get(key)!;
+        entry.sales += Number(order.total || 0);
+        entry.orders += 1;
+      });
+    } else {
+      // monthly
+      orders.forEach((order) => {
+        if (!order.created_at) return;
+
+        const date = new Date(order.created_at);
+        const year = date.getFullYear();
+        const monthIndex = date.getMonth();
+        const key = `${year}-${monthIndex}`;
+
+        if (!map.has(key)) {
+          map.set(key, {
+            keyOrder: year * 12 + monthIndex,
+            month: date.toLocaleString("en-US", { month: "short" }),
+            sales: 0,
+            orders: 0,
+          });
+        }
+
+        const entry = map.get(key)!;
+        entry.sales += Number(order.total || 0);
+        entry.orders += 1;
+      });
+    }
 
     return Array.from(map.values())
-      .sort((a, b) => a.monthIndex - b.monthIndex)
-      .map(({ month, sales, orders }) => ({
-        month,
-        sales,
-        orders,
-      }));
-  }, [orders]);
+      .sort((a, b) => a.keyOrder - b.keyOrder)
+      .map(({ month, sales, orders }) => ({ month, sales, orders }));
+  }, [orders, salesRange]);
 
   // ✅ Pie chart data (RAW values, not %)
   const flavorData: FlavorData[] = useMemo(() => {
@@ -811,7 +853,59 @@ rider:riders (
             ))}
           </section>
           <OrdersByAreaSection orders={ordersByAreaData} />
-          <MonthlySalesSection data={monthlySalesData} />
+          <section className="sales-panel" aria-label="Sales chart">
+            <div className="sales-panel-header">
+              <h3>Sales</h3>
+
+              <label className="sales-range-filter" htmlFor="sales-range-select">
+                <span>Range:</span>
+                <select
+                  id="sales-range-select"
+                  value={salesRange}
+                  onChange={(e) => setSalesRange(e.target.value as "weekly" | "monthly" | "yearly")}
+                >
+                  <option value="weekly">Weekly</option>
+                  <option value="monthly">Monthly</option>
+                  <option value="yearly">Yearly</option>
+                </select>
+              </label>
+            </div>
+
+            <div className="sales-chart-wrap">
+              <ResponsiveContainer width="100%" height="100%">
+                <ComposedChart
+                  data={aggregatedSalesData}
+                  margin={{ top: 12, right: 18, left: 0, bottom: 6 }}
+                >
+                  <CartesianGrid stroke="#dce6cb" strokeDasharray="4 4" />
+                  <XAxis dataKey="month" stroke="#57674f" tickLine={false} axisLine={false} />
+                  <YAxis
+                    yAxisId="left"
+                    stroke="#57674f"
+                    tickLine={false}
+                    axisLine={false}
+                    tickFormatter={(value: number) => `PHP ${value}`}
+                  />
+                  <YAxis yAxisId="right" orientation="right" stroke="#7a8b6f" tickLine={false} axisLine={false} />
+                  <Tooltip
+                    formatter={(value: unknown, name: unknown) => {
+                      const label = name === "sales" || name === "Sales" ? "Sales" : "Orders";
+                      return [String(value), label] as const;
+                    }}
+                    contentStyle={{
+                      borderRadius: 10,
+                      border: "1px solid #dce6cb",
+                      background: "#fbfdf4",
+                      boxShadow: "0 8px 20px rgba(34, 48, 20, 0.08)",
+                    }}
+                  />
+                  <Legend />
+                  <Line yAxisId="left" type="monotone" dataKey="sales" name="Sales" stroke="#1f8f38" strokeWidth={2.5} dot={{ r: 4, fill: "#1f8f38" }} activeDot={{ r: 6 }} />
+                  <Line yAxisId="right" type="monotone" dataKey="orders" name="Orders" stroke="#d08aa7" strokeWidth={2.5} dot={{ r: 4, fill: "#d08aa7" }} activeDot={{ r: 6 }} />
+                </ComposedChart>
+              </ResponsiveContainer>
+            </div>
+          </section>
         </div>
 
         <div className="sales-right-column">
