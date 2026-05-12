@@ -13,6 +13,20 @@ function normalizeUpdateValue(value: string): string | null {
   return normalized === "" ? null : normalized;
 }
 
+const PRODUCTION_AUTH_REDIRECT_URL = "https://sinantol-ni-etalya.vercel.app";
+
+function getPasswordResetRedirectUrl(): string {
+  const configuredUrl = String(import.meta.env.VITE_AUTH_REDIRECT_URL || "")
+    .trim()
+    .replace(/\/+$/, "");
+  const redirectBaseUrl =
+    configuredUrl && !/^https?:\/\/(localhost|127\.0\.0\.1)(:\d+)?/i.test(configuredUrl)
+      ? configuredUrl
+      : PRODUCTION_AUTH_REDIRECT_URL;
+
+  return `${redirectBaseUrl}/reset-password`;
+}
+
 interface RiderDetailModalProps {
   rider: Rider;
   onClose: () => void;
@@ -68,11 +82,7 @@ export default function RiderDetailModal({
     setIsSendingResetEmail(true);
 
     try {
-      // Use the deployed app URL by default so locally sent reset emails still open the Vercel app.
-      const redirectBaseUrl =
-        import.meta.env.VITE_AUTH_REDIRECT_URL ||
-        "https://sinantol-ni-etalya.vercel.app";
-      const redirectTo = `${redirectBaseUrl}/reset-password`;
+      const redirectTo = getPasswordResetRedirectUrl();
 
       const { error: resetError } = await supabase.auth.resetPasswordForEmail(
         form.email.trim(),
