@@ -28,7 +28,8 @@ function getPasswordResetRedirectUrl(): string {
     .trim()
     .replace(/\/+$/, "");
   const redirectBaseUrl =
-    configuredUrl && !/^https?:\/\/(localhost|127\.0\.0\.1)(:\d+)?/i.test(configuredUrl)
+    configuredUrl &&
+    !/^https?:\/\/(localhost|127\.0\.0\.1)(:\d+)?/i.test(configuredUrl)
       ? configuredUrl
       : PRODUCTION_AUTH_REDIRECT_URL;
 
@@ -185,7 +186,7 @@ export default function RiderDetailModal({
       };
 
       onSaveRider(updatedRider);
-      window.alert("Rider details saved successfully.");
+      window.confirm("Rider details saved successfully.");
       setIsEditing(false);
     } catch (error: unknown) {
       console.error("Unexpected error:", error);
@@ -202,7 +203,7 @@ export default function RiderDetailModal({
   const deleteRider = async (): Promise<void> => {
     setIsDeleting(true);
     try {
-        // ✅ DELETE FROM SUPABASE
+      // ✅ DELETE FROM SUPABASE
       const { error } = await supabase
         .from("riders")
         .delete()
@@ -216,7 +217,7 @@ export default function RiderDetailModal({
       }
 
       onDeleteRider(rider);
-      window.alert("Rider deleted successfully.");
+      window.confirm("Rider deleted successfully.");
       setIsDeleting(false);
     } catch (err) {
       console.error("Unexpected error:", err);
@@ -256,7 +257,9 @@ export default function RiderDetailModal({
   };
 
   const isConfirmingDelete = confirmationAction === "delete";
-  const confirmationTitle = isConfirmingDelete ? "Delete Rider" : "Save Changes";
+  const confirmationTitle = isConfirmingDelete
+    ? "Delete Rider"
+    : "Save Changes";
   const confirmationMessage = isConfirmingDelete
     ? `Are you sure you want to delete ${rider.name || "this rider"}? This action cannot be undone.`
     : "Are you sure you want to save these rider changes?";

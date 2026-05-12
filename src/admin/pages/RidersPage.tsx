@@ -707,6 +707,13 @@ export default function RidersPage(): JSX.Element {
 
   const handleAddRider = async (formValues: RiderFormData): Promise<void> => {
     try {
+      const isConfirmed = window.confirm(
+        "Are you sure you want to add this rider?",
+      );
+      if (!isConfirmed) {
+        return;
+      }
+
       const {
         data: { session: adminSession },
       } = await supabase.auth.getSession();
@@ -796,7 +803,7 @@ export default function RidersPage(): JSX.Element {
       ]);
       setIsAddModalOpen(false);
 
-      alert(
+      window.confirm(
         `Rider account created successfully.\n\nEmail: ${formValues.email}`,
       );
     } catch (err) {
@@ -851,7 +858,7 @@ export default function RidersPage(): JSX.Element {
 
   return (
     <div className="riders-main-content">
-      <section className="riders-header">
+      <section className="riders-header sticky top-0 z-30 bg-white">
         <div className="riders-header-top">
           <h2>
             <FiTruck aria-hidden="true" />

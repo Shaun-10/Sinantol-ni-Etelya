@@ -1,4 +1,10 @@
-import { useEffect, useState, useMemo, type Key, type ChangeEvent } from "react";
+import {
+  useEffect,
+  useState,
+  useMemo,
+  type Key,
+  type ChangeEvent,
+} from "react";
 import {
   Bar,
   CartesianGrid,
@@ -176,10 +182,23 @@ function buildSalesSummary(
   ];
 }
 
-function buildPerformanceData(orders: OrderRow[], now: Date, range: "weekly" | "monthly" | "yearly" = "monthly", startDate?: Date): PerformanceData[] {
-  const map = new Map<string, { keyOrder: number; month: string; revenue: number; orders: number }>();
+function buildPerformanceData(
+  orders: OrderRow[],
+  now: Date,
+  range: "weekly" | "monthly" | "yearly" = "monthly",
+  startDate?: Date,
+): PerformanceData[] {
+  const map = new Map<
+    string,
+    { keyOrder: number; month: string; revenue: number; orders: number }
+  >();
 
-  const pushToMap = (key: string, keyOrder: number, label: string, amount: number) => {
+  const pushToMap = (
+    key: string,
+    keyOrder: number,
+    label: string,
+    amount: number,
+  ) => {
     if (!map.has(key)) {
       map.set(key, { keyOrder, month: label, revenue: 0, orders: 0 });
     }
@@ -232,7 +251,12 @@ function buildPerformanceData(orders: OrderRow[], now: Date, range: "weekly" | "
       const key = `${d.getFullYear()}-${d.getMonth()}`;
       if (!months.includes(key)) return;
       const amount = toAmount(order.total) - Number(order.delivery_fee ?? 0);
-      pushToMap(key, months.indexOf(key) + (new Date(startDate).getFullYear() * 12), map.get(key)!.month, amount);
+      pushToMap(
+        key,
+        months.indexOf(key) + new Date(startDate).getFullYear() * 12,
+        map.get(key)!.month,
+        amount,
+      );
     });
   } else {
     const yearsRange = 3;
@@ -258,7 +282,12 @@ function buildPerformanceData(orders: OrderRow[], now: Date, range: "weekly" | "
 
   return Array.from(map.values())
     .sort((a, b) => a.keyOrder - b.keyOrder)
-    .map(({ month, revenue, orders }) => ({ month, revenue, orders, growth: 0 }));
+    .map(({ month, revenue, orders }) => ({
+      month,
+      revenue,
+      orders,
+      growth: 0,
+    }));
 }
 
 interface SummaryCardProps extends SummaryItem {
@@ -367,7 +396,9 @@ export default function DashboardPage(): JSX.Element {
   const [sales, setSales] = useState<SummaryItem[]>([]);
   const [performance, setPerformance] = useState<PerformanceData[]>([]);
   const [ordersState, setOrdersState] = useState<OrderRow[]>([]);
-  const [performanceRange, setPerformanceRange] = useState<"weekly" | "monthly" | "yearly">("monthly");
+  const [performanceRange, setPerformanceRange] = useState<
+    "weekly" | "monthly" | "yearly"
+  >("monthly");
   const [isLoading, setIsLoading] = useState(true);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
 
@@ -397,7 +428,12 @@ export default function DashboardPage(): JSX.Element {
   }, [performanceRange]);
 
   const performanceAggregated = useMemo(() => {
-    return buildPerformanceData(ordersState, new Date(), performanceRange, startDate);
+    return buildPerformanceData(
+      ordersState,
+      new Date(),
+      performanceRange,
+      startDate,
+    );
   }, [ordersState, performanceRange, startDate]);
 
   useEffect(() => {
@@ -509,27 +545,43 @@ export default function DashboardPage(): JSX.Element {
 
       <section className="dashboard-section-block">
         <h3>Sales</h3>
-        <div style={{ display: "flex", gap: 8, alignItems: "center", marginBottom: 8 }}>
+        <div
+          style={{
+            display: "flex",
+            gap: 8,
+            alignItems: "center",
+            marginBottom: 8,
+          }}
+        >
           <label style={{ fontWeight: 700 }}>Range:</label>
           <div style={{ display: "flex", gap: 8 }}>
             <button
               type="button"
               onClick={() => setPerformanceRange("weekly")}
-              className={"sales-period-btn " + (performanceRange === "weekly" ? "active" : "")}
+              className={
+                "sales-period-btn " +
+                (performanceRange === "weekly" ? "active" : "")
+              }
             >
               Weekly
             </button>
             <button
               type="button"
               onClick={() => setPerformanceRange("monthly")}
-              className={"sales-period-btn " + (performanceRange === "monthly" ? "active" : "")}
+              className={
+                "sales-period-btn " +
+                (performanceRange === "monthly" ? "active" : "")
+              }
             >
               Monthly
             </button>
             <button
               type="button"
               onClick={() => setPerformanceRange("yearly")}
-              className={"sales-period-btn " + (performanceRange === "yearly" ? "active" : "")}
+              className={
+                "sales-period-btn " +
+                (performanceRange === "yearly" ? "active" : "")
+              }
             >
               Yearly
             </button>

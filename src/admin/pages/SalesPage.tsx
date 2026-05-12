@@ -232,10 +232,7 @@ function OrdersByAreaSection({
   }, [selectedArea]);
 
   return (
-    <section
-      className="sales-panel"
-      aria-label="Orders by area"
-    >
+    <section className="sales-panel" aria-label="Orders by area">
       <div className="sales-panel-header">
         <h3>Orders by Area</h3>
 
@@ -334,10 +331,7 @@ interface MonthlySalesSectionProps {
 
 function MonthlySalesSection({ data }: MonthlySalesSectionProps): JSX.Element {
   return (
-    <section
-      className="sales-panel"
-      aria-label="Monthly sales chart"
-    >
+    <section className="sales-panel" aria-label="Monthly sales chart">
       <div className="sales-panel-header">
         <h3>Monthly Sales</h3>
       </div>
@@ -371,7 +365,8 @@ function MonthlySalesSection({ data }: MonthlySalesSectionProps): JSX.Element {
             />
             <Tooltip
               formatter={(value: unknown, name: unknown) => {
-                const label = name === "sales" || name === "Sales" ? "Sales" : "Orders";
+                const label =
+                  name === "sales" || name === "Sales" ? "Sales" : "Orders";
                 return [String(value), label] as const;
               }}
               contentStyle={{
@@ -415,10 +410,7 @@ function FlavorBreakdownCard({
   flavorData: FlavorData[];
 }): JSX.Element {
   return (
-    <article
-      className="sales-pie-card"
-      aria-label="Sales flavor breakdown"
-    >
+    <article className="sales-pie-card" aria-label="Sales flavor breakdown">
       <div className="sales-panel-header">
         <h3>Sales by Flavor</h3>
       </div>
@@ -469,10 +461,7 @@ function FlavorBreakdownCard({
 
 function PriceListCard(): JSX.Element {
   return (
-    <article
-      className="sales-price-card"
-      aria-label="Product price list"
-    >
+    <article className="sales-price-card" aria-label="Product price list">
       <header className="sales-price-header">
         <h3>Price List</h3>
       </header>
@@ -501,9 +490,7 @@ function PriceListCard(): JSX.Element {
 
                   <TableCell>{item.size}</TableCell>
 
-                  <TableCell>
-                    {pesoFormatter.format(item.amount)}
-                  </TableCell>
+                  <TableCell>{pesoFormatter.format(item.amount)}</TableCell>
                 </TableRow>
               )),
             )}
@@ -622,7 +609,9 @@ export default function SalesPage(): JSX.Element {
   const [orderItems, setOrderItems] = useState<OrderItem[]>([]);
   const [flavorTotals, setFlavorTotals] = useState({ classic: 0, spicy: 0 });
   const [isLoading, setIsLoading] = useState(true);
-  const [period, setPeriod] = useState<"weekly" | "monthly" | "yearly">("monthly");
+  const [period, setPeriod] = useState<"weekly" | "monthly" | "yearly">(
+    "monthly",
+  );
   const [isReceiptOpen, setIsReceiptOpen] = useState(false);
   const [selectedOrderId, setSelectedOrderId] = useState<string | null>(null);
 
@@ -766,9 +755,17 @@ rider:riders (
 
   // ✅ Sales aggregation (depends on selected period)
   const aggregatedSalesData: MonthlySalesData[] = useMemo(() => {
-    const map = new Map<string, { keyOrder: number; month: string; sales: number; orders: number }>();
+    const map = new Map<
+      string,
+      { keyOrder: number; month: string; sales: number; orders: number }
+    >();
 
-    const pushToMap = (key: string, keyOrder: number, label: string, amount: number) => {
+    const pushToMap = (
+      key: string,
+      keyOrder: number,
+      label: string,
+      amount: number,
+    ) => {
       if (!map.has(key)) {
         map.set(key, { keyOrder, month: label, sales: 0, orders: 0 });
       }
@@ -815,7 +812,8 @@ rider:riders (
         months.push(key);
         const keyOrder = year * 12 + monthIndex;
         const label = d.toLocaleString("en-US", { month: "short" });
-        if (!map.has(key)) map.set(key, { keyOrder, month: label, sales: 0, orders: 0 });
+        if (!map.has(key))
+          map.set(key, { keyOrder, month: label, sales: 0, orders: 0 });
       }
 
       filteredOrders.forEach((order) => {
@@ -840,7 +838,8 @@ rider:riders (
         years.push(key);
         const keyOrder = year;
         const label = String(year);
-        if (!map.has(key)) map.set(key, { keyOrder, month: label, sales: 0, orders: 0 });
+        if (!map.has(key))
+          map.set(key, { keyOrder, month: label, sales: 0, orders: 0 });
       }
 
       filteredOrders.forEach((order) => {
@@ -855,7 +854,9 @@ rider:riders (
       });
     }
 
-    return Array.from(map.values()).sort((a, b) => a.keyOrder - b.keyOrder).map(({ month, sales, orders }) => ({ month, sales, orders }));
+    return Array.from(map.values())
+      .sort((a, b) => a.keyOrder - b.keyOrder)
+      .map(({ month, sales, orders }) => ({ month, sales, orders }));
   }, [filteredOrders, period]);
 
   // compute flavor totals from filtered items
@@ -865,7 +866,9 @@ rider:riders (
 
     filteredOrderItems.forEach((item) => {
       const flavor = item.product_variants?.flavor ?? "";
-      const f = String(flavor ?? "").toLowerCase().trim();
+      const f = String(flavor ?? "")
+        .toLowerCase()
+        .trim();
 
       if (f === "classic") classicOrders.add(String(item.order_id));
       if (f === "spicy") spicyOrders.add(String(item.order_id));
@@ -894,7 +897,7 @@ rider:riders (
 
   return (
     <section className="sales-main-content">
-      <header className="sales-header">
+      <header className="sales-header sticky top-0 z-30 bg-white">
         <h2>
           <FiBarChart2 />
           Sales
@@ -903,21 +906,27 @@ rider:riders (
           <button
             type="button"
             onClick={() => setPeriod("weekly")}
-            className={"sales-period-btn " + (period === "weekly" ? "active" : "")}
+            className={
+              "sales-period-btn " + (period === "weekly" ? "active" : "")
+            }
           >
             Weekly
           </button>
           <button
             type="button"
             onClick={() => setPeriod("monthly")}
-            className={"sales-period-btn " + (period === "monthly" ? "active" : "")}
+            className={
+              "sales-period-btn " + (period === "monthly" ? "active" : "")
+            }
           >
             Monthly
           </button>
           <button
             type="button"
             onClick={() => setPeriod("yearly")}
-            className={"sales-period-btn " + (period === "yearly" ? "active" : "")}
+            className={
+              "sales-period-btn " + (period === "yearly" ? "active" : "")
+            }
           >
             Yearly
           </button>
@@ -955,7 +964,12 @@ rider:riders (
                   margin={{ top: 12, right: 18, left: 0, bottom: 6 }}
                 >
                   <CartesianGrid stroke="#dce6cb" strokeDasharray="4 4" />
-                  <XAxis dataKey="month" stroke="#57674f" tickLine={false} axisLine={false} />
+                  <XAxis
+                    dataKey="month"
+                    stroke="#57674f"
+                    tickLine={false}
+                    axisLine={false}
+                  />
                   <YAxis
                     yAxisId="left"
                     stroke="#57674f"
@@ -963,10 +977,19 @@ rider:riders (
                     axisLine={false}
                     tickFormatter={(value: number) => `PHP ${value}`}
                   />
-                  <YAxis yAxisId="right" orientation="right" stroke="#7a8b6f" tickLine={false} axisLine={false} />
+                  <YAxis
+                    yAxisId="right"
+                    orientation="right"
+                    stroke="#7a8b6f"
+                    tickLine={false}
+                    axisLine={false}
+                  />
                   <Tooltip
                     formatter={(value: unknown, name: unknown) => {
-                      const label = name === "sales" || name === "Sales" ? "Sales" : "Orders";
+                      const label =
+                        name === "sales" || name === "Sales"
+                          ? "Sales"
+                          : "Orders";
                       return [String(value), label] as const;
                     }}
                     contentStyle={{
@@ -977,8 +1000,26 @@ rider:riders (
                     }}
                   />
                   <Legend />
-                  <Line yAxisId="left" type="monotone" dataKey="sales" name="Sales" stroke="#1f8f38" strokeWidth={2.5} dot={{ r: 4, fill: "#1f8f38" }} activeDot={{ r: 6 }} />
-                  <Line yAxisId="right" type="monotone" dataKey="orders" name="Orders" stroke="#d08aa7" strokeWidth={2.5} dot={{ r: 4, fill: "#d08aa7" }} activeDot={{ r: 6 }} />
+                  <Line
+                    yAxisId="left"
+                    type="monotone"
+                    dataKey="sales"
+                    name="Sales"
+                    stroke="#1f8f38"
+                    strokeWidth={2.5}
+                    dot={{ r: 4, fill: "#1f8f38" }}
+                    activeDot={{ r: 6 }}
+                  />
+                  <Line
+                    yAxisId="right"
+                    type="monotone"
+                    dataKey="orders"
+                    name="Orders"
+                    stroke="#d08aa7"
+                    strokeWidth={2.5}
+                    dot={{ r: 4, fill: "#d08aa7" }}
+                    activeDot={{ r: 6 }}
+                  />
                 </ComposedChart>
               </ResponsiveContainer>
             </div>

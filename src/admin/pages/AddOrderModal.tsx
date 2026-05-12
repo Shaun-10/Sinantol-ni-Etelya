@@ -217,6 +217,13 @@ export default function AddOrderModal({
       return;
     }
 
+    const isConfirmed = window.confirm(
+      "Are you sure you want to submit this order?",
+    );
+    if (!isConfirmed) {
+      return;
+    }
+
     setIsSubmitting(true);
 
     try {

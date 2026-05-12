@@ -46,7 +46,7 @@ export default function AdminNavbar() {
   }, [showMenu]);
 
   return (
-    <header className="flex items-center justify-between gap-4 border-b border-gray-200 bg-white px-6 py-4 shadow-sm">
+    <header className="sticky top-0 z-50 flex items-center justify-between gap-4 border-b border-gray-200 bg-white px-6 py-4 shadow-sm">
       <div className="flex items-center gap-4">
         <div className="h-15 w-20 rounded-lg bg-gray-100 flex items-center justify-center overflow-hidden">
           <img

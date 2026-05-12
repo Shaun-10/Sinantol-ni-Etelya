@@ -343,22 +343,24 @@ export default function OrdersPage(): JSX.Element {
 
   return (
     <div className="orders-main-content">
-      <div className="flex items-center justify-between mb-6">
-        {/* LEFT SIDE */}
-        <div className="flex items-center gap-3">
-          <div className="text-gray-600 text-2xl">
-            <FiBox />
+      <div className="sticky top-0 z-30 bg-white">
+        <div className="flex items-center justify-between mb-6">
+          {/* LEFT SIDE */}
+          <div className="flex items-center gap-3">
+            <div className="text-gray-600 text-2xl">
+              <FiBox />
+            </div>
+            <h2 className="text-2xl font-bold text-gray-900">Orders</h2>
           </div>
-          <h2 className="text-2xl font-bold text-gray-900">Orders</h2>
-        </div>
 
-        {/* RIGHT SIDE */}
-        <button
-          onClick={() => setIsAddOrderOpen(true)}
-          className="px-4 py-2 bg-green-600 text-white rounded-lg font-semibold hover:bg-green-700 transition"
-        >
-          + Add Order
-        </button>
+          {/* RIGHT SIDE */}
+          <button
+            onClick={() => setIsAddOrderOpen(true)}
+            className="px-4 py-2 bg-green-600 text-white rounded-lg font-semibold hover:bg-green-700 transition"
+          >
+            + Add Order
+          </button>
+        </div>
       </div>
 
       <section className="mb-4 rounded-lg border border-gray-200 bg-white px-4 py-3 shadow-sm">

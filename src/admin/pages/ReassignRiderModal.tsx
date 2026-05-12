@@ -106,7 +106,7 @@ export default function ReassignRiderModal({
 
       await onReassigned();
 
-      window.alert(
+      window.confirm(
         `Updated ${sourceRider?.name || "the rider"} to ${trimmedArea}.`,
       );
 
@@ -172,12 +172,14 @@ export default function ReassignRiderModal({
       if (secondUpdate.error) throw secondUpdate.error;
 
       if (!firstUpdate.data?.length || !secondUpdate.data?.length) {
-        throw new Error("Swap failed. One of the selected riders was not found.");
+        throw new Error(
+          "Swap failed. One of the selected riders was not found.",
+        );
       }
 
       await onReassigned();
 
-      window.alert(
+      window.confirm(
         `Swapped areas for ${firstSwapRider.name || "the first rider"} and ${secondSwapRider.name || "the second rider"}.`,
       );
 
