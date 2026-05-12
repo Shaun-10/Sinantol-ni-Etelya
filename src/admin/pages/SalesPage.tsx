@@ -1,5 +1,6 @@
 import { useMemo, useState, ChangeEvent, useEffect } from "react";
 import { supabase } from "@/lib/supabase";
+import ReceiptModal from "./ReceiptModal";
 import {
   FiBarChart2,
   FiCheckSquare,
@@ -33,6 +34,7 @@ import {
 import type { IconType } from "react-icons";
 
 interface OrderByArea {
+  orderId: number;
   id: number;
   clientName: string;
   contactNo: string;
@@ -73,17 +75,17 @@ const initialPriceList: PriceGroup[] = [
   {
     flavor: "Classic",
     prices: [
-      { size: "Small", amount: 120 },
-      { size: "Medium", amount: 180 },
-      { size: "Large", amount: 240 },
+      { size: "Small", amount: 110 },
+      { size: "Large", amount: 150 },
+      { size: "Bottled", amount: 170 },
     ],
   },
   {
     flavor: "Spicy",
     prices: [
-      { size: "Small", amount: 130 },
-      { size: "Medium", amount: 190 },
-      { size: "Large", amount: 250 },
+      { size: "Small", amount: 110 },
+      { size: "Large", amount: 150 },
+      { size: "Bottled", amount: 170 },
     ],
   },
 ];
@@ -110,6 +112,10 @@ function extractArea(address?: string | null): string {
   }
 
   return address.trim();
+}
+
+function normalizeStatus(status: string | null | undefined): string {
+  return status?.trim().toLowerCase() ?? "";
 }
 
 const RADIAN = Math.PI / 180;
@@ -171,10 +177,12 @@ function SummaryCard({
 
 interface OrdersByAreaSectionProps {
   orders: OrderByArea[];
+  onViewReceipt: (orderId: number) => void;
 }
 
 function OrdersByAreaSection({
   orders,
+  onViewReceipt,
 }: OrdersByAreaSectionProps): JSX.Element {
   const [selectedArea, setSelectedArea] = useState<string>("All Areas");
   const [currentPage, setCurrentPage] = useState<number>(1);
@@ -260,6 +268,7 @@ function OrdersByAreaSection({
               <TableHead>Classic</TableHead>
               <TableHead>Spicy</TableHead>
               <TableHead>Amount</TableHead>
+              <TableHead>Actions</TableHead>
             </TableRow>
           </TableHeader>
 
@@ -273,6 +282,15 @@ function OrdersByAreaSection({
                 <TableCell>{order.classic}</TableCell>
                 <TableCell>{order.spicy}</TableCell>
                 <TableCell>{pesoFormatter.format(order.amount)}</TableCell>
+                <TableCell>
+                  <button
+                    type="button"
+                    onClick={() => onViewReceipt(order.orderId)}
+                    className="px-3 py-1 text-xs font-semibold bg-gray-100 text-gray-700 rounded hover:bg-gray-200 transition"
+                  >
+                    Receipt
+                  </button>
+                </TableCell>
               </TableRow>
             ))}
           </TableBody>
@@ -364,13 +382,15 @@ function MonthlySalesSection({ data }: MonthlySalesSectionProps): JSX.Element {
               }}
             />
             <Legend />
-            <Bar
+            <Line
               yAxisId="left"
+              type="monotone"
               dataKey="sales"
               name="Sales"
-              fill="#1f8f38"
-              barSize={26}
-              radius={[8, 8, 0, 0]}
+              stroke="#1f8f38"
+              strokeWidth={2.5}
+              dot={{ r: 4, fill: "#1f8f38" }}
+              activeDot={{ r: 6 }}
             />
             <Line
               yAxisId="right"
@@ -538,6 +558,7 @@ function buildSalesSummary(
 
   for (const order of orders) {
     if (!order.created_at) continue;
+    if (normalizeStatus(order.status) !== "delivered") continue;
 
     const orderDate = new Date(order.created_at);
     const amount = Number(order.total || 0);
@@ -601,6 +622,9 @@ export default function SalesPage(): JSX.Element {
   const [orderItems, setOrderItems] = useState<OrderItem[]>([]);
   const [flavorTotals, setFlavorTotals] = useState({ classic: 0, spicy: 0 });
   const [isLoading, setIsLoading] = useState(true);
+  const [period, setPeriod] = useState<"weekly" | "monthly" | "yearly">("monthly");
+  const [isReceiptOpen, setIsReceiptOpen] = useState(false);
+  const [selectedOrderId, setSelectedOrderId] = useState<string | null>(null);
 
   // ✅ Fetch orders + items
   useEffect(() => {
@@ -654,41 +678,58 @@ rider:riders (
     fetchSalesData();
   }, []);
 
-  // ✅ Compute Classic & Spicy totals (GLOBAL - number of orders with each flavor)
-  useEffect(() => {
-    const classicOrders = new Set<string>();
-    const spicyOrders = new Set<string>();
+  // Period start date and filtered data
+  const startDate = useMemo(() => {
+    const now = new Date();
+    const d = new Date(now);
+    if (period === "weekly") {
+      d.setDate(now.getDate() - 6);
+      d.setHours(0, 0, 0, 0);
+      return d;
+    }
 
-    orderItems.forEach((item) => {
-      const flavor = item.product_variants?.flavor ?? "";
-      const f = String(flavor ?? "")
-        .toLowerCase()
-        .trim();
+    if (period === "monthly") {
+      const monthsRange = 6; // last 6 months
+      d.setMonth(now.getMonth() - (monthsRange - 1));
+      d.setDate(1);
+      d.setHours(0, 0, 0, 0);
+      return d;
+    }
 
-      if (f === "classic") {
-        classicOrders.add(item.order_id);
-      }
-      if (f === "spicy") {
-        spicyOrders.add(item.order_id);
-      }
+    const yearsRange = 3; // last 3 years
+    d.setFullYear(now.getFullYear() - (yearsRange - 1));
+    d.setMonth(0);
+    d.setDate(1);
+    d.setHours(0, 0, 0, 0);
+    return d;
+  }, [period]);
+
+  const filteredOrders = useMemo(() => {
+    return orders.filter((o) => {
+      if (!o.created_at) return false;
+      const d = new Date(o.created_at);
+      return d >= startDate;
     });
+  }, [orders, startDate]);
 
-    setFlavorTotals({ classic: classicOrders.size, spicy: spicyOrders.size });
-  }, [orderItems]);
+  const filteredOrderItems = useMemo(() => {
+    const orderIds = new Set(filteredOrders.map((o) => String(o.id)));
+    return orderItems.filter((it) => orderIds.has(String(it.order_id)));
+  }, [orderItems, filteredOrders]);
 
-  // ✅ Sales summary
+  // ✅ Sales summary (based on selected period)
   const salesSummary = useMemo(
-    () => buildSalesSummary(orders, orderItems, new Date()),
-    [orders, orderItems],
+    () => buildSalesSummary(filteredOrders, filteredOrderItems, new Date()),
+    [filteredOrders, filteredOrderItems],
   );
 
   // ✅ Orders by area (PER ORDER classic/spicy)
   const ordersByAreaData: OrderByArea[] = useMemo(() => {
-    return orders.map((order: Order, index: number) => {
+    return filteredOrders.map((order: Order, index: number) => {
       let classic = 0;
       let spicy = 0;
 
-      const orderItemsForOrder = orderItems.filter(
+      const orderItemsForOrder = filteredOrderItems.filter(
         (item) => String(item.order_id) === String(order.id),
       );
       orderItemsForOrder.forEach((item) => {
@@ -711,6 +752,7 @@ rider:riders (
       const addressArea = extractArea(order.address)?.trim();
 
       return {
+        orderId: order.id,
         id: index + 1,
         clientName: order.customer_name || "N/A",
         contactNo: order.contact || "N/A",
@@ -722,49 +764,115 @@ rider:riders (
     });
   }, [orders, orderItems]);
 
-  // ✅ Monthly sales
-  const monthlySalesData: MonthlySalesData[] = useMemo(() => {
-    const map = new Map<
-      string,
-      {
-        monthIndex: number;
-        month: string;
-        sales: number;
-        orders: number;
-      }
-    >();
+  // ✅ Sales aggregation (depends on selected period)
+  const aggregatedSalesData: MonthlySalesData[] = useMemo(() => {
+    const map = new Map<string, { keyOrder: number; month: string; sales: number; orders: number }>();
 
-    orders.forEach((order: Order) => {
-      if (!order.created_at) return;
-
-      const date = new Date(order.created_at);
-      const year = date.getFullYear();
-      const monthIndex = date.getMonth();
-
-      const key = `${year}-${monthIndex}`;
-
+    const pushToMap = (key: string, keyOrder: number, label: string, amount: number) => {
       if (!map.has(key)) {
-        map.set(key, {
-          monthIndex,
-          month: date.toLocaleString("en-US", { month: "short" }),
-          sales: 0,
-          orders: 0,
-        });
+        map.set(key, { keyOrder, month: label, sales: 0, orders: 0 });
+      }
+      const entry = map.get(key)!;
+      entry.sales += amount;
+      entry.orders += 1;
+    };
+
+    if (period === "weekly") {
+      // ensure map has entries for the last 7 days (Day 1..Day 7)
+      const days: string[] = [];
+      for (let i = 0; i < 7; i++) {
+        const d = new Date(startDate);
+        d.setDate(startDate.getDate() + i);
+        const key = d.toISOString().slice(0, 10);
+        days.push(key);
+        const keyOrder = +new Date(key);
+        const label = `Day ${i + 1}`;
+        if (!map.has(key)) {
+          map.set(key, { keyOrder, month: label, sales: 0, orders: 0 });
+        }
       }
 
-      const entry = map.get(key)!;
-      entry.sales += Number(order.total || 0);
-      entry.orders += 1;
+      filteredOrders.forEach((order) => {
+        if (!order.created_at) return;
+        const d = new Date(order.created_at);
+        const key = d.toISOString().slice(0, 10);
+        const keyOrder = +new Date(key);
+        // if key isn't in days range, ignore
+        if (!days.includes(key)) return;
+        const dayIndex = days.indexOf(key);
+        const label = `Day ${dayIndex + 1}`;
+        pushToMap(key, keyOrder, label, Number(order.total || 0));
+      });
+    } else if (period === "monthly") {
+      const monthsRange = 6; // same as startDate range
+      const months: string[] = [];
+      for (let i = 0; i < monthsRange; i++) {
+        const d = new Date(startDate);
+        d.setMonth(startDate.getMonth() + i);
+        const year = d.getFullYear();
+        const monthIndex = d.getMonth();
+        const key = `${year}-${monthIndex}`;
+        months.push(key);
+        const keyOrder = year * 12 + monthIndex;
+        const label = d.toLocaleString("en-US", { month: "short" });
+        if (!map.has(key)) map.set(key, { keyOrder, month: label, sales: 0, orders: 0 });
+      }
+
+      filteredOrders.forEach((order) => {
+        if (!order.created_at) return;
+        const d = new Date(order.created_at);
+        const year = d.getFullYear();
+        const monthIndex = d.getMonth();
+        const key = `${year}-${monthIndex}`;
+        if (!months.includes(key)) return;
+        const keyOrder = year * 12 + monthIndex;
+        const label = d.toLocaleString("en-US", { month: "short" });
+        pushToMap(key, keyOrder, label, Number(order.total || 0));
+      });
+    } else {
+      const yearsRange = 3; // same as startDate range
+      const years: string[] = [];
+      for (let i = 0; i < yearsRange; i++) {
+        const d = new Date(startDate);
+        d.setFullYear(startDate.getFullYear() + i);
+        const year = d.getFullYear();
+        const key = `${year}`;
+        years.push(key);
+        const keyOrder = year;
+        const label = String(year);
+        if (!map.has(key)) map.set(key, { keyOrder, month: label, sales: 0, orders: 0 });
+      }
+
+      filteredOrders.forEach((order) => {
+        if (!order.created_at) return;
+        const d = new Date(order.created_at);
+        const year = d.getFullYear();
+        const key = `${year}`;
+        if (!years.includes(key)) return;
+        const keyOrder = year;
+        const label = String(year);
+        pushToMap(key, keyOrder, label, Number(order.total || 0));
+      });
+    }
+
+    return Array.from(map.values()).sort((a, b) => a.keyOrder - b.keyOrder).map(({ month, sales, orders }) => ({ month, sales, orders }));
+  }, [filteredOrders, period]);
+
+  // compute flavor totals from filtered items
+  useEffect(() => {
+    const classicOrders = new Set<string>();
+    const spicyOrders = new Set<string>();
+
+    filteredOrderItems.forEach((item) => {
+      const flavor = item.product_variants?.flavor ?? "";
+      const f = String(flavor ?? "").toLowerCase().trim();
+
+      if (f === "classic") classicOrders.add(String(item.order_id));
+      if (f === "spicy") spicyOrders.add(String(item.order_id));
     });
 
-    return Array.from(map.values())
-      .sort((a, b) => a.monthIndex - b.monthIndex)
-      .map(({ month, sales, orders }) => ({
-        month,
-        sales,
-        orders,
-      }));
-  }, [orders]);
+    setFlavorTotals({ classic: classicOrders.size, spicy: spicyOrders.size });
+  }, [filteredOrderItems]);
 
   // ✅ Pie chart data (RAW values, not %)
   const flavorData: FlavorData[] = useMemo(() => {
@@ -791,6 +899,29 @@ rider:riders (
           <FiBarChart2 />
           Sales
         </h2>
+        <div className="sales-period-controls" aria-label="Filter period">
+          <button
+            type="button"
+            onClick={() => setPeriod("weekly")}
+            className={"sales-period-btn " + (period === "weekly" ? "active" : "")}
+          >
+            Weekly
+          </button>
+          <button
+            type="button"
+            onClick={() => setPeriod("monthly")}
+            className={"sales-period-btn " + (period === "monthly" ? "active" : "")}
+          >
+            Monthly
+          </button>
+          <button
+            type="button"
+            onClick={() => setPeriod("yearly")}
+            className={"sales-period-btn " + (period === "yearly" ? "active" : "")}
+          >
+            Yearly
+          </button>
+        </div>
       </header>
 
       <div className="sales-layout-grid">
@@ -805,8 +936,53 @@ rider:riders (
               />
             ))}
           </section>
-          <OrdersByAreaSection orders={ordersByAreaData} />
-          <MonthlySalesSection data={monthlySalesData} />
+          <OrdersByAreaSection
+            orders={ordersByAreaData}
+            onViewReceipt={(orderId) => {
+              setSelectedOrderId(String(orderId));
+              setIsReceiptOpen(true);
+            }}
+          />
+          <section className="sales-panel" aria-label="Sales chart">
+            <div className="sales-panel-header">
+              <h3>Sales</h3>
+            </div>
+
+            <div className="sales-chart-wrap">
+              <ResponsiveContainer width="100%" height="100%">
+                <ComposedChart
+                  data={aggregatedSalesData}
+                  margin={{ top: 12, right: 18, left: 0, bottom: 6 }}
+                >
+                  <CartesianGrid stroke="#dce6cb" strokeDasharray="4 4" />
+                  <XAxis dataKey="month" stroke="#57674f" tickLine={false} axisLine={false} />
+                  <YAxis
+                    yAxisId="left"
+                    stroke="#57674f"
+                    tickLine={false}
+                    axisLine={false}
+                    tickFormatter={(value: number) => `PHP ${value}`}
+                  />
+                  <YAxis yAxisId="right" orientation="right" stroke="#7a8b6f" tickLine={false} axisLine={false} />
+                  <Tooltip
+                    formatter={(value: unknown, name: unknown) => {
+                      const label = name === "sales" || name === "Sales" ? "Sales" : "Orders";
+                      return [String(value), label] as const;
+                    }}
+                    contentStyle={{
+                      borderRadius: 10,
+                      border: "1px solid #dce6cb",
+                      background: "#fbfdf4",
+                      boxShadow: "0 8px 20px rgba(34, 48, 20, 0.08)",
+                    }}
+                  />
+                  <Legend />
+                  <Line yAxisId="left" type="monotone" dataKey="sales" name="Sales" stroke="#1f8f38" strokeWidth={2.5} dot={{ r: 4, fill: "#1f8f38" }} activeDot={{ r: 6 }} />
+                  <Line yAxisId="right" type="monotone" dataKey="orders" name="Orders" stroke="#d08aa7" strokeWidth={2.5} dot={{ r: 4, fill: "#d08aa7" }} activeDot={{ r: 6 }} />
+                </ComposedChart>
+              </ResponsiveContainer>
+            </div>
+          </section>
         </div>
 
         <div className="sales-right-column">
@@ -814,6 +990,16 @@ rider:riders (
           <PriceListCard />
         </div>
       </div>
+
+      {isReceiptOpen && selectedOrderId && (
+        <ReceiptModal
+          orderId={selectedOrderId}
+          onClose={() => {
+            setIsReceiptOpen(false);
+            setSelectedOrderId(null);
+          }}
+        />
+      )}
     </section>
   );
 }

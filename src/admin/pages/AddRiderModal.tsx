@@ -36,7 +36,24 @@ export default function AddRiderModal({
     e: ChangeEvent<HTMLInputElement | HTMLSelectElement>,
   ) => {
     const { name, value } = e.target;
-    setForm((prev) => ({ ...prev, [name]: value }));
+
+    // For contact field, ensure it starts with 09 and only contains digits
+    if (name === "contact") {
+      let processedValue = value.replace(/\D/g, "");
+
+      // If it doesn't start with 09, prepend 09
+      if (processedValue && !processedValue.startsWith("09")) {
+        processedValue = "09" + processedValue.slice(0, 9);
+      }
+
+      // Limit to 11 digits
+      processedValue = processedValue.slice(0, 11);
+
+      setForm((prev) => ({ ...prev, [name]: processedValue }));
+    } else {
+      setForm((prev) => ({ ...prev, [name]: value }));
+    }
+
     if (errorMessage) setErrorMessage("");
   };
 
@@ -58,8 +75,13 @@ export default function AddRiderModal({
       return;
     }
 
-    if (!/^\d{10,11}$/.test(form.contact)) {
-      setErrorMessage("Contact number must be 10–11 digits.");
+    if (!/^09\d{9}$/.test(form.contact)) {
+      setErrorMessage("Contact number must be 11 digits and start with 09.");
+      return;
+    }
+
+    if (form.password.length < 8) {
+      setErrorMessage("Password must be at least 8 characters long.");
       return;
     }
 
@@ -108,10 +130,12 @@ export default function AddRiderModal({
                   <input
                     id="contact"
                     name="contact"
-                    placeholder="Contact"
+                    type="tel"
+                    placeholder="09XXXXXXXXX"
                     aria-label="Contact"
                     value={form.contact}
                     onChange={handleChange}
+                    maxLength={11}
                     className={inputStyle}
                   />
                 </div>

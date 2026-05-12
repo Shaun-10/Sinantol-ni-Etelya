@@ -1,4 +1,5 @@
 import { getRiderSupabaseClient } from "./supabaseClient";
+import { supabase } from "@lib/supabase";
 
 export type DeliveryStatus = "In Progress" | "Delivered" | "Failed";
 
@@ -28,6 +29,47 @@ export interface RiderProfileData {
   assignedArea: string;
   motorModel: string;
   plateNumber: string;
+}
+
+export const ITEM_PRICES: Record<string, number> = {
+  "classic small": 110,
+  "classic large": 150,
+  "classic bottled": 170,
+  "spicy small": 110,
+  "spicy large": 150,
+  "spicy bottled": 170,
+};
+
+export async function uploadPaymentProof(
+  deliveryId: string,
+  file: File,
+): Promise<boolean> {
+  try {
+    const fileExt = file.name.split(".").pop();
+    const filePath = `${deliveryId}.${fileExt}`;
+
+    const { error: uploadError } = await supabase.storage
+      .from("payment-proofs")
+      .upload(filePath, file, { upsert: true });
+
+    if (uploadError) throw uploadError;
+
+    const { data } = supabase.storage
+      .from("payment-proofs")
+      .getPublicUrl(filePath);
+
+    const { error: updateError } = await supabase
+      .from("orders")
+      .update({ payment_proof_url: data.publicUrl })
+      .eq("id", deliveryId);
+
+    if (updateError) throw updateError;
+
+    return true;
+  } catch (err) {
+    console.error("Upload failed:", err);
+    return false;
+  }
 }
 
 let riderDataIssue: string | null = null;
@@ -141,15 +183,64 @@ function parseItems(value: unknown): string[] {
   return [];
 }
 
+export interface ParsedOrderItem {
+  quantity: number;
+  productName: string;
+  rawText: string;
+}
+
+export function parseOrderItemText(itemText: string): ParsedOrderItem {
+  const rawText = String(itemText ?? "").trim();
+  const match = rawText.match(/^\s*(\d+)\s*x\s*(.+)$/i);
+
+  if (!match) {
+    return {
+      quantity: 1,
+      productName: rawText,
+      rawText,
+    };
+  }
+
+  const quantity = Number(match[1]) || 1;
+  const productName = match[2].trim();
+
+  return {
+    quantity,
+    productName,
+    rawText,
+  };
+}
+
+export function getOrderItemUnitPrice(itemText: string): number | undefined {
+  const { productName } = parseOrderItemText(itemText);
+  return ITEM_PRICES[productName.toLowerCase()];
+}
+
+export function getOrderItemTotalPrice(itemText: string): number | undefined {
+  const { quantity } = parseOrderItemText(itemText);
+  const unitPrice = getOrderItemUnitPrice(itemText);
+  return unitPrice != null ? quantity * unitPrice : undefined;
+}
+
+export function getOrderItemsTotal(items: string[] | null | undefined): number {
+  if (!Array.isArray(items) || items.length === 0) {
+    return 0;
+  }
+
+  return items.reduce((sum, item) => {
+    return sum + (getOrderItemTotalPrice(item) ?? 0);
+  }, 0);
+}
+
 function noteTextFromRow(...values: unknown[]): string {
   for (const value of values) {
-    const note = String(value ?? '').trim();
-    if (note && note.toLowerCase() !== 'none') {
+    const note = String(value ?? "").trim();
+    if (note && note.toLowerCase() !== "none") {
       return note;
     }
   }
 
-  return 'Notes';
+  return "Notes";
 }
 
 function mapDeliveryRow(row: Record<string, unknown>): RiderDelivery {

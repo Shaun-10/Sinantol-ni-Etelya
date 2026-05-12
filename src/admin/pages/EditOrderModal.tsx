@@ -188,7 +188,7 @@ export default function EditOrderModal({
     spicy.large +
     spicy.bottled;
 
-  const total = itemTotal + deliveryFee * totalQuantity;
+  const total = itemTotal + deliveryFee;
 
   // Fetch order details and riders
   useEffect(() => {
@@ -326,6 +326,14 @@ export default function EditOrderModal({
 
     if (!hasItems) {
       alert("Please add at least one item to the order.");
+      return;
+    }
+
+    const isConfirmed = window.confirm(
+      "Are you sure you want to save these changes to this order?",
+    );
+
+    if (!isConfirmed) {
       return;
     }
 

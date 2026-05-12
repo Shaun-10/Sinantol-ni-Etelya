@@ -1,4 +1,4 @@
-import { useEffect, useState, type Key } from "react";
+import { useEffect, useState, useMemo, type Key, type ChangeEvent } from "react";
 import {
   Bar,
   CartesianGrid,
@@ -132,6 +132,7 @@ function buildSalesSummary(
 
   for (const order of orders) {
     if (!order.created_at) continue;
+    if (normalizeStatus(order.status) !== "delivered") continue;
 
     const orderDate = new Date(order.created_at);
     const amount = toAmount(order.total);
@@ -175,56 +176,89 @@ function buildSalesSummary(
   ];
 }
 
-function buildPerformanceData(
-  orders: OrderRow[],
-  now: Date,
-): PerformanceData[] {
-  const map = new Map<
-    string,
-    {
-      monthIndex: number;
-      month: string;
-      revenue: number;
-      orders: number;
-    }
-  >();
+function buildPerformanceData(orders: OrderRow[], now: Date, range: "weekly" | "monthly" | "yearly" = "monthly", startDate?: Date): PerformanceData[] {
+  const map = new Map<string, { keyOrder: number; month: string; revenue: number; orders: number }>();
 
-  orders.forEach((order) => {
-    if (!order.created_at) return;
-
-    const date = new Date(order.created_at);
-    const year = date.getFullYear();
-    const monthIndex = date.getMonth();
-
-    const key = `${year}-${monthIndex}`;
-
+  const pushToMap = (key: string, keyOrder: number, label: string, amount: number) => {
     if (!map.has(key)) {
-      map.set(key, {
-        monthIndex,
-        month: date.toLocaleString("en-US", { month: "short" }),
-        revenue: 0,
-        orders: 0,
-      });
+      map.set(key, { keyOrder, month: label, revenue: 0, orders: 0 });
+    }
+    const entry = map.get(key)!;
+    entry.revenue += amount;
+    entry.orders += 1;
+  };
+
+  if (!startDate) startDate = new Date(now);
+
+  if (range === "weekly") {
+    // last 7 days starting at startDate
+    const days: string[] = [];
+    for (let i = 0; i < 7; i++) {
+      const d = new Date(startDate);
+      d.setDate(startDate.getDate() + i);
+      const key = d.toISOString().slice(0, 10);
+      days.push(key);
+      const keyOrder = +new Date(key);
+      const label = `Day ${i + 1}`;
+      map.set(key, { keyOrder, month: label, revenue: 0, orders: 0 });
     }
 
-    const entry = map.get(key)!;
+    orders.forEach((order) => {
+      if (!order.created_at) return;
+      const d = new Date(order.created_at);
+      const key = d.toISOString().slice(0, 10);
+      if (!days.includes(key)) return;
+      const amount = toAmount(order.total) - Number(order.delivery_fee ?? 0);
+      pushToMap(key, +new Date(key), `Day ${days.indexOf(key) + 1}`, amount);
+    });
+  } else if (range === "monthly") {
+    const monthsRange = 6;
+    const months: string[] = [];
+    for (let i = 0; i < monthsRange; i++) {
+      const d = new Date(startDate);
+      d.setMonth(startDate.getMonth() + i);
+      const year = d.getFullYear();
+      const monthIndex = d.getMonth();
+      const key = `${year}-${monthIndex}`;
+      months.push(key);
+      const keyOrder = year * 12 + monthIndex;
+      const label = d.toLocaleString("en-US", { month: "short" });
+      map.set(key, { keyOrder, month: label, revenue: 0, orders: 0 });
+    }
 
-    const amount = toAmount(order.total);
-    const deliveryFee = Number(order.delivery_fee ?? 0);
-    const orderTotalSales = amount - deliveryFee;
+    orders.forEach((order) => {
+      if (!order.created_at) return;
+      const d = new Date(order.created_at);
+      const key = `${d.getFullYear()}-${d.getMonth()}`;
+      if (!months.includes(key)) return;
+      const amount = toAmount(order.total) - Number(order.delivery_fee ?? 0);
+      pushToMap(key, months.indexOf(key) + (new Date(startDate).getFullYear() * 12), map.get(key)!.month, amount);
+    });
+  } else {
+    const yearsRange = 3;
+    const years: string[] = [];
+    for (let i = 0; i < yearsRange; i++) {
+      const d = new Date(startDate);
+      d.setFullYear(startDate.getFullYear() + i);
+      const y = d.getFullYear();
+      const key = `${y}`;
+      years.push(key);
+      map.set(key, { keyOrder: y, month: key, revenue: 0, orders: 0 });
+    }
 
-    entry.revenue += orderTotalSales;
-    entry.orders += 1;
-  });
+    orders.forEach((order) => {
+      if (!order.created_at) return;
+      const d = new Date(order.created_at);
+      const key = `${d.getFullYear()}`;
+      if (!years.includes(key)) return;
+      const amount = toAmount(order.total) - Number(order.delivery_fee ?? 0);
+      pushToMap(key, Number(key), key, amount);
+    });
+  }
 
   return Array.from(map.values())
-    .sort((a, b) => a.monthIndex - b.monthIndex)
-    .map(({ month, revenue, orders }) => ({
-      month,
-      revenue,
-      orders,
-      growth: 0,
-    }));
+    .sort((a, b) => a.keyOrder - b.keyOrder)
+    .map(({ month, revenue, orders }) => ({ month, revenue, orders, growth: 0 }));
 }
 
 interface SummaryCardProps extends SummaryItem {
@@ -301,13 +335,15 @@ function DashboardChartsSection({
               }}
             />
             <Legend />
-            <Bar
+            <Line
               yAxisId="left"
+              type="monotone"
               dataKey="revenue"
               name="Sales"
-              fill="#1f8f38"
-              barSize={26}
-              radius={[8, 8, 0, 0]}
+              stroke="#1f8f38"
+              strokeWidth={2.5}
+              dot={{ r: 4, fill: "#1f8f38" }}
+              activeDot={{ r: 6 }}
             />
             <Line
               yAxisId="right"
@@ -330,8 +366,39 @@ export default function DashboardPage(): JSX.Element {
   const [summary, setSummary] = useState<SummaryItem[]>([]);
   const [sales, setSales] = useState<SummaryItem[]>([]);
   const [performance, setPerformance] = useState<PerformanceData[]>([]);
+  const [ordersState, setOrdersState] = useState<OrderRow[]>([]);
+  const [performanceRange, setPerformanceRange] = useState<"weekly" | "monthly" | "yearly">("monthly");
   const [isLoading, setIsLoading] = useState(true);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
+
+  const startDate = useMemo(() => {
+    const now = new Date();
+    const d = new Date(now);
+    if (performanceRange === "weekly") {
+      d.setDate(now.getDate() - 6);
+      d.setHours(0, 0, 0, 0);
+      return d;
+    }
+
+    if (performanceRange === "monthly") {
+      const monthsRange = 6;
+      d.setMonth(now.getMonth() - (monthsRange - 1));
+      d.setDate(1);
+      d.setHours(0, 0, 0, 0);
+      return d;
+    }
+
+    const yearsRange = 3;
+    d.setFullYear(now.getFullYear() - (yearsRange - 1));
+    d.setMonth(0);
+    d.setDate(1);
+    d.setHours(0, 0, 0, 0);
+    return d;
+  }, [performanceRange]);
+
+  const performanceAggregated = useMemo(() => {
+    return buildPerformanceData(ordersState, new Date(), performanceRange, startDate);
+  }, [ordersState, performanceRange, startDate]);
 
   useEffect(() => {
     const fetchDashboardData = async (): Promise<void> => {
@@ -401,7 +468,7 @@ export default function DashboardPage(): JSX.Element {
       // ✅ use activeRiders AFTER it is calculated
       setSummary(buildTodaySummary(orders, now, activeRiders));
       setSales(buildSalesSummary(orders, orderItems, now));
-      setPerformance(buildPerformanceData(orders, now));
+      setOrdersState(orders);
       setIsLoading(false);
     };
 
@@ -441,8 +508,34 @@ export default function DashboardPage(): JSX.Element {
       </section>
 
       <section className="dashboard-section-block">
-        <h3>Monthly Sales</h3>
-        <DashboardChartsSection performanceData={performance} />
+        <h3>Sales</h3>
+        <div style={{ display: "flex", gap: 8, alignItems: "center", marginBottom: 8 }}>
+          <label style={{ fontWeight: 700 }}>Range:</label>
+          <div style={{ display: "flex", gap: 8 }}>
+            <button
+              type="button"
+              onClick={() => setPerformanceRange("weekly")}
+              className={"sales-period-btn " + (performanceRange === "weekly" ? "active" : "")}
+            >
+              Weekly
+            </button>
+            <button
+              type="button"
+              onClick={() => setPerformanceRange("monthly")}
+              className={"sales-period-btn " + (performanceRange === "monthly" ? "active" : "")}
+            >
+              Monthly
+            </button>
+            <button
+              type="button"
+              onClick={() => setPerformanceRange("yearly")}
+              className={"sales-period-btn " + (performanceRange === "yearly" ? "active" : "")}
+            >
+              Yearly
+            </button>
+          </div>
+        </div>
+        <DashboardChartsSection performanceData={performanceAggregated} />
       </section>
     </section>
   );

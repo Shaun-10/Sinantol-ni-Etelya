@@ -2,6 +2,13 @@ import { ChangeEvent, useEffect, useState } from "react";
 import { FiEdit2, FiTrash2, FiCalendar } from "react-icons/fi";
 import { supabase } from "@lib/supabase";
 import {
+  Dialog,
+  DialogContent,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "../../components/ui/dialog";
+import {
   Rider,
   RiderFormData,
   RiderFormErrors,
@@ -13,9 +20,20 @@ function normalizeUpdateValue(value: string): string | null {
   return normalized === "" ? null : normalized;
 }
 
-const adminApiUrl =
-  import.meta.env.VITE_ADMIN_API_URL?.replace(/\/$/, "") ??
-  "http://localhost:3000";
+const PRODUCTION_AUTH_REDIRECT_URL = "https://sinantol-ni-etalya.vercel.app";
+type ConfirmationAction = "save" | "delete" | null;
+
+function getPasswordResetRedirectUrl(): string {
+  const configuredUrl = String(import.meta.env.VITE_AUTH_REDIRECT_URL || "")
+    .trim()
+    .replace(/\/+$/, "");
+  const redirectBaseUrl =
+    configuredUrl && !/^https?:\/\/(localhost|127\.0\.0\.1)(:\d+)?/i.test(configuredUrl)
+      ? configuredUrl
+      : PRODUCTION_AUTH_REDIRECT_URL;
+
+  return `${redirectBaseUrl}/reset-password`;
+}
 
 interface RiderDetailModalProps {
   rider: Rider;
@@ -38,9 +56,11 @@ export default function RiderDetailModal({
   const [form, setForm] = useState<RiderFormData>(buildRiderFormData(rider));
   const [errors, setErrors] = useState<RiderFormErrors>({});
   const [formError, setFormError] = useState<string>("");
-  const [newPassword, setNewPassword] = useState<string>("");
   const [isSaving, setIsSaving] = useState(false);
   const [isDeleting, setIsDeleting] = useState(false);
+  const [isSendingResetEmail, setIsSendingResetEmail] = useState(false);
+  const [confirmationAction, setConfirmationAction] =
+    useState<ConfirmationAction>(null);
 
   useEffect(() => {
     setForm(buildRiderFormData(rider));
@@ -62,6 +82,44 @@ export default function RiderDetailModal({
     }
   };
 
+  const handleSendPasswordReset = async (): Promise<void> => {
+    if (!form.email.trim()) {
+      setFormError("Rider email is missing. Cannot send password reset.");
+      return;
+    }
+
+    setFormError("");
+    setIsSendingResetEmail(true);
+
+    try {
+      const redirectTo = getPasswordResetRedirectUrl();
+
+      const { error: resetError } = await supabase.auth.resetPasswordForEmail(
+        form.email.trim(),
+        {
+          redirectTo,
+        },
+      );
+
+      if (resetError) {
+        throw new Error(resetError.message);
+      }
+
+      window.alert(
+        `Password reset link has been sent to ${form.email.trim()}. The rider can use it to update their password.`,
+      );
+    } catch (error: unknown) {
+      console.error(error);
+      const errorMessage =
+        error instanceof Error
+          ? error.message
+          : "Failed to send password reset email.";
+      setFormError(errorMessage);
+    } finally {
+      setIsSendingResetEmail(false);
+    }
+  };
+
   const nameInvalid = errors.name ? "true" : undefined;
   const contactInvalid = errors.contact ? "true" : undefined;
 
@@ -75,14 +133,10 @@ export default function RiderDetailModal({
       nextErrors.contact = "Contact must be an 11-digit number.";
     }
 
-    if (newPassword.trim() && newPassword.length < 8) {
-      nextErrors.password = "Password must be at least 8 characters.";
-    }
-
     return nextErrors;
   };
 
-  const handleSave = async (): Promise<void> => {
+  const handleSave = (): void => {
     const nextErrors = validateForm();
 
     if (Object.keys(nextErrors).length > 0) {
@@ -91,53 +145,15 @@ export default function RiderDetailModal({
       return;
     }
 
+    setConfirmationAction("save");
+  };
+
+  const saveRiderChanges = async (): Promise<void> => {
     setErrors({});
     setFormError("");
     setIsSaving(true);
 
     try {
-      // ✅ PART 3: UPDATE PASSWORD IN SUPABASE (ADMIN)
-      if (newPassword.trim()) {
-        if (!rider.userid) {
-          setFormError("Unable to update password: rider user ID is missing.");
-          setIsSaving(false);
-          return;
-        }
-
-        try {
-          const response = await fetch(
-            `${adminApiUrl}/admin/update-rider-password`,
-            {
-              method: "POST",
-              headers: {
-                "Content-Type": "application/json",
-              },
-              body: JSON.stringify({
-                userId: rider.userid,
-                newPassword: newPassword.trim(),
-              }),
-            },
-          );
-
-          const data = await response.json();
-
-          if (!response.ok) {
-            const message =
-              data?.error || `Failed to update password (${response.status})`;
-            throw new Error(message);
-          }
-        } catch (error: unknown) {
-          console.error(error);
-          const errorMessage =
-            error instanceof Error
-              ? error.message
-              : "Failed to update password.";
-          setFormError(errorMessage);
-          setIsSaving(false);
-          return;
-        }
-      }
-
       // ✅ UPDATE RIDER DATA IN SUPABASE
       const { error: updateError } = await supabase
         .from("riders")
@@ -170,7 +186,6 @@ export default function RiderDetailModal({
 
       onSaveRider(updatedRider);
       window.alert("Rider details saved successfully.");
-      setNewPassword("");
       setIsEditing(false);
     } catch (error: unknown) {
       console.error("Unexpected error:", error);
@@ -184,36 +199,46 @@ export default function RiderDetailModal({
     }
   };
 
-  const handleDelete = async (): Promise<void> => {
-    const riderName = rider.name || "this rider";
-    const isConfirmed = window.confirm(
-      `Are you sure you want to delete ${riderName}?`,
-    );
-
-    if (isConfirmed) {
-      setIsDeleting(true);
-      try {
+  const deleteRider = async (): Promise<void> => {
+    setIsDeleting(true);
+    try {
         // ✅ DELETE FROM SUPABASE
-        const { error } = await supabase
-          .from("riders")
-          .delete()
-          .eq("id", rider.id);
+      const { error } = await supabase
+        .from("riders")
+        .delete()
+        .eq("id", rider.id);
 
-        if (error) {
-          console.error("Error deleting rider from Supabase:", error);
-          alert("Failed to delete rider from database.");
-          setIsDeleting(false);
-          return;
-        }
-
-        onDeleteRider(rider);
-        window.alert("Rider deleted successfully.");
+      if (error) {
+        console.error("Error deleting rider from Supabase:", error);
+        alert("Failed to delete rider from database.");
         setIsDeleting(false);
-      } catch (err) {
-        console.error("Unexpected error:", err);
-        alert("Unexpected error while deleting rider.");
-        setIsDeleting(false);
+        return;
       }
+
+      onDeleteRider(rider);
+      window.alert("Rider deleted successfully.");
+      setIsDeleting(false);
+    } catch (err) {
+      console.error("Unexpected error:", err);
+      alert("Unexpected error while deleting rider.");
+      setIsDeleting(false);
+    }
+  };
+
+  const handleDelete = (): void => {
+    setConfirmationAction("delete");
+  };
+
+  const handleConfirmAction = async (): Promise<void> => {
+    const action = confirmationAction;
+    setConfirmationAction(null);
+
+    if (action === "save") {
+      await saveRiderChanges();
+    }
+
+    if (action === "delete") {
+      await deleteRider();
     }
   };
 
@@ -225,9 +250,16 @@ export default function RiderDetailModal({
   };
 
   const handleClose = (): void => {
+    setConfirmationAction(null);
     resetToViewMode();
     onClose();
   };
+
+  const isConfirmingDelete = confirmationAction === "delete";
+  const confirmationTitle = isConfirmingDelete ? "Delete Rider" : "Save Changes";
+  const confirmationMessage = isConfirmingDelete
+    ? `Are you sure you want to delete ${rider.name || "this rider"}? This action cannot be undone.`
+    : "Are you sure you want to save these rider changes?";
 
   return (
     <div
@@ -425,30 +457,21 @@ export default function RiderDetailModal({
           {isEditing && (
             <div className="flex flex-col gap-2">
               <p className="text-sm font-semibold text-gray-700">
-                New Password
+                Send Password Reset Email
               </p>
-              <input
-                type="password"
-                placeholder="Leave blank to keep current password"
-                value={newPassword}
-                onChange={(e: ChangeEvent<HTMLInputElement>) =>
-                  setNewPassword(e.target.value)
-                }
-                className={`px-3 py-2 border rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-green-500 ${
-                  errors.password
-                    ? "border-red-500 bg-red-50"
-                    : "border-gray-300 bg-white"
-                }`}
-              />
-              {errors.password ? (
-                <p className="text-xs text-red-600 font-semibold">
-                  {errors.password}
-                </p>
-              ) : (
-                <p className="text-xs text-gray-500">
-                  Must be at least 8 characters
-                </p>
-              )}
+              <button
+                type="button"
+                onClick={handleSendPasswordReset}
+                disabled={!form.email || isSaving || isSendingResetEmail}
+                className="px-4 py-2 bg-blue-600 text-white rounded-lg font-semibold hover:bg-blue-700 transition disabled:opacity-50 disabled:cursor-not-allowed text-sm"
+              >
+                {isSendingResetEmail
+                  ? "Sending..."
+                  : "Send Password Reset Link"}
+              </button>
+              <p className="text-xs text-gray-500">
+                Click to send a password reset email to {form.email || "rider"}.
+              </p>
             </div>
           )}
         </div>
@@ -507,6 +530,43 @@ export default function RiderDetailModal({
           )}
         </div>
       </div>
+
+      <Dialog open={Boolean(confirmationAction)}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>{confirmationTitle}</DialogTitle>
+          </DialogHeader>
+          <p className="text-sm text-gray-700">{confirmationMessage}</p>
+          <DialogFooter>
+            <button
+              type="button"
+              className="px-4 py-2 rounded bg-gray-200 text-gray-900 font-semibold hover:bg-gray-300 transition disabled:opacity-50"
+              onClick={() => setConfirmationAction(null)}
+              disabled={isSaving || isDeleting}
+            >
+              Cancel
+            </button>
+            <button
+              type="button"
+              className={`px-4 py-2 rounded text-white font-semibold transition disabled:opacity-50 ${
+                isConfirmingDelete
+                  ? "bg-red-600 hover:bg-red-700"
+                  : "bg-green-600 hover:bg-green-700"
+              }`}
+              onClick={handleConfirmAction}
+              disabled={isSaving || isDeleting}
+            >
+              {isConfirmingDelete
+                ? isDeleting
+                  ? "Deleting..."
+                  : "Delete"
+                : isSaving
+                  ? "Saving..."
+                  : "Save"}
+            </button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }

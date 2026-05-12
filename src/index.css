@@ -383,6 +383,50 @@ textarea {
   font-weight: 900;
 }
 
+/* Period selector in Sales header */
+.sales-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.sales-period-controls {
+  display: inline-flex;
+  gap: 8px;
+  align-items: center;
+}
+
+.sales-period-btn {
+  min-height: 34px;
+  padding: 6px 12px;
+  border-radius: 10px;
+  border: 1px solid #c7cfc2;
+  background: #f8faf4;
+  color: #273221;
+  font-size: 0.88rem;
+  font-weight: 800;
+  cursor: pointer;
+  transition: transform 140ms ease, background-color 140ms ease, box-shadow 140ms ease;
+}
+
+.sales-period-btn:hover {
+  transform: translateY(-1px);
+  background: #eef7ec;
+}
+
+.sales-period-btn.active {
+  background: var(--app-accent);
+  color: #ffffff;
+  border-color: var(--app-accent);
+  box-shadow: 0 8px 16px rgba(31, 143, 56, 0.12);
+}
+
+.sales-period-btn:focus {
+  outline: 3px solid rgba(31, 143, 56, 0.12);
+  outline-offset: 2px;
+}
+
 .riders-header-bottom {
   display: flex;
   align-items: flex-end;

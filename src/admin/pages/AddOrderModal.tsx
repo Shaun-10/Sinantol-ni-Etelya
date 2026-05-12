@@ -162,7 +162,7 @@ export default function AddOrderModal({
     spicy.large +
     spicy.bottled;
 
-  const total = itemTotal + deliveryFee * totalQuantity;
+  const total = itemTotal + deliveryFee;
 
   useEffect(() => {
     const fetchRiders = async () => {

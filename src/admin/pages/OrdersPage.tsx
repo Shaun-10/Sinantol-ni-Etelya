@@ -5,6 +5,13 @@ import { supabase } from "@lib/supabase";
 import ReceiptModal from "./ReceiptModal";
 import AddOrderModal from "./AddOrderModal";
 import EditOrderModal from "./EditOrderModal";
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogFooter,
+} from "@/components/ui/dialog";
 import type { AdminOrder, OrderStatus } from "./orderTypes";
 
 function StatusBadge({ status }: { status: OrderStatus }): JSX.Element {
@@ -51,10 +58,12 @@ function OrdersListSection({
   orders,
   onViewReceipt,
   onEdit,
+  onDelete,
 }: {
   orders: AdminOrder[];
   onViewReceipt: (orderId: string) => void;
   onEdit: (orderId: string) => void;
+  onDelete: (orderId: string) => void;
 }): JSX.Element {
   const [currentPage, setCurrentPage] = useState<number>(1);
   const totalPages = Math.ceil(orders.length / 10);
@@ -126,7 +135,14 @@ function OrdersListSection({
                     onClick={() => onViewReceipt(order.id)}
                     className="px-3 py-1 text-xs font-semibold bg-gray-100 text-gray-700 rounded hover:bg-gray-200 transition"
                   >
-                    View
+                    Receipt
+                  </button>
+
+                  <button
+                    onClick={() => onDelete(order.id)}
+                    className="px-3 py-1 text-xs font-semibold bg-red-100 text-red-700 rounded hover:bg-red-200 transition"
+                  >
+                    Delete
                   </button>
                 </div>
               </td>
@@ -181,6 +197,9 @@ export default function OrdersPage(): JSX.Element {
   const [isEditOrderOpen, setIsEditOrderOpen] = useState(false);
   const [isReceiptOpen, setIsReceiptOpen] = useState(false);
   const [selectedOrderId, setSelectedOrderId] = useState<string | null>(null);
+  const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false);
+  const [orderToDelete, setOrderToDelete] = useState<string | null>(null);
+  const [isDeleting, setIsDeleting] = useState(false);
 
   const normalizeStatus = (status: string | null | undefined): OrderStatus => {
     if (status === "delivered" || status === "cancelled") {
@@ -225,8 +244,7 @@ export default function OrdersPage(): JSX.Element {
       const aTime = a.createdAt ? new Date(a.createdAt).getTime() : 0;
       const bTime = b.createdAt ? new Date(b.createdAt).getTime() : 0;
       return (
-        (Number.isNaN(bTime) ? 0 : bTime) -
-        (Number.isNaN(aTime) ? 0 : aTime)
+        (Number.isNaN(bTime) ? 0 : bTime) - (Number.isNaN(aTime) ? 0 : aTime)
       );
     });
   }, [orders]);
@@ -290,6 +308,39 @@ export default function OrdersPage(): JSX.Element {
     setSelectedOrderId(null);
   };
 
+  const handleDeleteClick = (orderId: string) => {
+    setOrderToDelete(orderId);
+    setIsDeleteDialogOpen(true);
+  };
+
+  const handleConfirmDelete = async () => {
+    if (!orderToDelete) return;
+
+    setIsDeleting(true);
+    try {
+      const { error } = await supabase
+        .from("orders")
+        .delete()
+        .eq("id", orderToDelete);
+
+      if (error) {
+        console.error("Error deleting order:", error);
+        alert("Failed to delete order");
+      } else {
+        setOrders((previous) =>
+          previous.filter((order) => order.id !== orderToDelete),
+        );
+        setIsDeleteDialogOpen(false);
+        setOrderToDelete(null);
+      }
+    } catch (error) {
+      console.error("Error deleting order:", error);
+      alert("Failed to delete order");
+    } finally {
+      setIsDeleting(false);
+    }
+  };
+
   return (
     <div className="orders-main-content">
       <div className="flex items-center justify-between mb-6">
@@ -336,9 +387,7 @@ export default function OrdersPage(): JSX.Element {
 
           <div className="text-sm font-semibold text-gray-600">
             {filteredOrders.length} of {orders.length} orders
-            <span className="block text-xs font-medium text-gray-500">
-              
-            </span>
+            <span className="block text-xs font-medium text-gray-500"></span>
           </div>
         </div>
       </section>
@@ -347,6 +396,7 @@ export default function OrdersPage(): JSX.Element {
         orders={filteredOrders}
         onViewReceipt={handleViewReceipt}
         onEdit={handleEditOrder}
+        onDelete={handleDeleteClick}
       />
       {isAddOrderOpen && (
         <AddOrderModal
@@ -373,6 +423,37 @@ export default function OrdersPage(): JSX.Element {
           }}
         />
       )}
+
+      <Dialog open={isDeleteDialogOpen}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Delete Order</DialogTitle>
+          </DialogHeader>
+          <p className="text-gray-700 mb-4">
+            Are you sure you want to delete this order? This action cannot be
+            undone.
+          </p>
+          <DialogFooter>
+            <button
+              onClick={() => {
+                setIsDeleteDialogOpen(false);
+                setOrderToDelete(null);
+              }}
+              disabled={isDeleting}
+              className="px-4 py-2 rounded bg-gray-200 text-gray-900 font-semibold hover:bg-gray-300 transition disabled:opacity-50"
+            >
+              Cancel
+            </button>
+            <button
+              onClick={handleConfirmDelete}
+              disabled={isDeleting}
+              className="px-4 py-2 rounded bg-red-600 text-white font-semibold hover:bg-red-700 transition disabled:opacity-50"
+            >
+              {isDeleting ? "Deleting..." : "Delete"}
+            </button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }
