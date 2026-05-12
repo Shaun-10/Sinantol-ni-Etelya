@@ -68,10 +68,15 @@ export default function RiderDetailModal({
     setIsSendingResetEmail(true);
 
     try {
+      // Use environment variable for redirect URL, fallback to window.location.origin
+      const redirectBaseUrl =
+        import.meta.env.VITE_AUTH_REDIRECT_URL || window.location.origin;
+      const redirectTo = `${redirectBaseUrl}/reset-password`;
+
       const { error: resetError } = await supabase.auth.resetPasswordForEmail(
         form.email.trim(),
         {
-          redirectTo: `${window.location.origin}/reset-password`,
+          redirectTo,
         },
       );
 
