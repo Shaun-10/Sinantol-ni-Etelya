@@ -2,6 +2,13 @@ import { ChangeEvent, useEffect, useState } from "react";
 import { FiEdit2, FiTrash2, FiCalendar } from "react-icons/fi";
 import { supabase } from "@lib/supabase";
 import {
+  Dialog,
+  DialogContent,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "../../components/ui/dialog";
+import {
   Rider,
   RiderFormData,
   RiderFormErrors,
@@ -14,6 +21,7 @@ function normalizeUpdateValue(value: string): string | null {
 }
 
 const PRODUCTION_AUTH_REDIRECT_URL = "https://sinantol-ni-etalya.vercel.app";
+type ConfirmationAction = "save" | "delete" | null;
 
 function getPasswordResetRedirectUrl(): string {
   const configuredUrl = String(import.meta.env.VITE_AUTH_REDIRECT_URL || "")
@@ -51,6 +59,8 @@ export default function RiderDetailModal({
   const [isSaving, setIsSaving] = useState(false);
   const [isDeleting, setIsDeleting] = useState(false);
   const [isSendingResetEmail, setIsSendingResetEmail] = useState(false);
+  const [confirmationAction, setConfirmationAction] =
+    useState<ConfirmationAction>(null);
 
   useEffect(() => {
     setForm(buildRiderFormData(rider));
@@ -126,7 +136,7 @@ export default function RiderDetailModal({
     return nextErrors;
   };
 
-  const handleSave = async (): Promise<void> => {
+  const handleSave = (): void => {
     const nextErrors = validateForm();
 
     if (Object.keys(nextErrors).length > 0) {
@@ -135,14 +145,10 @@ export default function RiderDetailModal({
       return;
     }
 
-    const isConfirmed = window.confirm(
-      "Are you sure you want to save these rider changes?",
-    );
+    setConfirmationAction("save");
+  };
 
-    if (!isConfirmed) {
-      return;
-    }
-
+  const saveRiderChanges = async (): Promise<void> => {
     setErrors({});
     setFormError("");
     setIsSaving(true);
@@ -193,36 +199,46 @@ export default function RiderDetailModal({
     }
   };
 
-  const handleDelete = async (): Promise<void> => {
-    const riderName = rider.name || "this rider";
-    const isConfirmed = window.confirm(
-      `Are you sure you want to delete ${riderName}?`,
-    );
-
-    if (isConfirmed) {
-      setIsDeleting(true);
-      try {
+  const deleteRider = async (): Promise<void> => {
+    setIsDeleting(true);
+    try {
         // ✅ DELETE FROM SUPABASE
-        const { error } = await supabase
-          .from("riders")
-          .delete()
-          .eq("id", rider.id);
+      const { error } = await supabase
+        .from("riders")
+        .delete()
+        .eq("id", rider.id);
 
-        if (error) {
-          console.error("Error deleting rider from Supabase:", error);
-          alert("Failed to delete rider from database.");
-          setIsDeleting(false);
-          return;
-        }
-
-        onDeleteRider(rider);
-        window.alert("Rider deleted successfully.");
+      if (error) {
+        console.error("Error deleting rider from Supabase:", error);
+        alert("Failed to delete rider from database.");
         setIsDeleting(false);
-      } catch (err) {
-        console.error("Unexpected error:", err);
-        alert("Unexpected error while deleting rider.");
-        setIsDeleting(false);
+        return;
       }
+
+      onDeleteRider(rider);
+      window.alert("Rider deleted successfully.");
+      setIsDeleting(false);
+    } catch (err) {
+      console.error("Unexpected error:", err);
+      alert("Unexpected error while deleting rider.");
+      setIsDeleting(false);
+    }
+  };
+
+  const handleDelete = (): void => {
+    setConfirmationAction("delete");
+  };
+
+  const handleConfirmAction = async (): Promise<void> => {
+    const action = confirmationAction;
+    setConfirmationAction(null);
+
+    if (action === "save") {
+      await saveRiderChanges();
+    }
+
+    if (action === "delete") {
+      await deleteRider();
     }
   };
 
@@ -234,9 +250,16 @@ export default function RiderDetailModal({
   };
 
   const handleClose = (): void => {
+    setConfirmationAction(null);
     resetToViewMode();
     onClose();
   };
+
+  const isConfirmingDelete = confirmationAction === "delete";
+  const confirmationTitle = isConfirmingDelete ? "Delete Rider" : "Save Changes";
+  const confirmationMessage = isConfirmingDelete
+    ? `Are you sure you want to delete ${rider.name || "this rider"}? This action cannot be undone.`
+    : "Are you sure you want to save these rider changes?";
 
   return (
     <div
@@ -507,6 +530,43 @@ export default function RiderDetailModal({
           )}
         </div>
       </div>
+
+      <Dialog open={Boolean(confirmationAction)}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>{confirmationTitle}</DialogTitle>
+          </DialogHeader>
+          <p className="text-sm text-gray-700">{confirmationMessage}</p>
+          <DialogFooter>
+            <button
+              type="button"
+              className="px-4 py-2 rounded bg-gray-200 text-gray-900 font-semibold hover:bg-gray-300 transition disabled:opacity-50"
+              onClick={() => setConfirmationAction(null)}
+              disabled={isSaving || isDeleting}
+            >
+              Cancel
+            </button>
+            <button
+              type="button"
+              className={`px-4 py-2 rounded text-white font-semibold transition disabled:opacity-50 ${
+                isConfirmingDelete
+                  ? "bg-red-600 hover:bg-red-700"
+                  : "bg-green-600 hover:bg-green-700"
+              }`}
+              onClick={handleConfirmAction}
+              disabled={isSaving || isDeleting}
+            >
+              {isConfirmingDelete
+                ? isDeleting
+                  ? "Deleting..."
+                  : "Delete"
+                : isSaving
+                  ? "Saving..."
+                  : "Save"}
+            </button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }
