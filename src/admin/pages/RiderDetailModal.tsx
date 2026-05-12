@@ -13,10 +13,6 @@ function normalizeUpdateValue(value: string): string | null {
   return normalized === "" ? null : normalized;
 }
 
-const adminApiUrl =
-  import.meta.env.VITE_ADMIN_API_URL?.replace(/\/$/, "") ??
-  "http://localhost:3000";
-
 interface RiderDetailModalProps {
   rider: Rider;
   onClose: () => void;
@@ -38,9 +34,9 @@ export default function RiderDetailModal({
   const [form, setForm] = useState<RiderFormData>(buildRiderFormData(rider));
   const [errors, setErrors] = useState<RiderFormErrors>({});
   const [formError, setFormError] = useState<string>("");
-  const [newPassword, setNewPassword] = useState<string>("");
   const [isSaving, setIsSaving] = useState(false);
   const [isDeleting, setIsDeleting] = useState(false);
+  const [isSendingResetEmail, setIsSendingResetEmail] = useState(false);
 
   useEffect(() => {
     setForm(buildRiderFormData(rider));
@@ -62,6 +58,42 @@ export default function RiderDetailModal({
     }
   };
 
+  const handleSendPasswordReset = async (): Promise<void> => {
+    if (!form.email.trim()) {
+      setFormError("Rider email is missing. Cannot send password reset.");
+      return;
+    }
+
+    setFormError("");
+    setIsSendingResetEmail(true);
+
+    try {
+      const { error: resetError } = await supabase.auth.resetPasswordForEmail(
+        form.email.trim(),
+        {
+          redirectTo: `${window.location.origin}/reset-password`,
+        },
+      );
+
+      if (resetError) {
+        throw new Error(resetError.message);
+      }
+
+      window.alert(
+        `Password reset link has been sent to ${form.email.trim()}. The rider can use it to update their password.`,
+      );
+    } catch (error: unknown) {
+      console.error(error);
+      const errorMessage =
+        error instanceof Error
+          ? error.message
+          : "Failed to send password reset email.";
+      setFormError(errorMessage);
+    } finally {
+      setIsSendingResetEmail(false);
+    }
+  };
+
   const nameInvalid = errors.name ? "true" : undefined;
   const contactInvalid = errors.contact ? "true" : undefined;
 
@@ -73,10 +105,6 @@ export default function RiderDetailModal({
     const contact = form.contact.trim();
     if (contact && !/^\d{11}$/.test(contact)) {
       nextErrors.contact = "Contact must be an 11-digit number.";
-    }
-
-    if (newPassword.trim() && newPassword.length < 8) {
-      nextErrors.password = "Password must be at least 8 characters.";
     }
 
     return nextErrors;
@@ -91,53 +119,19 @@ export default function RiderDetailModal({
       return;
     }
 
+    const isConfirmed = window.confirm(
+      "Are you sure you want to save these rider changes?",
+    );
+
+    if (!isConfirmed) {
+      return;
+    }
+
     setErrors({});
     setFormError("");
     setIsSaving(true);
 
     try {
-      // ✅ PART 3: UPDATE PASSWORD IN SUPABASE (ADMIN)
-      if (newPassword.trim()) {
-        if (!rider.userid) {
-          setFormError("Unable to update password: rider user ID is missing.");
-          setIsSaving(false);
-          return;
-        }
-
-        try {
-          const response = await fetch(
-            `${adminApiUrl}/admin/update-rider-password`,
-            {
-              method: "POST",
-              headers: {
-                "Content-Type": "application/json",
-              },
-              body: JSON.stringify({
-                userId: rider.userid,
-                newPassword: newPassword.trim(),
-              }),
-            },
-          );
-
-          const data = await response.json();
-
-          if (!response.ok) {
-            const message =
-              data?.error || `Failed to update password (${response.status})`;
-            throw new Error(message);
-          }
-        } catch (error: unknown) {
-          console.error(error);
-          const errorMessage =
-            error instanceof Error
-              ? error.message
-              : "Failed to update password.";
-          setFormError(errorMessage);
-          setIsSaving(false);
-          return;
-        }
-      }
-
       // ✅ UPDATE RIDER DATA IN SUPABASE
       const { error: updateError } = await supabase
         .from("riders")
@@ -170,7 +164,6 @@ export default function RiderDetailModal({
 
       onSaveRider(updatedRider);
       window.alert("Rider details saved successfully.");
-      setNewPassword("");
       setIsEditing(false);
     } catch (error: unknown) {
       console.error("Unexpected error:", error);
@@ -425,30 +418,21 @@ export default function RiderDetailModal({
           {isEditing && (
             <div className="flex flex-col gap-2">
               <p className="text-sm font-semibold text-gray-700">
-                New Password
+                Send Password Reset Email
               </p>
-              <input
-                type="password"
-                placeholder="Leave blank to keep current password"
-                value={newPassword}
-                onChange={(e: ChangeEvent<HTMLInputElement>) =>
-                  setNewPassword(e.target.value)
-                }
-                className={`px-3 py-2 border rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-green-500 ${
-                  errors.password
-                    ? "border-red-500 bg-red-50"
-                    : "border-gray-300 bg-white"
-                }`}
-              />
-              {errors.password ? (
-                <p className="text-xs text-red-600 font-semibold">
-                  {errors.password}
-                </p>
-              ) : (
-                <p className="text-xs text-gray-500">
-                  Must be at least 8 characters
-                </p>
-              )}
+              <button
+                type="button"
+                onClick={handleSendPasswordReset}
+                disabled={!form.email || isSaving || isSendingResetEmail}
+                className="px-4 py-2 bg-blue-600 text-white rounded-lg font-semibold hover:bg-blue-700 transition disabled:opacity-50 disabled:cursor-not-allowed text-sm"
+              >
+                {isSendingResetEmail
+                  ? "Sending..."
+                  : "Send Password Reset Link"}
+              </button>
+              <p className="text-xs text-gray-500">
+                Click to send a password reset email to {form.email || "rider"}.
+              </p>
             </div>
           )}
         </div>
