@@ -14,32 +14,64 @@ export default function ResetPassword() {
   const [hasToken, setHasToken] = useState(false);
 
   useEffect(() => {
-    let timeoutId: NodeJS.Timeout;
+    let isMounted = true;
 
-    // Subscribe to auth state changes to catch recovery token
-    const {
-      data: { subscription },
-    } = supabase.auth.onAuthStateChange((_event, session) => {
-      if (session) {
-        // Session established from recovery token
-        setHasToken(true);
-        setLoading(false);
-      } else {
-        // No session found, set timeout to show error after a brief delay
-        // to ensure we've given Supabase time to process the recovery token
-        timeoutId = setTimeout(() => {
+    const initializeResetSession = async () => {
+      try {
+        const currentUrl = window.location.href;
+        const parsedUrl = new URL(currentUrl);
+        const hasRecoveryCode =
+          parsedUrl.searchParams.has("code") ||
+          currentUrl.includes("access_token=") ||
+          currentUrl.includes("type=recovery");
+
+        if (hasRecoveryCode) {
+          const { error } = await supabase.auth.exchangeCodeForSession(
+            currentUrl,
+          );
+
+          if (error) {
+            throw error;
+          }
+        }
+
+        const { data, error } = await supabase.auth.getSession();
+
+        if (!isMounted) {
+          return;
+        }
+
+        if (error) {
+          setErrorMessage("Session error. Please try again.");
+          setHasToken(false);
+        } else if (data.session) {
+          setHasToken(true);
+        } else {
           setErrorMessage(
             "Invalid or expired reset link. Please request a new password reset.",
           );
           setHasToken(false);
+        }
+      } catch (err) {
+        if (!isMounted) {
+          return;
+        }
+
+        setErrorMessage(
+          "Invalid or expired reset link. Please request a new password reset.",
+        );
+        setHasToken(false);
+      } finally {
+        if (isMounted) {
           setLoading(false);
-        }, 1500);
+        }
       }
-    });
+    };
+
+    initializeResetSession();
 
     return () => {
-      subscription?.unsubscribe();
-      if (timeoutId) clearTimeout(timeoutId);
+      isMounted = false;
     };
   }, []);
 
