@@ -97,7 +97,7 @@ export default function RiderMapPage() {
 
   const requestRiderLocation = (): void => {
     if (!navigator.geolocation) {
-      setGpsError('Location access is not supported on this device.');
+      setGpsError("Location access is not supported on this device.");
       setRiderLocation(manilaCenter);
       return;
     }
@@ -116,23 +116,25 @@ export default function RiderMapPage() {
       const accuracy = position.coords.accuracy;
       setGpsAccuracy(accuracy);
       if (accuracy < 10) {
-        setGpsSignalQuality('excellent');
+        setGpsSignalQuality("excellent");
       } else if (accuracy < 25) {
-        setGpsSignalQuality('good');
+        setGpsSignalQuality("good");
       } else if (accuracy < 100) {
-        setGpsSignalQuality('fair');
+        setGpsSignalQuality("fair");
       } else {
-        setGpsSignalQuality('acquiring');
+        setGpsSignalQuality("acquiring");
       }
       // GPS acquired — stop showing the initial loading indicator
       setIsLoading(false);
     };
 
     const errorCallback = (error: GeolocationPositionError) => {
-      console.warn('GPS Error:', error.message);
+      console.warn("GPS Error:", error.message);
 
       if (error.code === error.PERMISSION_DENIED) {
-        setGpsError('Please allow location access for the Rider app in your browser settings and reload the page.');
+        setGpsError(
+          "Please allow location access for the Rider app in your browser settings and reload the page.",
+        );
       } else {
         setGpsError(`GPS: ${error.message}`);
       }
@@ -142,11 +144,15 @@ export default function RiderMapPage() {
       setIsLoading(false);
     };
 
-    gpsWatchRef.current = navigator.geolocation.watchPosition(successCallback, errorCallback, {
-      enableHighAccuracy: true,
-      timeout: 10000,
-      maximumAge: 0,
-    });
+    gpsWatchRef.current = navigator.geolocation.watchPosition(
+      successCallback,
+      errorCallback,
+      {
+        enableHighAccuracy: true,
+        timeout: 10000,
+        maximumAge: 0,
+      },
+    );
   };
 
   // Recompute the nearest stop whenever rider location or stop list updates
@@ -260,7 +266,7 @@ export default function RiderMapPage() {
 
         setDelivery(selected);
         if (!selected) {
-          setRouteGeoError('Delivery not found for this route.');
+          setRouteGeoError("Delivery not found for this route.");
         } else {
           setRouteGeoError(null);
         }
@@ -268,9 +274,9 @@ export default function RiderMapPage() {
         if (cancelled) {
           return;
         }
-        console.error('Error loading delivery details:', error);
+        console.error("Error loading delivery details:", error);
         setDelivery(null);
-        setRouteGeoError('Unable to load delivery details.');
+        setRouteGeoError("Unable to load delivery details.");
       } finally {
         if (!cancelled) {
           setIsLoading(false);
@@ -360,8 +366,8 @@ export default function RiderMapPage() {
     const address = String(delivery?.address ?? "").trim();
     if (!address) {
       setDestinationCoords(null);
-      if (deliveryId && delivery && address === '-') {
-        setRouteGeoError('This delivery has no saved address.');
+      if (deliveryId && delivery && address === "-") {
+        setRouteGeoError("This delivery has no saved address.");
       }
       return;
     }
@@ -677,7 +683,7 @@ export default function RiderMapPage() {
               );
             }}
           >
-            I'll arrive
+            Arrived
           </button>
         )}
 
@@ -715,7 +721,6 @@ export default function RiderMapPage() {
           📍 Refresh GPS Location
         </button>
       </div>
-
     </RiderAppLayout>
   );
 }
