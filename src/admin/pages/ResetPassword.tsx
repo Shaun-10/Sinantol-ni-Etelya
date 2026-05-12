@@ -21,11 +21,23 @@ export default function ResetPassword() {
         const currentUrl = window.location.href;
         const parsedUrl = new URL(currentUrl);
         const recoveryCode = parsedUrl.searchParams.get("code");
+        const hashParams = new URLSearchParams(parsedUrl.hash.replace(/^#/, ""));
+        const accessToken = hashParams.get("access_token");
+        const refreshToken = hashParams.get("refresh_token");
 
         if (recoveryCode) {
           const { error } = await supabase.auth.exchangeCodeForSession(
             recoveryCode,
           );
+
+          if (error) {
+            throw error;
+          }
+        } else if (accessToken && refreshToken) {
+          const { error } = await supabase.auth.setSession({
+            access_token: accessToken,
+            refresh_token: refreshToken,
+          });
 
           if (error) {
             throw error;

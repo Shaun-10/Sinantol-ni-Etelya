@@ -1,5 +1,11 @@
 import { lazy, Suspense } from "react";
-import { BrowserRouter, Navigate, Route, Routes } from "react-router-dom";
+import {
+  BrowserRouter,
+  Navigate,
+  Route,
+  Routes,
+  useLocation,
+} from "react-router-dom";
 import LoginPage from "./admin/components/auth/AdminLoginPage";
 import Layout from "./admin/components/AdminLayout";
 import AdminProtectedRoute from "./admin/components/auth/AdminProtectedRoute";
@@ -44,10 +50,37 @@ const RiderAreaRoutesPage = lazy(
   () => import("./rider/pages/navigation/RiderAreaRoutesPage"),
 );
 
+function hasPasswordRecoveryParams(search: string, hash: string): boolean {
+  const searchParams = new URLSearchParams(search);
+  const hashParams = new URLSearchParams(hash.replace(/^#/, ""));
+
+  return (
+    searchParams.get("type") === "recovery" ||
+    hashParams.get("type") === "recovery" ||
+    (searchParams.has("code") && !searchParams.has("error")) ||
+    (hashParams.has("access_token") && hashParams.has("refresh_token"))
+  );
+}
+
+function PublicEntryRedirect() {
+  const location = useLocation();
+
+  if (hasPasswordRecoveryParams(location.search, location.hash)) {
+    return (
+      <Navigate
+        to={`/reset-password${location.search}${location.hash}`}
+        replace
+      />
+    );
+  }
+
+  return <Navigate to="/login" replace />;
+}
+
 function AppRoutes() {
   return (
     <Routes>
-      <Route path="/" element={<Navigate to="/login" replace />} />
+      <Route path="/" element={<PublicEntryRedirect />} />
 
       <Route
         element={
@@ -150,7 +183,7 @@ function AppRoutes() {
           </RiderProtectedRoute>
         }
       />
-      <Route path="*" element={<Navigate to="/login" replace />} />
+      <Route path="*" element={<PublicEntryRedirect />} />
     </Routes>
   );
 }
