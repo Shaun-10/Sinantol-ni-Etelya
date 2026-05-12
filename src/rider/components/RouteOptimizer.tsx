@@ -126,11 +126,7 @@ export default function RouteOptimizer({
         <p className="text-sm text-gray-600">Optimizing route...</p>
       )}
 
-      <MapContainer
-        center={mapCenter}
-        zoom={13}
-        className="rider-route-map"
-      >
+      <MapContainer center={mapCenter} zoom={13} className="rider-route-map">
         <TileLayer
           attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
           url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
