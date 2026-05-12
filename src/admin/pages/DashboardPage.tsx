@@ -1,4 +1,4 @@
-import { useEffect, useState, useMemo, type Key } from "react";
+import { useEffect, useState, useMemo, type Key, type ChangeEvent } from "react";
 import {
   Bar,
   CartesianGrid,
@@ -497,7 +497,7 @@ export default function DashboardPage(): JSX.Element {
           <select
             id="dashboard-range-select"
             value={performanceRange}
-            onChange={(e) => setPerformanceRange(e.target.value as "weekly" | "monthly" | "yearly")}
+            onChange={(e: ChangeEvent<HTMLSelectElement>) => setPerformanceRange(e.target.value as "weekly" | "monthly" | "yearly")}
           >
             <option value="weekly">Weekly</option>
             <option value="monthly">Monthly</option>

@@ -1,5 +1,6 @@
 import { useMemo, useState, ChangeEvent, useEffect } from "react";
 import { supabase } from "@/lib/supabase";
+import ReceiptModal from "./ReceiptModal";
 import {
   FiBarChart2,
   FiCheckSquare,
@@ -33,6 +34,7 @@ import {
 import type { IconType } from "react-icons";
 
 interface OrderByArea {
+  orderId: number;
   id: number;
   clientName: string;
   contactNo: string;
@@ -175,10 +177,12 @@ function SummaryCard({
 
 interface OrdersByAreaSectionProps {
   orders: OrderByArea[];
+  onViewReceipt: (orderId: number) => void;
 }
 
 function OrdersByAreaSection({
   orders,
+  onViewReceipt,
 }: OrdersByAreaSectionProps): JSX.Element {
   const [selectedArea, setSelectedArea] = useState<string>("All Areas");
   const [currentPage, setCurrentPage] = useState<number>(1);
@@ -264,6 +268,7 @@ function OrdersByAreaSection({
               <TableHead>Classic</TableHead>
               <TableHead>Spicy</TableHead>
               <TableHead>Amount</TableHead>
+              <TableHead>Actions</TableHead>
             </TableRow>
           </TableHeader>
 
@@ -277,6 +282,15 @@ function OrdersByAreaSection({
                 <TableCell>{order.classic}</TableCell>
                 <TableCell>{order.spicy}</TableCell>
                 <TableCell>{pesoFormatter.format(order.amount)}</TableCell>
+                <TableCell>
+                  <button
+                    type="button"
+                    onClick={() => onViewReceipt(order.orderId)}
+                    className="px-3 py-1 text-xs font-semibold bg-gray-100 text-gray-700 rounded hover:bg-gray-200 transition"
+                  >
+                    Receipt
+                  </button>
+                </TableCell>
               </TableRow>
             ))}
           </TableBody>
@@ -611,6 +625,8 @@ export default function SalesPage(): JSX.Element {
   const [orderItems, setOrderItems] = useState<OrderItem[]>([]);
   const [flavorTotals, setFlavorTotals] = useState({ classic: 0, spicy: 0 });
   const [isLoading, setIsLoading] = useState(true);
+  const [isReceiptOpen, setIsReceiptOpen] = useState(false);
+  const [selectedOrderId, setSelectedOrderId] = useState<string | null>(null);
 
   // ✅ Fetch orders + items
   useEffect(() => {
@@ -721,6 +737,7 @@ rider:riders (
       const addressArea = extractArea(order.address)?.trim();
 
       return {
+        orderId: order.id,
         id: index + 1,
         clientName: order.customer_name || "N/A",
         contactNo: order.contact || "N/A",
@@ -852,7 +869,13 @@ rider:riders (
               />
             ))}
           </section>
-          <OrdersByAreaSection orders={ordersByAreaData} />
+          <OrdersByAreaSection
+            orders={ordersByAreaData}
+            onViewReceipt={(orderId) => {
+              setSelectedOrderId(String(orderId));
+              setIsReceiptOpen(true);
+            }}
+          />
           <section className="sales-panel" aria-label="Sales chart">
             <div className="sales-panel-header">
               <h3>Sales</h3>
@@ -862,7 +885,7 @@ rider:riders (
                 <select
                   id="sales-range-select"
                   value={salesRange}
-                  onChange={(e) => setSalesRange(e.target.value as "weekly" | "monthly" | "yearly")}
+                  onChange={(e: ChangeEvent<HTMLSelectElement>) => setSalesRange(e.target.value as "weekly" | "monthly" | "yearly")}
                 >
                   <option value="weekly">Weekly</option>
                   <option value="monthly">Monthly</option>
@@ -913,6 +936,16 @@ rider:riders (
           <PriceListCard />
         </div>
       </div>
+
+      {isReceiptOpen && selectedOrderId && (
+        <ReceiptModal
+          orderId={selectedOrderId}
+          onClose={() => {
+            setIsReceiptOpen(false);
+            setSelectedOrderId(null);
+          }}
+        />
+      )}
     </section>
   );
 }
