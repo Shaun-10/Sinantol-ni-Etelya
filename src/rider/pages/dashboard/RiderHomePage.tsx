@@ -109,17 +109,6 @@ export default function RiderHomePage() {
               alt="Sinantol ni Etelya Riders"
               className="w-[72px] h-11 object-contain"
             />
-            <button
-              type="button"
-              onClick={() => {
-                localStorage.removeItem("rider");
-                navigate("/rider/login");
-              }}
-              className="flex items-center gap-2 px-3 py-2 bg-white border border-gray-300 rounded-lg text-sm font-semibold text-gray-700 hover:bg-gray-100 cursor-pointer"
-            >
-              <FiUser size={18} />
-              Logout
-            </button>
           </div>
 
           <div className="px-2.5 py-2">
