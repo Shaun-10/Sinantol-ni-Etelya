@@ -423,8 +423,7 @@ textarea {
 }
 
 .sales-period-btn:focus {
-  outline: 3px solid rgba(31, 143, 56, 0.12);
-  outline-offset: 2px;
+  outline: none;
 }
 
 .riders-header-bottom {
@@ -546,6 +545,11 @@ textarea {
   transform: translateY(-1px);
   background: #fdecb0;
   box-shadow: 0 8px 16px rgba(122, 91, 0, 0.12);
+}
+
+.add-rider-btn:focus,
+.reassign-rider-btn:focus {
+  outline: none;
 }
 
 .riders-list-section,

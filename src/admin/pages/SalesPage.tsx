@@ -897,7 +897,7 @@ rider:riders (
 
   return (
     <section className="sales-main-content">
-      <header className="sales-header sticky top-0 z-30 bg-white">
+      <header className="sales-header sticky top-0 z-30">
         <h2>
           <FiBarChart2 />
           Sales

@@ -858,7 +858,7 @@ export default function RidersPage(): JSX.Element {
 
   return (
     <div className="riders-main-content">
-      <section className="riders-header sticky top-0 z-30 bg-white">
+      <section className="riders-header sticky top-0 z-30">
         <div className="riders-header-top">
           <h2>
             <FiTruck aria-hidden="true" />

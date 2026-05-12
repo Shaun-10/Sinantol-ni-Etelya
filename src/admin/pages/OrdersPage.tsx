@@ -343,7 +343,7 @@ export default function OrdersPage(): JSX.Element {
 
   return (
     <div className="orders-main-content">
-      <div className="sticky top-0 z-30 bg-white">
+      <div className="sticky top-0 z-30">
         <div className="flex items-center justify-between mb-6">
           {/* LEFT SIDE */}
           <div className="flex items-center gap-3">
@@ -356,7 +356,7 @@ export default function OrdersPage(): JSX.Element {
           {/* RIGHT SIDE */}
           <button
             onClick={() => setIsAddOrderOpen(true)}
-            className="px-4 py-2 bg-green-600 text-white rounded-lg font-semibold hover:bg-green-700 transition"
+            className="px-4 py-2 bg-green-600 text-white rounded-lg font-semibold hover:bg-green-700 transition focus:outline-none"
           >
             + Add Order
           </button>
