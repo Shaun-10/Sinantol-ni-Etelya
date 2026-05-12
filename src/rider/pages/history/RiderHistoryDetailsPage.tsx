@@ -143,8 +143,3 @@ export default function RiderHistoryDetailsPage() {
     </RiderAppLayout>
   );
 }
-        </strong>
-      </article>
-    </RiderAppLayout>
-  );
-}
