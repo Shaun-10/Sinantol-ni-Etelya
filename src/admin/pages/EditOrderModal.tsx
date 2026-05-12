@@ -1,4 +1,10 @@
 import { FormEvent, useEffect, useState, type ChangeEvent } from "react";
+import Dialog, {
+  DialogContent,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "../../components/ui/dialog";
 import { supabase } from "@lib/supabase";
 import type { AdminOrder } from "./orderTypes";
 
@@ -171,6 +177,7 @@ export default function EditOrderModal({
     "waiting",
   );
   const [customerName, setCustomerName] = useState("");
+  const [isSaveConfirmOpen, setIsSaveConfirmOpen] = useState(false);
 
   const itemTotal =
     classic.small * PRICES.small +
@@ -223,8 +230,12 @@ export default function EditOrderModal({
 
         if (orderError || !orderData) {
           console.error("Error fetching order:", orderError);
-          alert("Failed to load order details");
-          onClose();
+          const shouldClose = window.confirm(
+            "Failed to load order details. Close this editor?",
+          );
+          if (shouldClose) {
+            onClose();
+          }
           return;
         }
 
@@ -329,15 +340,16 @@ export default function EditOrderModal({
       return;
     }
 
-    const isConfirmed = window.confirm(
-      "Are you sure you want to save these changes to this order?",
-    );
+    setIsSaveConfirmOpen(true);
+  };
 
-    if (!isConfirmed) {
-      return;
-    }
-
+  const handleSaveOrder = async () => {
     setIsSubmitting(true);
+    const formattedCustomerName = formatCustomerName(
+      firstName,
+      lastName,
+      middleInitial,
+    );
 
     try {
       // Fetch product variants
@@ -347,7 +359,6 @@ export default function EditOrderModal({
 
       if (variantsError || !variants) {
         alert("Failed to load product variants.");
-        setIsSubmitting(false);
         return;
       }
 
@@ -461,6 +472,11 @@ export default function EditOrderModal({
     } finally {
       setIsSubmitting(false);
     }
+  };
+
+  const handleConfirmSave = async () => {
+    setIsSaveConfirmOpen(false);
+    await handleSaveOrder();
   };
 
   if (isLoading) {
@@ -838,6 +854,35 @@ export default function EditOrderModal({
           </div>
         </form>
       </div>
+
+      <Dialog open={isSaveConfirmOpen}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Confirm Update</DialogTitle>
+          </DialogHeader>
+          <p className="text-sm text-gray-700 mb-4">
+            Are you sure you want to save these changes to this order?
+          </p>
+          <DialogFooter>
+            <button
+              type="button"
+              className="px-4 py-2 rounded bg-gray-200 text-gray-900 font-semibold hover:bg-gray-300 transition disabled:opacity-50"
+              onClick={() => setIsSaveConfirmOpen(false)}
+              disabled={isSubmitting}
+            >
+              Cancel
+            </button>
+            <button
+              type="button"
+              className="px-4 py-2 rounded bg-green-600 text-white font-semibold hover:bg-green-700 transition disabled:opacity-50"
+              onClick={handleConfirmSave}
+              disabled={isSubmitting}
+            >
+              Save
+            </button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }

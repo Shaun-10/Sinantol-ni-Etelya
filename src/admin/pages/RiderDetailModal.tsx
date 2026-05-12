@@ -364,13 +364,18 @@ export default function RiderDetailModal({
                   </label>
                   <input
                     id="detail-area"
-                    className="px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-green-500"
+                    className="px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-green-500 disabled:bg-gray-100 disabled:cursor-not-allowed"
                     name="area"
-                    placeholder="Enter area (City / Area / Barangay)"
+                    placeholder="Area cannot be changed here"
                     aria-label="Area"
                     value={form.area}
                     onChange={handleChange}
+                    disabled
                   />
+                  <p className="text-xs text-gray-500">
+                    Area cannot be changed from this screen. Use Reassign Area
+                    to update rider assignment.
+                  </p>
                 </>
               ) : (
                 <p className="text-gray-700">{rider.area}</p>
