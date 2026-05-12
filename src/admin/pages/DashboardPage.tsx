@@ -132,6 +132,7 @@ function buildSalesSummary(
 
   for (const order of orders) {
     if (!order.created_at) continue;
+    if (normalizeStatus(order.status) !== "delivered") continue;
 
     const orderDate = new Date(order.created_at);
     const amount = toAmount(order.total);

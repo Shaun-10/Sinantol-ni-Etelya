@@ -112,6 +112,10 @@ function extractArea(address?: string | null): string {
   return address.trim();
 }
 
+function normalizeStatus(status: string | null | undefined): string {
+  return status?.trim().toLowerCase() ?? "";
+}
+
 const RADIAN = Math.PI / 180;
 
 const renderPercentageLabel = (props: any): JSX.Element => {
@@ -537,6 +541,7 @@ function buildSalesSummary(
 
   for (const order of orders) {
     if (!order.created_at) continue;
+    if (normalizeStatus(order.status) !== "delivered") continue;
 
     const orderDate = new Date(order.created_at);
     const amount = Number(order.total || 0);
