@@ -329,6 +329,14 @@ export default function EditOrderModal({
       return;
     }
 
+    const isConfirmed = window.confirm(
+      "Are you sure you want to save these changes to this order?",
+    );
+
+    if (!isConfirmed) {
+      return;
+    }
+
     setIsSubmitting(true);
 
     try {

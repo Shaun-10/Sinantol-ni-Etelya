@@ -819,7 +819,11 @@ export default function RidersPage(): JSX.Element {
         .from("riders")
         .update({
           name: updatedRider.name.trim(),
+          address: updatedRider.address.trim() || null,
+          area: updatedRider.area.trim() || null,
           contact: updatedRider.contact.trim() || null,
+          plate_number: updatedRider.plate_number.trim() || null,
+          email: updatedRider.email.trim() || null,
         })
         .eq("id", updatedRider.id);
 
