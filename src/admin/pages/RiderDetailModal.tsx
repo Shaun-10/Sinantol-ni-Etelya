@@ -40,8 +40,8 @@ interface RiderDetailModalProps {
   rider: Rider;
   onClose: () => void;
   onOpenDeliveries: () => void;
-  onSaveRider: (rider: Rider) => void;
-  onDeleteRider: (rider: Rider) => void;
+  onSaveRider: (rider: Rider) => Promise<void> | void;
+  onDeleteRider: (rider: Rider) => Promise<void> | void;
 }
 
 export default function RiderDetailModal({
@@ -62,6 +62,10 @@ export default function RiderDetailModal({
   const [isSendingResetEmail, setIsSendingResetEmail] = useState(false);
   const [confirmationAction, setConfirmationAction] =
     useState<ConfirmationAction>(null);
+  const [statusDialog, setStatusDialog] = useState<{
+    title: string;
+    message: string;
+  } | null>(null);
 
   useEffect(() => {
     setForm(buildRiderFormData(rider));
@@ -106,9 +110,10 @@ export default function RiderDetailModal({
         throw new Error(resetError.message);
       }
 
-      window.alert(
-        `Password reset link has been sent to ${form.email.trim()}. The rider can use it to update their password.`,
-      );
+      setStatusDialog({
+        title: "Email Sent",
+        message: `Password reset link has been sent to ${form.email.trim()}.`,
+      });
     } catch (error: unknown) {
       console.error(error);
       const errorMessage =
@@ -155,26 +160,6 @@ export default function RiderDetailModal({
     setIsSaving(true);
 
     try {
-      // ✅ UPDATE RIDER DATA IN SUPABASE
-      const { error: updateError } = await supabase
-        .from("riders")
-        .update({
-          name: form.name.trim(),
-          address: normalizeUpdateValue(form.address),
-          area: normalizeUpdateValue(form.area),
-          contact: normalizeUpdateValue(form.contact),
-          plate_number: normalizeUpdateValue(form.plate_number),
-          email: normalizeUpdateValue(form.email),
-        })
-        .eq("id", rider.id);
-
-      if (updateError) {
-        console.error("Error updating rider in Supabase:", updateError);
-        setFormError("Failed to save rider changes to database.");
-        setIsSaving(false);
-        return;
-      }
-
       const updatedRider: Rider = {
         ...rider,
         name: form.name.trim(),
@@ -185,8 +170,7 @@ export default function RiderDetailModal({
         email: form.email.trim(),
       };
 
-      onSaveRider(updatedRider);
-      window.confirm("Rider details saved successfully.");
+      await onSaveRider(updatedRider);
       setIsEditing(false);
     } catch (error: unknown) {
       console.error("Unexpected error:", error);
@@ -203,27 +187,13 @@ export default function RiderDetailModal({
   const deleteRider = async (): Promise<void> => {
     setIsDeleting(true);
     try {
-      // ✅ DELETE FROM SUPABASE
-      const { error } = await supabase
-        .from("riders")
-        .delete()
-        .eq("id", rider.id);
-
-      if (error) {
-        console.error("Error deleting rider from Supabase:", error);
-        alert("Failed to delete rider from database.");
-        setIsDeleting(false);
-        return;
-      }
-
-      onDeleteRider(rider);
-      window.confirm("Rider deleted successfully.");
-      setIsDeleting(false);
+      await onDeleteRider(rider);
+      onClose();
     } catch (err) {
       console.error("Unexpected error:", err);
-      alert("Unexpected error while deleting rider.");
-      setIsDeleting(false);
+      setFormError("Unexpected error while deleting rider.");
     }
+    setIsDeleting(false);
   };
 
   const handleDelete = (): void => {
@@ -548,7 +518,7 @@ export default function RiderDetailModal({
           <DialogFooter>
             <button
               type="button"
-              className="px-4 py-2 rounded bg-gray-200 text-gray-900 font-semibold hover:bg-gray-300 transition disabled:opacity-50"
+              className="px-4 py-2 rounded-lg bg-gray-200 text-gray-900 font-semibold hover:bg-gray-300 transition shadow-sm focus:outline-none focus:ring-2 focus:ring-gray-400/50 disabled:opacity-50"
               onClick={() => setConfirmationAction(null)}
               disabled={isSaving || isDeleting}
             >
@@ -556,10 +526,10 @@ export default function RiderDetailModal({
             </button>
             <button
               type="button"
-              className={`px-4 py-2 rounded text-white font-semibold transition disabled:opacity-50 ${
+              className={`px-4 py-2 rounded-lg text-white font-semibold transition shadow-sm focus:outline-none focus:ring-2 disabled:opacity-50 ${
                 isConfirmingDelete
-                  ? "bg-red-600 hover:bg-red-700"
-                  : "bg-green-600 hover:bg-green-700"
+                  ? "bg-red-600 hover:bg-red-700 focus:ring-red-500/40"
+                  : "bg-green-600 hover:bg-green-700 focus:ring-green-500/40"
               }`}
               onClick={handleConfirmAction}
               disabled={isSaving || isDeleting}
@@ -571,6 +541,47 @@ export default function RiderDetailModal({
                 : isSaving
                   ? "Saving..."
                   : "Save"}
+            </button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+      {/* removed duplicate confirmation dialog */}
+      <Dialog open={false}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>{confirmationTitle}</DialogTitle>
+          </DialogHeader>
+
+          <p className="text-sm text-gray-700">{confirmationMessage}</p>
+
+          <DialogFooter>
+            <button type="button" onClick={() => setConfirmationAction(null)}>
+              Cancel
+            </button>
+
+            <button type="button" onClick={handleConfirmAction}>
+              {isConfirmingDelete ? "Delete" : "Save"}
+            </button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* ✅ ADD THIS NEW DIALOG RIGHT HERE */}
+      <Dialog open={Boolean(statusDialog)}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>{statusDialog?.title}</DialogTitle>
+          </DialogHeader>
+
+          <p className="text-sm text-gray-700">{statusDialog?.message}</p>
+
+          <DialogFooter>
+            <button
+              type="button"
+              className="px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700 font-semibold"
+              onClick={() => setStatusDialog(null)}
+            >
+              OK
             </button>
           </DialogFooter>
         </DialogContent>

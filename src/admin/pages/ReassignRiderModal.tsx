@@ -41,6 +41,17 @@ export default function ReassignRiderModal({
   const [firstSwapRiderId, setFirstSwapRiderId] = useState("");
   const [secondSwapRiderId, setSecondSwapRiderId] = useState("");
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [confirmDialog, setConfirmDialog] = useState<{
+    title: string;
+    message: string;
+    confirmLabel?: string;
+    tone?: "primary" | "danger";
+    onConfirm: () => Promise<void> | void;
+  } | null>(null);
+  const [statusDialog, setStatusDialog] = useState<{
+    title: string;
+    message: string;
+  } | null>(null);
   const [errorMessage, setErrorMessage] = useState("");
 
   const sourceRider = useMemo(
@@ -59,6 +70,47 @@ export default function ReassignRiderModal({
   useEffect(() => {
     setTargetArea("");
   }, [sourceRider]);
+
+  const handleRequestUpdateArea = (event: FormEvent<HTMLFormElement>): void => {
+    event.preventDefault();
+
+    if (isSubmitting) return;
+
+    setErrorMessage("");
+
+    if (!sourceRiderId) {
+      setErrorMessage("Please select a source rider.");
+      return;
+    }
+
+    const trimmedArea = targetArea.trim();
+
+    if (!trimmedArea) {
+      setErrorMessage("Please select a target area.");
+      return;
+    }
+
+    if (
+      sourceRider &&
+      sourceRider.area?.trim().toLowerCase() === trimmedArea.toLowerCase()
+    ) {
+      setErrorMessage("Choose a different area from the current one.");
+      return;
+    }
+
+    setConfirmDialog({
+      title: "Update Area",
+      message: `Update ${sourceRider?.name || "this rider"} to ${trimmedArea}?`,
+      confirmLabel: "Update",
+      tone: "primary",
+      onConfirm: async () => {
+        setConfirmDialog(null);
+        await handleSubmit({
+          preventDefault() {},
+        } as FormEvent<HTMLFormElement>);
+      },
+    });
+  };
 
   const handleSubmit = async (
     event: FormEvent<HTMLFormElement>,
@@ -106,9 +158,10 @@ export default function ReassignRiderModal({
 
       await onReassigned();
 
-      window.confirm(
-        `Updated ${sourceRider?.name || "the rider"} to ${trimmedArea}.`,
-      );
+      setStatusDialog({
+        title: "Success",
+        message: `Updated ${sourceRider?.name || "the rider"} to ${trimmedArea}.`,
+      });
 
       // ✅ reset
       setSourceRiderId("");
@@ -152,6 +205,25 @@ export default function ReassignRiderModal({
       return;
     }
 
+    setConfirmDialog({
+      title: "Swap Areas",
+      message: `Swap areas between ${firstSwapRider.name || "first rider"} (${firstArea || "no area"}) and ${secondSwapRider.name || "second rider"} (${secondArea || "no area"})?`,
+      confirmLabel: "Swap",
+      tone: "primary",
+      onConfirm: async () => {
+        setConfirmDialog(null);
+        await performSwapAreas(firstArea, secondArea);
+      },
+    });
+  };
+
+  const performSwapAreas = async (
+    firstArea: string | null,
+    secondArea: string | null,
+  ): Promise<void> => {
+    if (isSubmitting) return;
+    if (!firstSwapRiderId || !secondSwapRiderId) return;
+
     setIsSubmitting(true);
 
     try {
@@ -179,9 +251,10 @@ export default function ReassignRiderModal({
 
       await onReassigned();
 
-      window.confirm(
-        `Swapped areas for ${firstSwapRider.name || "the first rider"} and ${secondSwapRider.name || "the second rider"}.`,
-      );
+      setStatusDialog({
+        title: "Success",
+        message: `Swapped areas for ${firstSwapRider?.name || "the first rider"} and ${secondSwapRider?.name || "the second rider"}.`,
+      });
 
       setFirstSwapRiderId("");
       setSecondSwapRiderId("");
@@ -189,7 +262,6 @@ export default function ReassignRiderModal({
       onClose();
     } catch (error: unknown) {
       console.error("Error swapping rider areas:", error);
-
       setErrorMessage(getErrorMessage(error, "Failed to swap rider areas."));
     } finally {
       setIsSubmitting(false);
@@ -227,7 +299,7 @@ export default function ReassignRiderModal({
         </header>
 
         <form
-          onSubmit={handleSubmit}
+          onSubmit={handleRequestUpdateArea}
           className="flex flex-1 flex-col overflow-hidden"
         >
           <div className="space-y-5 overflow-y-auto px-6 py-6">
@@ -388,6 +460,64 @@ export default function ReassignRiderModal({
           </div>
         </form>
       </div>
+      {confirmDialog && (
+        <div className="fixed inset-0 z-[60] flex items-center justify-center bg-black/50">
+          <div className="w-[90%] max-w-md rounded-lg border border-gray-200 bg-white p-6 shadow-2xl">
+            <h3 className="mb-2 text-lg font-bold text-gray-900">
+              {confirmDialog.title}
+            </h3>
+            <p className="text-sm text-gray-700 whitespace-pre-line">
+              {confirmDialog.message}
+            </p>
+
+            <div className="mt-4 flex justify-end gap-2">
+              <button
+                type="button"
+                className="px-4 py-2 rounded-lg bg-gray-200 text-gray-900 font-semibold hover:bg-gray-300 transition shadow-sm focus:outline-none focus:ring-2 focus:ring-gray-400/50 disabled:opacity-50"
+                onClick={() => setConfirmDialog(null)}
+                disabled={isSubmitting}
+              >
+                Cancel
+              </button>
+              <button
+                type="button"
+                className={`px-4 py-2 rounded-lg text-white font-semibold transition shadow-sm focus:outline-none focus:ring-2 disabled:opacity-50 ${
+                  confirmDialog.tone === "danger"
+                    ? "bg-red-600 hover:bg-red-700 focus:ring-red-500/40"
+                    : "bg-green-600 hover:bg-green-700 focus:ring-green-500/40"
+                }`}
+                onClick={confirmDialog.onConfirm}
+                disabled={isSubmitting}
+              >
+                {confirmDialog.confirmLabel ?? "Confirm"}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+      {statusDialog && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50">
+          <div className="bg-white rounded-lg shadow-xl p-6 w-[90%] max-w-md">
+            <h3 className="text-lg font-bold text-gray-900 mb-2">
+              {statusDialog.title}
+            </h3>
+
+            <p className="text-sm text-gray-700 whitespace-pre-line">
+              {statusDialog.message}
+            </p>
+
+            <div className="mt-4 flex justify-end">
+              <button
+                type="button"
+                onClick={() => setStatusDialog(null)}
+                className="px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 text-sm font-semibold"
+              >
+                OK
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
