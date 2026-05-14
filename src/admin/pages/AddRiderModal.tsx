@@ -31,6 +31,7 @@ export default function AddRiderModal({
 }: AddRiderModalProps): JSX.Element {
   const [form, setForm] = useState<RiderFormData>(defaultRiderFormValues);
   const [errorMessage, setErrorMessage] = useState("");
+  const [isConfirmOpen, setIsConfirmOpen] = useState(false);
 
   const handleChange = (
     e: ChangeEvent<HTMLInputElement | HTMLSelectElement>,
@@ -85,6 +86,11 @@ export default function AddRiderModal({
       return;
     }
 
+    setIsConfirmOpen(true);
+  };
+
+  const handleConfirm = () => {
+    setIsConfirmOpen(false);
     onAddRider(form);
   };
 
@@ -93,7 +99,7 @@ export default function AddRiderModal({
     "focus:outline-none focus:ring-2 focus:ring-green-500";
 
   return (
-    <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
+    <>
       <div className="bg-white rounded-lg w-11/12 max-w-3xl shadow-xl overflow-hidden">
         {/* Header */}
         <div className="flex items-center justify-between px-6 py-4 border-b">
@@ -131,7 +137,7 @@ export default function AddRiderModal({
                     id="contact"
                     name="contact"
                     type="tel"
-                    placeholder="09XXXXXXXXX"
+                    placeholder="XXXXXXXXXXX"
                     aria-label="Contact"
                     value={form.contact}
                     onChange={handleChange}
@@ -240,6 +246,34 @@ export default function AddRiderModal({
           </div>
         </form>
       </div>
-    </div>
+      {isConfirmOpen && (
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-[60]">
+          <div className="bg-white rounded-lg shadow-xl w-full max-w-sm mx-4 p-6">
+            <h3 className="text-lg font-bold text-gray-800 mb-2">Add Rider</h3>
+            <p className="text-sm text-gray-600 mb-6">
+              Are you sure you want to add{" "}
+              <span className="font-semibold text-gray-800">{form.name}</span>{" "}
+              as a rider?
+            </p>
+            <div className="flex justify-end gap-3">
+              <button
+                type="button"
+                onClick={() => setIsConfirmOpen(false)}
+                className="px-4 py-2 rounded-md border border-gray-300 text-gray-700 hover:bg-gray-100 text-sm font-semibold"
+              >
+                Cancel
+              </button>
+              <button
+                type="button"
+                onClick={handleConfirm}
+                className="px-4 py-2 rounded-md bg-green-600 text-white hover:bg-green-700 text-sm font-semibold"
+              >
+                Confirm
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+    </>
   );
 }

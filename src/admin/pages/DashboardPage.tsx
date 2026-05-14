@@ -545,16 +545,9 @@ export default function DashboardPage(): JSX.Element {
 
       <section className="dashboard-section-block">
         <h3>Sales</h3>
-        <div
-          style={{
-            display: "flex",
-            gap: 8,
-            alignItems: "center",
-            marginBottom: 8,
-          }}
-        >
-          <label style={{ fontWeight: 700 }}>Range:</label>
-          <div style={{ display: "flex", gap: 8 }}>
+        <div className="flex items-center gap-2 mb-2">
+          <label className="font-bold"></label>
+          <div className="flex gap-2">
             <button
               type="button"
               onClick={() => setPerformanceRange("weekly")}

@@ -74,6 +74,50 @@ function buildRiderFilter(rider: Rider): string {
   return `rider_id.eq.${rider.id}`;
 }
 
+interface NotificationModalProps {
+  title: string;
+  message: string;
+  type?: "success" | "error";
+  onClose: () => void;
+}
+
+function NotificationModal({
+  title,
+  message,
+  type = "success",
+  onClose,
+}: NotificationModalProps): JSX.Element {
+  return (
+    <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-[60]">
+      <div className="bg-white rounded-lg shadow-xl w-full max-w-sm mx-4 p-6">
+        <h3
+          className={`text-lg font-bold mb-2 ${
+            type === "error" ? "text-red-700" : "text-gray-800"
+          }`}
+        >
+          {title}
+        </h3>
+        <p className="text-sm text-gray-600 mb-6 whitespace-pre-line">
+          {message}
+        </p>
+        <div className="flex justify-end">
+          <button
+            type="button"
+            onClick={onClose}
+            className={`px-4 py-2 rounded-md text-white text-sm font-semibold ${
+              type === "error"
+                ? "bg-red-600 hover:bg-red-700"
+                : "bg-green-600 hover:bg-green-700"
+            }`}
+          >
+            OK
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
 function RidersListSection({
   riders,
   onViewDetails,
@@ -199,7 +243,6 @@ function DeliveriesDialog({
   const orderFilter = buildRiderFilter(rider);
   const deliveriesFilter = buildRiderFilter(rider);
 
-  // Live data subscriptions - simplified, client-side filter
   useEffect(() => {
     if (!orderFilter && !deliveriesFilter) return;
 
@@ -314,7 +357,6 @@ function DeliveriesDialog({
             });
           },
         )
-
         .on(
           "postgres_changes",
           {
@@ -351,7 +393,6 @@ function DeliveriesDialog({
             });
           },
         )
-
         .subscribe();
     }
 
@@ -361,23 +402,13 @@ function DeliveriesDialog({
     };
   }, [rider.id]);
 
-  // Initial fetch on rider change
   useEffect(() => {
     const fetchDeliveries = async (): Promise<void> => {
       setIsLoadingDeliveries(true);
       setDeliveriesError("");
-      setDeliveries([]); // Clear previous
+      setDeliveries([]);
 
       try {
-        console.log(
-          "Fetching deliveries for rider:",
-          rider.id,
-          "orderFilter:",
-          orderFilter,
-          "deliveriesFilter:",
-          deliveriesFilter,
-        ); // Debug
-
         const [ordersResult, deliveriesResult] = await Promise.all([
           orderFilter
             ? supabase
@@ -395,18 +426,7 @@ function DeliveriesDialog({
             : Promise.resolve({ data: [], error: null }),
         ]);
 
-        console.log("Orders result:", ordersResult);
-        console.log("Deliveries result:", deliveriesResult);
-
         if (ordersResult.error) throw ordersResult.error;
-        // Don't throw deliveries error - the table might not exist or be restricted by RLS
-        // We can still show orders even if deliveries table is unavailable
-        if (deliveriesError) {
-          console.warn(
-            "Deliveries table error (will show orders only):",
-            deliveriesError,
-          );
-        }
 
         const orderRows: Delivery[] = (ordersResult.data ?? []).map(
           (row: any) => ({
@@ -438,8 +458,6 @@ function DeliveriesDialog({
             (Number.isNaN(aDate) ? 0 : aDate)
           );
         });
-
-        console.log("Setting deliveries:", allDeliveries);
 
         setDeliveries(allDeliveries);
       } catch (error) {
@@ -495,7 +513,7 @@ function DeliveriesDialog({
           {deliveriesError &&
           deliveriesError.includes(
             "Could not find the table",
-          ) ? null : deliveriesError ? ( // Silently handle table not found error - it just means no deliveries data
+          ) ? null : deliveriesError ? (
             <div className="p-4 bg-red-50 border border-red-200 rounded text-red-700 text-sm font-semibold">
               {deliveriesError}
             </div>
@@ -596,6 +614,19 @@ export default function RidersPage(): JSX.Element {
   const [selectedRider, setSelectedRider] = useState<Rider | null>(null);
   const [deliveriesRider, setDeliveriesRider] = useState<Rider | null>(null);
   const [isDeliveriesModalOpen, setIsDeliveriesModalOpen] = useState(false);
+  const [notification, setNotification] = useState<{
+    title: string;
+    message: string;
+    type: "success" | "error";
+  } | null>(null);
+
+  const showNotification = (
+    title: string,
+    message: string,
+    type: "success" | "error" = "success",
+  ) => {
+    setNotification({ title, message, type });
+  };
 
   const fetchRiders = async (): Promise<void> => {
     setLoading(true);
@@ -635,15 +666,12 @@ export default function RidersPage(): JSX.Element {
           orderId: index + 1,
           id: rider.id,
           userid: rider.user_id,
-
           name: normalizeDbString(rider.name),
           address: normalizeDbString(rider.address),
-
           contact: normalizeDbString(rider.contact),
           area: normalizeDbString(rider.area),
           plate_number: normalizeDbString(rider.plate_number),
           email: normalizeDbString(rider.email),
-
           isOnline: activeOrders.length > 0,
         };
       },
@@ -667,11 +695,6 @@ export default function RidersPage(): JSX.Element {
       return;
     }
 
-    console.log(
-      "Opening deliveries for rider:",
-      selectedRider.id,
-      selectedRider.name,
-    );
     setDeliveriesRider(selectedRider);
     setSelectedRider(null);
     setIsDeliveriesModalOpen(true);
@@ -686,7 +709,11 @@ export default function RidersPage(): JSX.Element {
 
       if (error) {
         console.error("Error deleting rider from Supabase:", error);
-        alert("Failed to delete rider from database.");
+        showNotification(
+          "Error",
+          "Failed to delete rider from database.",
+          "error",
+        );
         return;
       }
 
@@ -701,19 +728,16 @@ export default function RidersPage(): JSX.Element {
       }
     } catch (err) {
       console.error("Supabase error:", err);
-      alert("Unexpected error while deleting rider.");
+      showNotification(
+        "Error",
+        "Unexpected error while deleting rider.",
+        "error",
+      );
     }
   };
 
   const handleAddRider = async (formValues: RiderFormData): Promise<void> => {
     try {
-      const isConfirmed = window.confirm(
-        "Are you sure you want to add this rider?",
-      );
-      if (!isConfirmed) {
-        return;
-      }
-
       const {
         data: { session: adminSession },
       } = await supabase.auth.getSession();
@@ -724,12 +748,12 @@ export default function RidersPage(): JSX.Element {
       });
 
       if (authError) {
-        alert(authError.message);
+        showNotification("Error", authError.message, "error");
         return;
       }
 
       if (!authData?.user?.id) {
-        alert("Auth user was not created.");
+        showNotification("Error", "Auth user was not created.", "error");
         return;
       }
 
@@ -750,7 +774,11 @@ export default function RidersPage(): JSX.Element {
 
       if (profileError) {
         console.error("Profile error:", profileError);
-        alert(`Failed to create rider profile: ${profileError.message}`);
+        showNotification(
+          "Error",
+          `Failed to create rider profile: ${profileError.message}`,
+          "error",
+        );
         return;
       }
 
@@ -770,8 +798,10 @@ export default function RidersPage(): JSX.Element {
 
       if (riderError || !data) {
         console.error("Rider insert failed:", riderError);
-        alert(
+        showNotification(
+          "Error",
           `Failed to save rider to database: ${getErrorMessage(riderError, "Unknown error")}`,
+          "error",
         );
         return;
       }
@@ -782,12 +812,10 @@ export default function RidersPage(): JSX.Element {
           orderId: prev.length + 1,
           id: data.id,
           userid: userId,
-
           name: normalizeDbString(data.name),
           address:
             normalizeDbString(data.address) ||
             normalizeDbString(formValues.address),
-
           contact: normalizeDbString(data.contact),
           area:
             normalizeDbString(data.area) || normalizeDbString(formValues.area),
@@ -797,18 +825,23 @@ export default function RidersPage(): JSX.Element {
           email:
             normalizeDbString(data.email) ||
             normalizeDbString(formValues.email),
-
           isOnline: false,
         },
       ]);
-      setIsAddModalOpen(false);
 
-      window.confirm(
+      setIsAddModalOpen(false);
+      showNotification(
+        "Success",
         `Rider account created successfully.\n\nEmail: ${formValues.email}`,
+        "success",
       );
     } catch (err) {
       console.error("Unexpected error:", err);
-      alert("Unexpected error while adding rider.");
+      showNotification(
+        "Error",
+        "Unexpected error while adding rider.",
+        "error",
+      );
     }
   };
 
@@ -836,7 +869,7 @@ export default function RidersPage(): JSX.Element {
 
       if (error) {
         console.error("Error updating rider in Supabase:", error);
-        alert("Failed to save rider changes.");
+        showNotification("Error", "Failed to save rider changes.", "error");
         return;
       }
 
@@ -846,11 +879,18 @@ export default function RidersPage(): JSX.Element {
         ),
       );
       setSelectedRider(updatedRider);
-
-      window.alert("Rider details saved successfully.");
+      showNotification(
+        "Success",
+        "Rider details saved successfully.",
+        "success",
+      );
     } catch (err) {
       console.error("Supabase error:", err);
-      alert("Unexpected error while saving rider.");
+      showNotification(
+        "Error",
+        "Unexpected error while saving rider.",
+        "error",
+      );
     }
   };
 
@@ -934,7 +974,6 @@ export default function RidersPage(): JSX.Element {
         <DeliveriesDialog
           rider={deliveriesRider}
           onClose={() => {
-            console.log("Closing deliveries modal");
             setIsDeliveriesModalOpen(false);
             setDeliveriesRider(null);
           }}
@@ -949,6 +988,15 @@ export default function RidersPage(): JSX.Element {
             </p>
           </div>
         </div>
+      )}
+
+      {notification && (
+        <NotificationModal
+          title={notification.title}
+          message={notification.message}
+          type={notification.type}
+          onClose={() => setNotification(null)}
+        />
       )}
     </div>
   );
