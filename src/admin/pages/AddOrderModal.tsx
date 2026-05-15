@@ -30,8 +30,8 @@ const PRICES: Record<SizeKey, number> = {
 };
 
 const inputStyle =
-  "w-full bg-gray-100 border border-green-400 rounded-md px-4 py-2 text-sm " +
-  "focus:outline-none focus:ring-2 focus:ring-green-500";
+  "w-full bg-white border border-gray-300 rounded-lg px-3 py-2 text-sm " +
+  "focus:outline-none focus:ring-2 focus:ring-green-500 focus:border-green-500 transition";
 
 const btnPrimary =
   "px-4 py-2 bg-green-600 text-white rounded-md hover:bg-green-700 disabled:opacity-50";
@@ -336,13 +336,15 @@ export default function AddOrderModal({
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40">
-      <div className="flex max-h-[90vh] w-11/12 max-w-3xl flex-col overflow-hidden rounded-lg border border-gray-200 bg-white shadow-2xl">
-        <div className="flex flex-shrink-0 items-center justify-between border-b px-6 py-4">
-          <h2 className="text-xl font-bold">Add New Order</h2>
+      <div className="flex max-h-[90vh] w-11/12 max-w-3xl flex-col overflow-hidden rounded-2xl bg-white shadow-2xl border border-gray-200">
+        <div className="flex items-center justify-between px-6 py-5 border-b bg-gray-50">
+          <h2 className="text-xl font-semibold tracking-tight text-gray-800">
+            Add New Order
+          </h2>
           <button
             onClick={onClose}
             aria-label="Close modal"
-            className="text-gray-500 hover:text-gray-700 text-xl font-bold"
+            className="text-gray-400 hover:text-gray-600 text-xl font-bold transition"
           >
             ×
           </button>
@@ -352,7 +354,7 @@ export default function AddOrderModal({
           onSubmit={handleSubmit}
           className="flex flex-1 flex-col overflow-hidden"
         >
-          <div className="flex-1 space-y-6 overflow-y-auto px-6 py-6">
+          <div className="flex-1 overflow-y-auto px-8 py-6 space-y-8">
             <section className="space-y-4">
               <h3 className="text-lg font-semibold">Customer Information</h3>
 
@@ -650,31 +652,41 @@ export default function AddOrderModal({
                 </div>
               </div>
             </section>
+
+            <section className="rounded-xl border border-gray-200 bg-gray-50 p-4">
+              <div className="flex items-center justify-between gap-4">
+                <div>
+                  <p className="text-sm text-gray-500">Subtotal</p>
+                  <p className="text-lg font-semibold text-gray-800">
+                    PHP {itemTotal.toFixed(2)}
+                  </p>
+                </div>
+                <div>
+                  <p className="text-sm text-gray-500">Total</p>
+                  <p className="text-xl font-bold text-green-600">
+                    PHP {total.toFixed(2)}
+                  </p>
+                </div>
+              </div>
+            </section>
           </div>
 
-          <div className="flex flex-shrink-0 items-center justify-between border-t px-6 py-4">
-            <p className="text-lg font-semibold">
-              Subtotal: PHP {itemTotal.toFixed(2)} <br />
-              Total (Incl. Delivery): PHP {total.toFixed(2)}
-            </p>
-
-            <div className="flex gap-2">
-              <button
-                type="button"
-                onClick={onClose}
-                className={btnOutline}
-                disabled={isSubmitting}
-              >
-                Cancel
-              </button>
-              <button
-                type="submit"
-                className={btnPrimary}
-                disabled={isSubmitting}
-              >
-                {isSubmitting ? "Saving..." : "Submit"}
-              </button>
-            </div>
+          <div className="flex items-center justify-end gap-2 border-t px-6 py-5 bg-white">
+            <button
+              type="button"
+              onClick={onClose}
+              className={btnOutline}
+              disabled={isSubmitting}
+            >
+              Cancel
+            </button>
+            <button
+              type="submit"
+              className={btnPrimary}
+              disabled={isSubmitting}
+            >
+              {isSubmitting ? "Saving..." : "Submit"}
+            </button>
           </div>
         </form>
       </div>

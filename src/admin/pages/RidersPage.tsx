@@ -596,6 +596,27 @@ export default function RidersPage(): JSX.Element {
   const [selectedRider, setSelectedRider] = useState<Rider | null>(null);
   const [deliveriesRider, setDeliveriesRider] = useState<Rider | null>(null);
   const [isDeliveriesModalOpen, setIsDeliveriesModalOpen] = useState(false);
+  const [statusDialog, setStatusDialog] = useState<{
+    title: string;
+    message: string;
+  } | null>(null);
+
+  const [confirmDialog, setConfirmDialog] = useState<{
+    title: string;
+    message: string;
+    onConfirm: () => void;
+  } | null>(null);
+
+  const btnBase =
+    "px-4 py-2 rounded-lg font-semibold text-sm transition duration-200 disabled:opacity-50 disabled:cursor-not-allowed";
+
+  const btnPrimary = `${btnBase} bg-blue-600 text-white hover:bg-blue-700 active:scale-95`;
+
+  const btnDanger = `${btnBase} bg-red-600 text-white hover:bg-red-700 active:scale-95`;
+
+  const btnNeutral = `${btnBase} bg-gray-200 text-gray-900 hover:bg-gray-300 active:scale-95`;
+
+  const btnSuccess = `${btnBase} bg-green-600 text-white hover:bg-green-700 active:scale-95`;
 
   const fetchRiders = async (): Promise<void> => {
     setLoading(true);
@@ -686,7 +707,11 @@ export default function RidersPage(): JSX.Element {
 
       if (error) {
         console.error("Error deleting rider from Supabase:", error);
-        alert("Failed to delete rider from database.");
+        setStatusDialog({
+          title: "Error",
+          message: "Failed to delete rider from database.",
+        });
+
         return;
       }
 
@@ -701,115 +726,137 @@ export default function RidersPage(): JSX.Element {
       }
     } catch (err) {
       console.error("Supabase error:", err);
-      alert("Unexpected error while deleting rider.");
+      setStatusDialog({
+        title: "Error",
+        message: "Unexpected error while deleting rider.",
+      });
     }
   };
 
   const handleAddRider = async (formValues: RiderFormData): Promise<void> => {
-    try {
-      const isConfirmed = window.confirm(
-        "Are you sure you want to add this rider?",
-      );
-      if (!isConfirmed) {
-        return;
-      }
+    setConfirmDialog({
+      title: "Add Rider",
+      message: "Are you sure you want to add this rider?",
+      onConfirm: async () => {
+        setConfirmDialog(null);
 
-      const {
-        data: { session: adminSession },
-      } = await supabase.auth.getSession();
+        try {
+          const {
+            data: { session: adminSession },
+          } = await supabase.auth.getSession();
 
-      const { data: authData, error: authError } = await supabase.auth.signUp({
-        email: formValues.email.trim(),
-        password: formValues.password,
-      });
+          const { data: authData, error: authError } =
+            await supabase.auth.signUp({
+              email: formValues.email.trim(),
+              password: formValues.password,
+            });
 
-      if (authError) {
-        alert(authError.message);
-        return;
-      }
+          if (authError) {
+            setStatusDialog({
+              title: "Error",
+              message: authError.message,
+            });
+            return;
+          }
 
-      if (!authData?.user?.id) {
-        alert("Auth user was not created.");
-        return;
-      }
+          if (!authData?.user?.id) {
+            setStatusDialog({
+              title: "Error",
+              message: "Auth user was not created.",
+            });
+            return;
+          }
 
-      const userId = authData.user.id;
+          const userId = authData.user.id;
 
-      if (adminSession) {
-        await supabase.auth.setSession({
-          access_token: adminSession.access_token,
-          refresh_token: adminSession.refresh_token,
-        });
-      }
+          if (adminSession) {
+            await supabase.auth.setSession({
+              access_token: adminSession.access_token,
+              refresh_token: adminSession.refresh_token,
+            });
+          }
 
-      const { error: profileError } = await supabase.from("profiles").upsert({
-        id: userId,
-        email: formValues.email.trim(),
-        role: "rider",
-      });
+          const { error: profileError } = await supabase
+            .from("profiles")
+            .upsert({
+              id: userId,
+              email: formValues.email.trim(),
+              role: "rider",
+            });
 
-      if (profileError) {
-        console.error("Profile error:", profileError);
-        alert(`Failed to create rider profile: ${profileError.message}`);
-        return;
-      }
+          if (profileError) {
+            setStatusDialog({
+              title: "Error",
+              message: `Failed to create rider profile: ${profileError.message}`,
+            });
+            return;
+          }
 
-      const { data, error: riderError } = await supabase
-        .from("riders")
-        .insert({
-          user_id: userId,
-          name: formValues.name.trim(),
-          contact: formValues.contact.trim() || null,
-          address: formValues.address.trim() || null,
-          area: formValues.area.trim() || null,
-          plate_number: formValues.plate_number.trim() || null,
-          email: formValues.email.trim() || null,
-        })
-        .select()
-        .single();
+          const { data, error: riderError } = await supabase
+            .from("riders")
+            .insert({
+              user_id: userId,
+              name: formValues.name.trim(),
+              contact: formValues.contact.trim() || null,
+              address: formValues.address.trim() || null,
+              area: formValues.area.trim() || null,
+              plate_number: formValues.plate_number.trim() || null,
+              email: formValues.email.trim() || null,
+            })
+            .select()
+            .single();
 
-      if (riderError || !data) {
-        console.error("Rider insert failed:", riderError);
-        alert(
-          `Failed to save rider to database: ${getErrorMessage(riderError, "Unknown error")}`,
-        );
-        return;
-      }
+          if (riderError || !data) {
+            setStatusDialog({
+              title: "Error",
+              message: `Failed to save rider: ${getErrorMessage(
+                riderError,
+                "Unknown error",
+              )}`,
+            });
+            return;
+          }
 
-      setRiders((prev) => [
-        ...prev,
-        {
-          orderId: prev.length + 1,
-          id: data.id,
-          userid: userId,
+          setRiders((prev) => [
+            ...prev,
+            {
+              orderId: prev.length + 1,
+              id: data.id,
+              userid: userId,
+              name: normalizeDbString(data.name),
+              address:
+                normalizeDbString(data.address) ??
+                normalizeDbString(formValues.address),
+              contact: normalizeDbString(data.contact),
+              area:
+                normalizeDbString(data.area) ??
+                normalizeDbString(formValues.area),
+              plate_number:
+                normalizeDbString(data.plate_number) ??
+                normalizeDbString(formValues.plate_number),
+              email:
+                normalizeDbString(data.email) ??
+                normalizeDbString(formValues.email),
+              isOnline: false,
+            },
+          ]);
 
-          name: normalizeDbString(data.name),
-          address:
-            normalizeDbString(data.address) ||
-            normalizeDbString(formValues.address),
+          setIsAddModalOpen(false);
 
-          contact: normalizeDbString(data.contact),
-          area:
-            normalizeDbString(data.area) || normalizeDbString(formValues.area),
-          plate_number:
-            normalizeDbString(data.plate_number) ||
-            normalizeDbString(formValues.plate_number),
-          email:
-            normalizeDbString(data.email) ||
-            normalizeDbString(formValues.email),
-
-          isOnline: false,
-        },
-      ]);
-      setIsAddModalOpen(false);
-
-      window.confirm(
-        `Rider account created successfully.\n\nEmail: ${formValues.email}`,
-      );
-    } catch (err) {
-      console.error("Unexpected error:", err);
-      alert("Unexpected error while adding rider.");
-    }
+          // ✅ SUCCESS DIALOG (replaces window.confirm)
+          setStatusDialog({
+            title: "Success",
+            message: `Rider account created successfully.\n\nEmail: ${formValues.email}`,
+          });
+        } catch (err) {
+          console.error(err);
+          setStatusDialog({
+            title: "Error",
+            message: "Unexpected error while adding rider.",
+          });
+        }
+      },
+    });
   };
 
   const handleReassignRider = (): void => {
@@ -836,7 +883,10 @@ export default function RidersPage(): JSX.Element {
 
       if (error) {
         console.error("Error updating rider in Supabase:", error);
-        alert("Failed to save rider changes.");
+        setStatusDialog({
+          title: "Error",
+          message: "Failed to save rider changes.",
+        });
         return;
       }
 
@@ -846,11 +896,16 @@ export default function RidersPage(): JSX.Element {
         ),
       );
       setSelectedRider(updatedRider);
-
-      window.alert("Rider details saved successfully.");
+      setStatusDialog({
+        title: "Success",
+        message: "Rider details saved successfully.",
+      });
     } catch (err) {
       console.error("Supabase error:", err);
-      alert("Unexpected error while saving rider.");
+      setStatusDialog({
+        title: "Error",
+        message: "Unexpected error while saving rider.",
+      });
     }
   };
 
@@ -885,7 +940,7 @@ export default function RidersPage(): JSX.Element {
           <div className="riders-header-actions">
             <button
               type="button"
-              className="reassign-rider-btn"
+              className={btnNeutral}
               onClick={handleReassignRider}
             >
               Reassign Area
@@ -893,7 +948,7 @@ export default function RidersPage(): JSX.Element {
 
             <button
               type="button"
-              className="add-rider-btn"
+              className={`${btnSuccess} flex items-center gap-2`}
               onClick={() => setIsAddModalOpen(true)}
             >
               <FiPlus />
@@ -934,7 +989,6 @@ export default function RidersPage(): JSX.Element {
         <DeliveriesDialog
           rider={deliveriesRider}
           onClose={() => {
-            console.log("Closing deliveries modal");
             setIsDeliveriesModalOpen(false);
             setDeliveriesRider(null);
           }}
@@ -947,6 +1001,57 @@ export default function RidersPage(): JSX.Element {
             <p className="text-red-600 font-semibold">
               Error: No rider data available for deliveries
             </p>
+          </div>
+        </div>
+      )}
+
+      {confirmDialog && (
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
+          <div className="bg-white rounded-lg shadow-2xl border border-gray-200 p-6 w-[92%] max-w-md">
+            <h3 className="text-lg font-bold text-gray-800 mb-2">
+              {confirmDialog.title}
+            </h3>
+            <p className="text-sm text-gray-700 whitespace-pre-line">
+              {confirmDialog.message}
+            </p>
+            <div className="mt-4 flex gap-2 justify-end">
+              <button
+                type="button"
+                className={btnNeutral}
+                onClick={() => setConfirmDialog(null)}
+              >
+                Cancel
+              </button>
+              <button
+                type="button"
+                className={btnPrimary}
+                onClick={confirmDialog.onConfirm}
+              >
+                Confirm
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {statusDialog && (
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
+          <div className="bg-white rounded-lg shadow-2xl border border-gray-200 p-6 w-[92%] max-w-md">
+            <h3 className="text-lg font-bold text-gray-800 mb-2">
+              {statusDialog.title}
+            </h3>
+            <p className="text-sm text-gray-700 whitespace-pre-line">
+              {statusDialog.message}
+            </p>
+            <div className="mt-4 flex justify-end">
+              <button
+                type="button"
+                className={btnPrimary}
+                onClick={() => setStatusDialog(null)}
+              >
+                OK
+              </button>
+            </div>
           </div>
         </div>
       )}
