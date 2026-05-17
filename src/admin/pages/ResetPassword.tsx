@@ -118,7 +118,7 @@ export default function ResetPassword() {
           "Password updated successfully! Redirecting to login...",
         );
         setTimeout(() => {
-          navigate("/login");
+          navigate("/rider/login");
         }, 2000);
       }
     } catch (err) {
@@ -147,7 +147,7 @@ export default function ResetPassword() {
           </h1>
           <p className="text-gray-700 mb-6">{errorMessage}</p>
           <button
-            onClick={() => navigate("/login")}
+            onClick={() => navigate("/rider/login")}
             className="w-full px-4 py-2 bg-green-600 text-white rounded-lg font-semibold hover:bg-green-700 transition"
           >
             Back to Login
@@ -244,7 +244,7 @@ export default function ResetPassword() {
 
         <div className="mt-4 text-center">
           <button
-            onClick={() => navigate("/login")}
+            onClick={() => navigate("/rider/login")}
             className="text-sm text-green-600 hover:text-green-700 font-semibold"
           >
             Back to Login
